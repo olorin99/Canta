@@ -7,7 +7,10 @@
 #include <string>
 #include <functional>
 #include <span>
+#include <memory>
 #include <Canta/Enums.h>
+#include <Canta/Swapchain.h>
+#include <Canta/Semaphore.h>
 
 #define VMA_STATIC_VULKAN_FUNCTIONS 0
 #define VMA_DYNAMIC_VULKAN_FUNCTIONS 0
@@ -26,6 +29,8 @@ namespace canta {
         int limits;
     };
 
+    constexpr const u32 FRAMES_IN_FLIGHT = 2;
+
     class Device {
     public:
 
@@ -40,12 +45,23 @@ namespace canta {
             std::span<const char* const> deviceExtensions = {};
         };
 
-        static auto create(CreateInfo info) noexcept -> std::expected<Device, Error>;
+        static auto create(CreateInfo info) noexcept -> std::expected<std::unique_ptr<Device>, Error>;
 
         ~Device();
 
         Device(Device&& rhs) noexcept;
-        auto operator==(Device&& rhs) noexcept -> Device&;
+        auto operator=(Device&& rhs) noexcept -> Device&;
+
+        auto instance() const -> VkInstance { return _instance; }
+        auto physicalDevice() const -> VkPhysicalDevice { return _physicalDevice; }
+        auto logicalDevice() const -> VkDevice { return _logicalDevice; }
+
+        auto queue(QueueType type) const -> VkQueue;
+
+
+        auto createSwapchain(Swapchain::CreateInfo info) -> std::expected<Swapchain, Error>;
+
+        auto createSemaphore(Semaphore::CreateInfo info) -> std::expected<Semaphore, Error>;
 
     private:
 

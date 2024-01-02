@@ -3,10 +3,19 @@ project(Canta)
 
 set(CMAKE_CXX_STANDARD 23)
 
+find_package(SDL2 REQUIRED)
+
 add_library(Canta
         src/Device.cpp
         include/Canta/Device.h
-        include/Canta/Enums.h)
+        include/Canta/Enums.h
+        src/Swapchain.cpp
+        include/Canta/Swapchain.h
+        src/Semaphore.cpp
+        include/Canta/Semaphore.h
+        include/Canta/Window.h
+        src/SDLWindow.cpp
+        include/Canta/SDLWindow.h)
 
 add_subdirectory(third_party)
 
@@ -23,7 +32,8 @@ target_link_libraries(Canta
     Ende
     volk
     GPUOpen::VulkanMemoryAllocator
-    spdlog::spdlog
+    spdlog
+    ${SDL2_LIBRARIES}
 )
 
 add_subdirectory(examples)

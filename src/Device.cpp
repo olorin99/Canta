@@ -94,9 +94,9 @@ canta::Properties getPhysicalDeviceProperties(VkPhysicalDevice deviceProperties)
 
 
 
-auto canta::Device::create(canta::Device::CreateInfo info) noexcept -> std::expected<Device, Error> {
+auto canta::Device::create(canta::Device::CreateInfo info) noexcept -> std::expected<std::unique_ptr<Device>, Error> {
 
-    Device device = {};
+    std::unique_ptr<Device> device(new Device());
 
     // init instance
     VK_TRY(volkInitialize());
@@ -123,9 +123,9 @@ auto canta::Device::create(canta::Device::CreateInfo info) noexcept -> std::expe
     instanceCreateInfo.enabledExtensionCount = instanceExtensions.size();
     instanceCreateInfo.ppEnabledExtensionNames = instanceExtensions.data();
 
-    VK_TRY(vkCreateInstance(&instanceCreateInfo, nullptr, &device._instance));
+    VK_TRY(vkCreateInstance(&instanceCreateInfo, nullptr, &device->_instance));
 
-    volkLoadInstanceOnly(device._instance);
+    volkLoadInstanceOnly(device->_instance);
 
 #ifndef NDEBUG
     // init debug messenger
@@ -136,15 +136,15 @@ auto canta::Device::create(canta::Device::CreateInfo info) noexcept -> std::expe
     debugInfo.pfnUserCallback = debugCallback;
     debugInfo.pUserData = nullptr;
 
-    auto createDebugUtils = (PFN_vkCreateDebugUtilsMessengerEXT)vkGetInstanceProcAddr(device._instance, "vkCreateDebugUtilsMessengerEXT");
-    VK_TRY(createDebugUtils(device._instance, &debugInfo, nullptr, &device._debugMessenger));
+    auto createDebugUtils = (PFN_vkCreateDebugUtilsMessengerEXT)vkGetInstanceProcAddr(device->_instance, "vkCreateDebugUtilsMessengerEXT");
+    VK_TRY(createDebugUtils(device->_instance, &debugInfo, nullptr, &device->_debugMessenger));
 #endif
 
     // get physical device
     u32 physicalDeviceCount = 0;
-    VK_TRY(vkEnumeratePhysicalDevices(device._instance, &physicalDeviceCount, nullptr));
+    VK_TRY(vkEnumeratePhysicalDevices(device->_instance, &physicalDeviceCount, nullptr));
     std::vector<VkPhysicalDevice> physicalDevices(physicalDeviceCount);
-    VK_TRY(vkEnumeratePhysicalDevices(device._instance, &physicalDeviceCount, physicalDevices.data()));
+    VK_TRY(vkEnumeratePhysicalDevices(device->_instance, &physicalDeviceCount, physicalDevices.data()));
 
     const auto defaultDeviceSelector = [](const Properties& properties) -> u32 {
         switch (properties.deviceType) {
@@ -164,19 +164,19 @@ auto canta::Device::create(canta::Device::CreateInfo info) noexcept -> std::expe
         if (score > maxScore) {
             maxScore = score;
             maxIndex = i;
-            device._properties = properties;
+            device->_properties = properties;
         }
     }
-    device._physicalDevice = physicalDevices[maxIndex];
-    if (device._physicalDevice == VK_NULL_HANDLE)
+    device->_physicalDevice = physicalDevices[maxIndex];
+    if (device->_physicalDevice == VK_NULL_HANDLE)
         return std::unexpected(Error::INVALID_GPU);
 
 
     // queue creation infos
     u32 queueCount = 0;
-    vkGetPhysicalDeviceQueueFamilyProperties(device._physicalDevice, &queueCount, nullptr);
+    vkGetPhysicalDeviceQueueFamilyProperties(device->_physicalDevice, &queueCount, nullptr);
     std::vector<VkQueueFamilyProperties> familyProperties(queueCount);
-    vkGetPhysicalDeviceQueueFamilyProperties(device._physicalDevice, &queueCount, familyProperties.data());
+    vkGetPhysicalDeviceQueueFamilyProperties(device->_physicalDevice, &queueCount, familyProperties.data());
 
     f32 queuePriority = 1.0;
 
@@ -202,7 +202,7 @@ auto canta::Device::create(canta::Device::CreateInfo info) noexcept -> std::expe
     VkPhysicalDeviceFeatures2 deviceFeatures2 = {};
     deviceFeatures2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
     //TODO: choose manually dont enable all
-    vkGetPhysicalDeviceFeatures2(device._physicalDevice, &deviceFeatures2);
+    vkGetPhysicalDeviceFeatures2(device->_physicalDevice, &deviceFeatures2);
 
     VkPhysicalDeviceVulkan11Features vulkan11Features = {};
     vulkan11Features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES;
@@ -256,11 +256,11 @@ auto canta::Device::create(canta::Device::CreateInfo info) noexcept -> std::expe
     deviceCreateInfo.enabledExtensionCount = deviceExtensions.size();
     deviceCreateInfo.ppEnabledExtensionNames = deviceExtensions.data();
 
-    auto result = vkCreateDevice(device._physicalDevice, &deviceCreateInfo, nullptr, &device._logicalDevice);
+    auto result = vkCreateDevice(device->_physicalDevice, &deviceCreateInfo, nullptr, &device->_logicalDevice);
     if (result != VK_SUCCESS)
         return std::unexpected(static_cast<Error>(result));
 
-    volkLoadDevice(device._logicalDevice);
+    volkLoadDevice(device->_logicalDevice);
 
     // get queues
     const auto findQueueIndex = [&](QueueType type, QueueType reject = QueueType::NONE) -> i32 {
@@ -285,19 +285,19 @@ auto canta::Device::create(canta::Device::CreateInfo info) noexcept -> std::expe
     auto transferQueueIndex = findQueueIndex(QueueType::TRANSFER, QueueType::GRAPHICS);
 
     if (graphicsQueueIndex >= 0)
-        vkGetDeviceQueue(device._logicalDevice, graphicsQueueIndex, 0, &device._graphicsQueue);
+        vkGetDeviceQueue(device->_logicalDevice, graphicsQueueIndex, 0, &device->_graphicsQueue);
     if (computeQueueIndex >= 0)
-        vkGetDeviceQueue(device._logicalDevice, computeQueueIndex, 0, &device._computeQueue);
+        vkGetDeviceQueue(device->_logicalDevice, computeQueueIndex, 0, &device->_computeQueue);
     if (transferQueueIndex >= 0)
-        vkGetDeviceQueue(device._logicalDevice, transferQueueIndex, 0, &device._transferQueue);
+        vkGetDeviceQueue(device->_logicalDevice, transferQueueIndex, 0, &device->_transferQueue);
 
 
     // init VMA
     VmaAllocatorCreateInfo allocatorCreateInfo{};
     allocatorCreateInfo.vulkanApiVersion = applicationInfo.apiVersion;
-    allocatorCreateInfo.physicalDevice = device._physicalDevice;
-    allocatorCreateInfo.device = device._logicalDevice;
-    allocatorCreateInfo.instance = device._instance;
+    allocatorCreateInfo.physicalDevice = device->_physicalDevice;
+    allocatorCreateInfo.device = device->_logicalDevice;
+    allocatorCreateInfo.instance = device->_instance;
 
     VmaVulkanFunctions vulkanFunctions{};
     vulkanFunctions.vkGetInstanceProcAddr               = vkGetInstanceProcAddr;
@@ -331,7 +331,7 @@ auto canta::Device::create(canta::Device::CreateInfo info) noexcept -> std::expe
     if (vulkan12Features.bufferDeviceAddress)
         allocatorCreateInfo.flags |= VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT;
 
-    VK_TRY(vmaCreateAllocator(&allocatorCreateInfo, &device._allocator));
+    VK_TRY(vmaCreateAllocator(&allocatorCreateInfo, &device->_allocator));
 
     return device;
 }
@@ -352,7 +352,7 @@ canta::Device::Device(canta::Device &&rhs) noexcept {
     std::swap(_allocator, rhs._allocator);
 }
 
-auto canta::Device::operator==(canta::Device &&rhs) noexcept -> Device & {
+auto canta::Device::operator=(canta::Device &&rhs) noexcept -> Device & {
     std::swap(_instance, rhs._instance);
     std::swap(_physicalDevice, rhs._physicalDevice);
     std::swap(_logicalDevice, rhs._logicalDevice);
@@ -363,4 +363,56 @@ auto canta::Device::operator==(canta::Device &&rhs) noexcept -> Device & {
     std::swap(_transferQueue, rhs._transferQueue);
     std::swap(_allocator, rhs._allocator);
     return *this;
+}
+
+auto canta::Device::queue(canta::QueueType type) const -> VkQueue {
+    switch (type) {
+        case QueueType::GRAPHICS:
+            return _graphicsQueue;
+        case QueueType::COMPUTE:
+            return _computeQueue;
+        case QueueType::TRANSFER:
+            return _transferQueue;
+    }
+    return VK_NULL_HANDLE;
+}
+
+auto canta::Device::createSwapchain(Swapchain::CreateInfo info) -> std::expected<Swapchain, Error> {
+    Swapchain swapchain = {};
+
+    if (!info.window)
+        return std::unexpected(Error::INVALID_PLATFORM);
+
+    swapchain._device = this;
+    auto platformExtent = info.window->extent();
+    swapchain._extent = { platformExtent.x(), platformExtent.y() };
+    swapchain._surface = info.window->surface(*this);
+
+    swapchain.createSwapchain();
+    swapchain.createSemaphores();
+
+    return swapchain;
+}
+
+auto canta::Device::createSemaphore(Semaphore::CreateInfo info) -> std::expected<Semaphore, Error> {
+    Semaphore semaphore = {};
+
+    VkSemaphoreCreateInfo createInfo = {};
+    createInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+
+    VkSemaphoreTypeCreateInfo typeCreateInfo = {};
+    typeCreateInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO;
+    if (info.initialValue >= 0) {
+        typeCreateInfo.semaphoreType = VK_SEMAPHORE_TYPE_TIMELINE;
+        typeCreateInfo.initialValue = info.initialValue;
+        createInfo.pNext = &typeCreateInfo;
+        semaphore._value = info.initialValue;
+        semaphore._isTimeline = true;
+    }
+
+    auto result = vkCreateSemaphore(logicalDevice(), &createInfo, nullptr, &semaphore._semaphore);
+    if (result != VK_SUCCESS)
+        return std::unexpected(static_cast<Error>(result));
+
+    return semaphore;
 }
