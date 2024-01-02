@@ -1,5 +1,4 @@
 #include <Canta/Device.h>
-
 #include <Canta/SDLWindow.h>
 
 int main() {

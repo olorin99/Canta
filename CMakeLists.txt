@@ -19,7 +19,9 @@ add_library(Canta
         src/CommandPool.cpp
         include/Canta/CommandPool.h
         src/CommandBuffer.cpp
-        include/Canta/CommandBuffer.h)
+        include/Canta/CommandBuffer.h
+        src/util.cpp
+        include/Canta/util.h)
 
 add_subdirectory(third_party)
 
@@ -38,6 +40,8 @@ target_link_libraries(Canta
     GPUOpen::VulkanMemoryAllocator
     spdlog
     ${SDL2_LIBRARIES}
+    spirv-cross-cpp
+    shaderc_combined
 )
 
 add_subdirectory(examples)

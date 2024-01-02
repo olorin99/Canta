@@ -229,6 +229,7 @@ auto canta::Device::create(canta::Device::CreateInfo info) noexcept -> std::expe
     appendFeatureChain(&deviceFeatures2, &vulkan13Features);
     vulkan13Features.maintenance4 = true;
     vulkan13Features.synchronization2 = true;
+    vulkan13Features.dynamicRendering = true;
 
     VkPhysicalDeviceMeshShaderFeaturesEXT meshShaderFeatures = {};
     meshShaderFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_EXT;
