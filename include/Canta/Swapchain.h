@@ -34,6 +34,10 @@ namespace canta {
         auto acquireSemaphore() -> Semaphore* { return &_semaphores[_semaphoreIndex].acquire; }
         auto presentSemaphore() -> Semaphore* { return &_semaphores[_semaphoreIndex].present; }
 
+        auto frameSemaphore() -> Semaphore* { return &_frameTimeline; }
+        auto frameValue() const -> u64 { return _frameTimeline.value(); }
+        auto framePrevValue() const -> u64 { return std::max(0l, static_cast<i64>(_frameTimeline.value() - 1)); }
+
         void setPresentMode(PresentMode mode);
         auto getPresentMode() const -> PresentMode { return _presentMode; }
 
@@ -68,6 +72,8 @@ namespace canta {
         u32 _semaphoreIndex;
 
         std::function<u32(Format)> _selector = {};
+
+        Semaphore _frameTimeline = {};
 
     };
 

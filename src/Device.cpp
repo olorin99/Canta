@@ -381,9 +381,15 @@ auto canta::Device::createSwapchain(Swapchain::CreateInfo info) -> std::expected
     auto platformExtent = info.window->extent();
     swapchain._extent = { platformExtent.x(), platformExtent.y() };
     swapchain._surface = info.window->surface(*this);
+    swapchain._selector = info.selector;
 
     swapchain.createSwapchain();
     swapchain.createSemaphores();
+
+    swapchain._frameTimeline = createSemaphore({
+        .initialValue = 0,
+        .name = "frameTimelineSemaphore"
+    }).value();
 
     return swapchain;
 }

@@ -19,6 +19,7 @@ namespace canta {
             std::string_view name = {};
         };
 
+        Semaphore() = default;
         ~Semaphore();
 
         Semaphore(Semaphore&& rhs) noexcept;
@@ -44,8 +45,6 @@ namespace canta {
 
     private:
         friend Device;
-
-        Semaphore() = default;
 
         Device* _device = nullptr;
         VkSemaphore _semaphore = VK_NULL_HANDLE;

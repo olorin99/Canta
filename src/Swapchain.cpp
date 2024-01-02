@@ -71,9 +71,14 @@ canta::Swapchain::Swapchain(canta::Swapchain &&rhs) noexcept {
     std::swap(_swapchain, rhs._swapchain);
     std::swap(_presentMode, rhs._presentMode);
     std::swap(_extent, rhs._extent);
+    std::swap(_format, rhs._format);
+    std::swap(_index, rhs._index);
     std::swap(_images, rhs._images);
     std::swap(_imageViews, rhs._imageViews);
     std::swap(_semaphores, rhs._semaphores);
+    std::swap(_semaphoreIndex, rhs._semaphoreIndex);
+    std::swap(_selector, rhs._selector);
+    std::swap(_frameTimeline, rhs._frameTimeline);
 }
 
 auto canta::Swapchain::operator=(canta::Swapchain &&rhs) noexcept -> Swapchain & {
@@ -82,13 +87,21 @@ auto canta::Swapchain::operator=(canta::Swapchain &&rhs) noexcept -> Swapchain &
     std::swap(_swapchain, rhs._swapchain);
     std::swap(_presentMode, rhs._presentMode);
     std::swap(_extent, rhs._extent);
+    std::swap(_format, rhs._format);
+    std::swap(_index, rhs._index);
     std::swap(_images, rhs._images);
     std::swap(_imageViews, rhs._imageViews);
     std::swap(_semaphores, rhs._semaphores);
+    std::swap(_semaphoreIndex, rhs._semaphoreIndex);
+    std::swap(_selector, rhs._selector);
+    std::swap(_frameTimeline, rhs._frameTimeline);
     return *this;
 }
 
 auto canta::Swapchain::acquire() -> std::expected<u32, Error> {
+    u64 frameValue = std::max(0l, static_cast<i64>(_frameTimeline.value()) - FRAMES_IN_FLIGHT);
+    _frameTimeline.wait(frameValue);
+
     _semaphoreIndex = (_semaphoreIndex % _semaphores.size());
     auto result = vkAcquireNextImageKHR(_device->logicalDevice(), _swapchain, std::numeric_limits<u64>::max(), _semaphores[_semaphoreIndex].acquire.semaphore(), VK_NULL_HANDLE, &_index);
     switch (result) {
@@ -97,9 +110,13 @@ auto canta::Swapchain::acquire() -> std::expected<u32, Error> {
         case VK_ERROR_OUT_OF_DATE_KHR:
             recreate();
             break;
+        case VK_SUBOPTIMAL_KHR:
+            recreate();
+            break;
         default:
             return std::unexpected(static_cast<Error>(result));
     }
+    _frameTimeline.increment();
     return _index;
 }
 

@@ -35,9 +35,11 @@ int main() {
         auto index = swapchain->acquire();
 
         auto waits = std::to_array({
+            { swapchain->frameSemaphore(), swapchain->framePrevValue() },
             swapchain->acquireSemaphore()->getPair()
         });
         auto signals = std::to_array({
+            swapchain->frameSemaphore()->getPair(),
             swapchain->presentSemaphore()->getPair()
         });
 
