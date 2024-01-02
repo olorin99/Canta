@@ -15,7 +15,11 @@ add_library(Canta
         include/Canta/Semaphore.h
         include/Canta/Window.h
         src/SDLWindow.cpp
-        include/Canta/SDLWindow.h)
+        include/Canta/SDLWindow.h
+        src/CommandPool.cpp
+        include/Canta/CommandPool.h
+        src/CommandBuffer.cpp
+        include/Canta/CommandBuffer.h)
 
 add_subdirectory(third_party)
 

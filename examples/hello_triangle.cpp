@@ -14,6 +14,10 @@ int main() {
     auto swapchain = device->createSwapchain({
         .window = &window
     });
+    auto commandPool = device->createCommandPool({
+        .queueType = canta::QueueType::GRAPHICS
+    });
+    auto& commandBuffer = commandPool->getBuffer();
 
 
     bool running = true;
@@ -30,7 +34,19 @@ int main() {
 
         auto index = swapchain->acquire();
 
-//        swapchain->present();
+        auto waits = std::to_array({
+            swapchain->acquireSemaphore()->getPair()
+        });
+        auto signals = std::to_array({
+            swapchain->presentSemaphore()->getPair()
+        });
+
+        commandBuffer.begin();
+        commandBuffer.end();
+
+        commandBuffer.submit(waits, signals);
+
+        swapchain->present();
     }
     return 0;
 }

@@ -6,11 +6,6 @@
 #define VMA_DYNAMIC_VULKAN_FUNCTIONS 0
 #include <vk_mem_alloc.h>
 
-#define VK_TRY(x) { \
-    VkResult tryResult = x; \
-    assert(tryResult == VK_SUCCESS); \
-}
-
 template <typename T, typename U>
 void appendFeatureChain(T* start, U* next) {
     auto* oldNext = start->pNext;
@@ -198,7 +193,6 @@ auto canta::Device::create(canta::Device::CreateInfo info) noexcept -> std::expe
     deviceExtensions.push_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
     deviceExtensions.push_back(VK_EXT_MESH_SHADER_EXTENSION_NAME);
 
-
     VkPhysicalDeviceFeatures2 deviceFeatures2 = {};
     deviceFeatures2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
     //TODO: choose manually dont enable all
@@ -280,16 +274,16 @@ auto canta::Device::create(canta::Device::CreateInfo info) noexcept -> std::expe
         }
         return -1;
     };
-    auto graphicsQueueIndex = findQueueIndex(QueueType::GRAPHICS);
-    auto computeQueueIndex = findQueueIndex(QueueType::COMPUTE, QueueType::GRAPHICS);
-    auto transferQueueIndex = findQueueIndex(QueueType::TRANSFER, QueueType::GRAPHICS);
+    device->_graphicsIndex = findQueueIndex(QueueType::GRAPHICS);
+    device->_computeIndex = findQueueIndex(QueueType::COMPUTE, QueueType::GRAPHICS);
+    device->_transferIndex = findQueueIndex(QueueType::TRANSFER, QueueType::GRAPHICS);
 
-    if (graphicsQueueIndex >= 0)
-        vkGetDeviceQueue(device->_logicalDevice, graphicsQueueIndex, 0, &device->_graphicsQueue);
-    if (computeQueueIndex >= 0)
-        vkGetDeviceQueue(device->_logicalDevice, computeQueueIndex, 0, &device->_computeQueue);
-    if (transferQueueIndex >= 0)
-        vkGetDeviceQueue(device->_logicalDevice, transferQueueIndex, 0, &device->_transferQueue);
+    if (device->_graphicsIndex >= 0)
+        vkGetDeviceQueue(device->_logicalDevice, device->_graphicsIndex, 0, &device->_graphicsQueue);
+    if (device->_computeIndex >= 0)
+        vkGetDeviceQueue(device->_logicalDevice, device->_computeIndex, 0, &device->_computeQueue);
+    if (device->_transferIndex >= 0)
+        vkGetDeviceQueue(device->_logicalDevice, device->_transferIndex, 0, &device->_transferQueue);
 
 
     // init VMA
@@ -379,11 +373,11 @@ auto canta::Device::queue(canta::QueueType type) const -> VkQueue {
 
 auto canta::Device::createSwapchain(Swapchain::CreateInfo info) -> std::expected<Swapchain, Error> {
     Swapchain swapchain = {};
+    swapchain._device = this;
 
     if (!info.window)
         return std::unexpected(Error::INVALID_PLATFORM);
 
-    swapchain._device = this;
     auto platformExtent = info.window->extent();
     swapchain._extent = { platformExtent.x(), platformExtent.y() };
     swapchain._surface = info.window->surface(*this);
@@ -396,6 +390,7 @@ auto canta::Device::createSwapchain(Swapchain::CreateInfo info) -> std::expected
 
 auto canta::Device::createSemaphore(Semaphore::CreateInfo info) -> std::expected<Semaphore, Error> {
     Semaphore semaphore = {};
+    semaphore._device = this;
 
     VkSemaphoreCreateInfo createInfo = {};
     createInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
@@ -414,5 +409,47 @@ auto canta::Device::createSemaphore(Semaphore::CreateInfo info) -> std::expected
     if (result != VK_SUCCESS)
         return std::unexpected(static_cast<Error>(result));
 
+    if (!info.name.empty())
+        setDebugName(VK_OBJECT_TYPE_SEMAPHORE, (u64)semaphore._semaphore, info.name);
     return semaphore;
+}
+
+auto canta::Device::createCommandPool(CommandPool::CreateInfo info) -> std::expected<CommandPool, Error> {
+    CommandPool pool = {};
+    pool._device = this;
+
+    VkCommandPoolCreateInfo createInfo = {};
+    createInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+    switch (info.queueType) {
+        case QueueType::GRAPHICS:
+            createInfo.queueFamilyIndex = _graphicsIndex;
+            break;
+        case QueueType::COMPUTE:
+            createInfo.queueFamilyIndex = _computeIndex;
+            break;
+        case QueueType::TRANSFER:
+            createInfo.queueFamilyIndex = _transferIndex;
+            break;
+    }
+    auto result = vkCreateCommandPool(logicalDevice(), &createInfo, nullptr, &pool._pool);
+    if (result != VK_SUCCESS)
+        return std::unexpected(static_cast<Error>(result));
+
+    pool._queueType = info.queueType;
+
+    if (!info.name.empty())
+        setDebugName(VK_OBJECT_TYPE_COMMAND_POOL, (u64)pool._pool, info.name);
+    return pool;
+}
+
+
+void canta::Device::setDebugName(u32 type, u64 object, std::string_view name) const {
+#ifndef NDEBUG
+    VkDebugUtilsObjectNameInfoEXT objectNameInfo = {};
+    objectNameInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT;
+    objectNameInfo.objectType = (VkObjectType)type;
+    objectNameInfo.pObjectName = name.begin();
+    objectNameInfo.objectHandle = object;
+    vkSetDebugUtilsObjectNameEXT(logicalDevice(), &objectNameInfo);
+#endif
 }

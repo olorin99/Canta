@@ -11,10 +11,16 @@
 #include <Canta/Enums.h>
 #include <Canta/Swapchain.h>
 #include <Canta/Semaphore.h>
+#include <Canta/CommandPool.h>
 
 #define VMA_STATIC_VULKAN_FUNCTIONS 0
 #define VMA_DYNAMIC_VULKAN_FUNCTIONS 0
 #include <vk_mem_alloc.h>
+
+#define VK_TRY(x) { \
+    VkResult tryResult = x; \
+    assert(tryResult == VK_SUCCESS); \
+}
 
 namespace canta {
 
@@ -63,6 +69,13 @@ namespace canta {
 
         auto createSemaphore(Semaphore::CreateInfo info) -> std::expected<Semaphore, Error>;
 
+        auto createCommandPool(CommandPool::CreateInfo info) -> std::expected<CommandPool, Error>;
+
+
+
+
+        void setDebugName(u32 type, u64 object, std::string_view name) const;
+
     private:
 
         Device() = default;
@@ -76,8 +89,11 @@ namespace canta {
         Properties _properties = {};
 
         VkQueue _graphicsQueue = VK_NULL_HANDLE;
+        u32 _graphicsIndex = 0;
         VkQueue _computeQueue = VK_NULL_HANDLE;
+        u32 _computeIndex = 0;
         VkQueue _transferQueue = VK_NULL_HANDLE;
+        u32 _transferIndex = 0;
 
         VmaAllocator _allocator = VK_NULL_HANDLE;
 
