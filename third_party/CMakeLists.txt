@@ -26,6 +26,12 @@ FetchContent_Declare(
 )
 
 FetchContent_Declare(
+    tsl_map
+    GIT_REPOSITORY  https://github.com/Tessil/robin-map
+    GIT_TAG         f45ebce73b3631fdfb8205e2ba700b726ff0c34f
+)
+
+FetchContent_Declare(
     spirv_cross
     GIT_REPOSITORY https://github.com/KhronosGroup/SPIRV-Cross
     GIT_TAG        f349c91274b91c1a7c173f2df70ec53080076191
@@ -73,4 +79,4 @@ set(SHADERC_ENABLE_WERROR_COMPILE OFF CACHE BOOL "" FORCE)
 set(SPIRV_CROSS_EXCEPTIONS_TO_ASSERTIONS ON CACHE BOOL "" FORCE)
 
 
-FetchContent_MakeAvailable(Ende volk vma spdlog spirv_cross spirv-headers spirv-tools glslang shaderc)
+FetchContent_MakeAvailable(Ende volk vma spdlog tsl_map spirv_cross spirv-headers spirv-tools glslang shaderc)

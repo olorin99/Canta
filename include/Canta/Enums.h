@@ -2,6 +2,7 @@
 #define CANTA_ENUMS_H
 
 #include <volk.h>
+#include <type_traits>
 
 namespace canta {
 
@@ -351,6 +352,7 @@ namespace canta {
     };
 
     enum class ShaderStage {
+        NONE = 0,
         VERTEX = VK_SHADER_STAGE_VERTEX_BIT,
         TESS_CONTROL = VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT,
         TESS_EVAL = VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT,
@@ -369,6 +371,22 @@ namespace canta {
         MESH = VK_SHADER_STAGE_MESH_BIT_EXT
     };
 
+#define ENUM_OPERATOR(enum, op) \
+    constexpr enum operator op(enum lhs, enum rhs) noexcept { \
+        return static_cast<enum>(static_cast<std::underlying_type<enum>::type>(lhs) op static_cast<std::underlying_type<enum>::type>(rhs)); \
+    }
+
+#define ENUM_OPERATOR_EQUALS(enum, op) \
+    constexpr enum operator op##=(enum &lhs, enum rhs) noexcept { \
+        lhs = static_cast<enum>(static_cast<std::underlying_type<enum>::type>(lhs) op static_cast<std::underlying_type<enum>::type>(rhs)); \
+        return lhs; \
+    }
+
+
+    ENUM_OPERATOR(ShaderStage, &)
+    ENUM_OPERATOR_EQUALS(ShaderStage, &)
+    ENUM_OPERATOR(ShaderStage, |)
+    ENUM_OPERATOR_EQUALS(ShaderStage, |)
 }
 
 #endif //CANTA_ENUMS_H

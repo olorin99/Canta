@@ -22,7 +22,11 @@ add_library(Canta
         include/Canta/CommandBuffer.h
         src/util.cpp
         include/Canta/util.h
-        include/Canta/ResourceList.h)
+        include/Canta/ResourceList.h
+        src/ShaderModule.cpp
+        include/Canta/ShaderModule.h
+        src/ShaderInterface.cpp
+        include/Canta/ShaderInterface.h)
 
 add_subdirectory(third_party)
 
@@ -43,6 +47,7 @@ target_link_libraries(Canta
     ${SDL2_LIBRARIES}
     spirv-cross-cpp
     shaderc_combined
+    tsl::robin_map
 )
 
 add_subdirectory(examples)

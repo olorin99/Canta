@@ -449,6 +449,28 @@ auto canta::Device::createCommandPool(CommandPool::CreateInfo info) -> std::expe
     return pool;
 }
 
+auto canta::Device::createShaderModule(ShaderModule::CreateInfo info) -> ShaderHandle {
+    VkShaderModule module = {};
+    VkShaderModuleCreateInfo createInfo = {};
+    createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+    createInfo.codeSize = info.spirv.size() * sizeof(u32);
+    createInfo.pCode = info.spirv.data();
+
+    auto result = vkCreateShaderModule(logicalDevice(), &createInfo, nullptr, &module);
+    if (result != VK_SUCCESS)
+        return {};
+
+    auto index = _shaderList.allocate();
+    auto handle = _shaderList.getHandle(index);
+
+    handle->_device = this;
+    handle->_module = module;
+    handle->_stage = info.stage;
+    auto ar = std::to_array({ ShaderInterface::CreateInfo{ info.spirv, info.stage } });
+    handle->_interface = ShaderInterface::create(ar);
+    return handle;
+}
+
 
 void canta::Device::setDebugName(u32 type, u64 object, std::string_view name) const {
 #ifndef NDEBUG

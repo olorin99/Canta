@@ -12,6 +12,8 @@
 #include <Canta/Swapchain.h>
 #include <Canta/Semaphore.h>
 #include <Canta/CommandPool.h>
+#include <Canta/ResourceList.h>
+#include <Canta/ShaderModule.h>
 
 #define VMA_STATIC_VULKAN_FUNCTIONS 0
 #define VMA_DYNAMIC_VULKAN_FUNCTIONS 0
@@ -23,6 +25,8 @@
 }
 
 namespace canta {
+
+    using ShaderHandle = Handle<ShaderModule, ResourceList<ShaderModule>>;
 
     struct Properties {
         u32 apiVersion;
@@ -72,6 +76,7 @@ namespace canta {
         auto createCommandPool(CommandPool::CreateInfo info) -> std::expected<CommandPool, Error>;
 
 
+        auto createShaderModule(ShaderModule::CreateInfo info) -> ShaderHandle;
 
 
         void setDebugName(u32 type, u64 object, std::string_view name) const;
@@ -96,6 +101,9 @@ namespace canta {
         u32 _transferIndex = 0;
 
         VmaAllocator _allocator = VK_NULL_HANDLE;
+
+
+        ResourceList<ShaderModule> _shaderList;
 
     };
 
