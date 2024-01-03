@@ -21,7 +21,8 @@ add_library(Canta
         src/CommandBuffer.cpp
         include/Canta/CommandBuffer.h
         src/util.cpp
-        include/Canta/util.h)
+        include/Canta/util.h
+        include/Canta/ResourceList.h)
 
 add_subdirectory(third_party)
 

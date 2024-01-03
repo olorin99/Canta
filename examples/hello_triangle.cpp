@@ -1,6 +1,8 @@
 #include <Canta/Device.h>
 #include <Canta/SDLWindow.h>
 
+#include <Canta/ResourceList.h>
+
 int main() {
 
     canta::SDLWindow window("Hello Triangle", 1920, 1080);
@@ -18,6 +20,25 @@ int main() {
     });
     auto& commandBuffer = commandPool->getBuffer();
 
+
+    canta::ResourceList<i32> resourceList;
+
+    i32 index = resourceList.allocate();
+    auto handle = resourceList.getHandle(index);
+
+
+    auto handle2 = handle;
+
+    std::printf("%d, %d, %d\n", *handle2, handle2.index(), handle2.count());
+
+    {
+        auto handle3 = handle;
+        std::printf("%d, %d, %d\n", *handle2, handle2.index(), handle2.count());
+    }
+    std::printf("%d, %d, %d\n", *handle2, handle2.index(), handle2.count());
+
+    handle = handle2;
+    std::printf("%d, %d, %d\n", *handle2, handle2.index(), handle2.count());
 
     bool running = true;
 
