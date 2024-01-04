@@ -26,8 +26,8 @@ auto canta::CommandBuffer::end() -> bool {
 }
 
 auto canta::CommandBuffer::submit(std::span<Semaphore::Pair> waitSemaphores, std::span<Semaphore::Pair> signalSemaphores, VkFence fence) -> std::expected<bool, Error> {
-    VkSemaphoreSubmitInfo waits[waitSemaphores.size()] = {};
-    VkSemaphoreSubmitInfo signals[signalSemaphores.size()] = {};
+    VkSemaphoreSubmitInfo waits[waitSemaphores.size()];
+    VkSemaphoreSubmitInfo signals[signalSemaphores.size()];
 
     for (u32 i = 0; i < waitSemaphores.size(); i++) {
         auto& wait = waitSemaphores[i];

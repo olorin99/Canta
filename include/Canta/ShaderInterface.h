@@ -72,9 +72,17 @@ namespace canta {
             std::array<Binding, 5> bindings = {};
         };
 
-        auto getSet(u32 set) const -> Set { return _sets[set]; }
+        struct PushRange {
+            u32 size = 0;
+            u32 offset = 0;
+            ShaderStage stage = ShaderStage::NONE;
+        };
 
-        auto getBinding(u32 set, u32 binding) const -> Binding { return _sets[set].bindings[binding]; }
+        auto getPushRange(u32 range) const -> const PushRange& { return _pushRanges[range]; }
+
+        auto getSet(u32 set) const -> const Set& { return _sets[set]; }
+
+        auto getBinding(u32 set, u32 binding) const -> const Binding& { return _sets[set].bindings[binding]; }
 
         auto bindingHasMember(u32 set, u32 binding, std::string_view name) const -> bool;
 
@@ -82,17 +90,18 @@ namespace canta {
 
         auto getBindingMemberList(u32 set, u32 binding) const -> std::vector<Member>;
 
+        auto pushRangeCount() const -> u32 { return _pushRanges.size(); }
+
+        auto setCount() const -> u32 { return _setCount; }
+
+        auto bindingCount(u32 set) const -> u32 { return _sets[set].bindingCount; }
+
     private:
 
 
         std::array<Set, 5> _sets = {};
         u32 _setCount = 0;
 
-        struct PushRange {
-            u32 size = 0;
-            u32 offset = 0;
-            ShaderStage stage = ShaderStage::NONE;
-        };
         std::vector<PushRange> _pushRanges;
         std::vector<std::pair<ende::math::Vec<3, u32>, ShaderStage>> _localSizes;
         ShaderStage _stages;

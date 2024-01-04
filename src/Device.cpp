@@ -471,6 +471,114 @@ auto canta::Device::createShaderModule(ShaderModule::CreateInfo info) -> ShaderH
     return handle;
 }
 
+auto canta::Device::createPipepline(Pipeline::CreateInfo info) -> Pipelinehandle {
+    ShaderInterface interface = {};
+    std::vector<VkPipelineShaderStageCreateInfo> shaderStages = {};
+    for (auto& shaderInfo : info.shaders) {
+        auto array = std::to_array({ interface, shaderInfo.module->interface() });
+        interface = ShaderInterface::merge(array);
+
+        VkPipelineShaderStageCreateInfo stageCreateInfo = {};
+        stageCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+        stageCreateInfo.stage = static_cast<VkShaderStageFlagBits>(shaderInfo.module->stage());
+        stageCreateInfo.module = shaderInfo.module->module();
+        stageCreateInfo.pName = shaderInfo.entryPoint.data();
+        shaderStages.push_back(stageCreateInfo);
+    }
+
+    std::vector<VkDescriptorSetLayout> setLayouts = {};
+
+    for (u32 i = 0; i < interface.setCount(); i++) {
+        std::vector<VkDescriptorSetLayoutBinding> layoutBindings = {};
+        u32 layoutBindingCount = 0;
+        auto& set = interface.getSet(i);
+
+        for (u32 j = 0; j < set.bindingCount; j++) {
+            auto& binding = set.bindings[j];
+
+            if (binding.type == ShaderInterface::BindingType::NONE)
+                break;
+
+            VkDescriptorSetLayoutBinding layoutBinding = {};
+
+            layoutBindings[layoutBindingCount].binding = j;
+            VkDescriptorType type;
+            switch (binding.type) {
+                case ShaderInterface::BindingType::UNIFORM_BUFFER:
+                    type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+                    break;
+                case ShaderInterface::BindingType::SAMPLED_IMAGE:
+                    type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+                    break;
+                case ShaderInterface::BindingType::STORAGE_IMAGE:
+                    type = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+                    break;
+                case ShaderInterface::BindingType::STORAGE_BUFFER:
+                    type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+                    break;
+                default:
+                    type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+            }
+            layoutBinding.descriptorType = type;
+            layoutBinding.descriptorCount = 1;
+            layoutBinding.stageFlags = static_cast<VkShaderStageFlagBits>(binding.stages);
+            layoutBinding.pImmutableSamplers = nullptr;
+            layoutBindings.push_back(layoutBinding);
+        }
+
+        VkDescriptorSetLayoutCreateInfo createInfo{};
+        createInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+        createInfo.bindingCount = layoutBindings.size();
+        createInfo.pBindings = layoutBindings.data();
+
+        VkDescriptorSetLayout setLayout;
+        VK_TRY(vkCreateDescriptorSetLayout(logicalDevice(), &createInfo, nullptr, &setLayout));
+        setLayouts.push_back(setLayout);
+    }
+
+    std::vector<VkPushConstantRange> pushConstantRanges = {};
+    for (u32 i = 0; i < interface.pushRangeCount(); i++) {
+        VkPushConstantRange range = {};
+        range.stageFlags |= static_cast<VkShaderStageFlagBits>(interface.getPushRange(i).stage);
+        range.size = interface.getPushRange(i).size;
+        range.offset = interface.getPushRange(i).offset;
+    }
+
+    VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
+    pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+    pipelineLayoutInfo.setLayoutCount = setLayouts.size();
+    pipelineLayoutInfo.pSetLayouts = setLayouts.data();
+
+    pipelineLayoutInfo.pushConstantRangeCount = pushConstantRanges.size();
+    pipelineLayoutInfo.pPushConstantRanges = pushConstantRanges.data();
+
+    VkPipelineLayout  pipelineLayout;
+    VK_TRY(vkCreatePipelineLayout(logicalDevice(), &pipelineLayoutInfo, nullptr, &pipelineLayout));
+
+
+    VkPipeline pipeline;
+    if (info.mode == PipelineMode::GRAPHICS) {
+
+    } else {
+        VkComputePipelineCreateInfo createInfo = {};
+        createInfo.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
+        createInfo.stage = shaderStages.front();
+        createInfo.layout = pipelineLayout;
+        createInfo.basePipelineHandle = VK_NULL_HANDLE;
+        createInfo.basePipelineIndex = -1;
+
+        auto result = vkCreateComputePipelines(logicalDevice(), VK_NULL_HANDLE, 1, &createInfo, nullptr, &pipeline);
+        if (result != VK_SUCCESS)
+            return {};
+    }
+
+    auto index = _pipelineList.allocate();
+    auto handle = _pipelineList.getHandle(index);
+
+    handle->_pipeline = pipeline;
+
+    return handle;
+}
 
 void canta::Device::setDebugName(u32 type, u64 object, std::string_view name) const {
 #ifndef NDEBUG

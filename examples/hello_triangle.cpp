@@ -70,6 +70,21 @@ void main() {
         .stage = canta::ShaderStage::FRAGMENT
     });
 
+    auto pipelineShaders = std::to_array({
+        canta::ShaderInfo{
+            .module = vertexShader,
+            .entryPoint = "main"
+        },
+        canta::ShaderInfo{
+            .module = fragmentShader,
+            .entryPoint = "main"
+        }
+    });
+
+    auto pipeline = device->createPipepline({
+        .shaders = pipelineShaders
+    });
+
     auto mergeInputs = std::to_array({ vertexShader->interface(), fragmentShader->interface() });
     auto merged = canta::ShaderInterface::merge(mergeInputs);
 

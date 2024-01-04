@@ -14,6 +14,7 @@
 #include <Canta/CommandPool.h>
 #include <Canta/ResourceList.h>
 #include <Canta/ShaderModule.h>
+#include <Canta/Pipeline.h>
 
 #define VMA_STATIC_VULKAN_FUNCTIONS 0
 #define VMA_DYNAMIC_VULKAN_FUNCTIONS 0
@@ -27,6 +28,7 @@
 namespace canta {
 
     using ShaderHandle = Handle<ShaderModule, ResourceList<ShaderModule>>;
+    using Pipelinehandle = Handle<Pipeline, ResourceList<Pipeline>>;
 
     struct Properties {
         u32 apiVersion;
@@ -78,6 +80,7 @@ namespace canta {
 
         auto createShaderModule(ShaderModule::CreateInfo info) -> ShaderHandle;
 
+        auto createPipepline(Pipeline::CreateInfo info) -> Pipelinehandle;
 
         void setDebugName(u32 type, u64 object, std::string_view name) const;
 
@@ -104,6 +107,7 @@ namespace canta {
 
 
         ResourceList<ShaderModule> _shaderList;
+        ResourceList<Pipeline> _pipelineList;
 
     };
 
