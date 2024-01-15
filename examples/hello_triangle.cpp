@@ -99,10 +99,10 @@ void main() {
 
     auto colourFormat = swapchain->format();
 
-    auto pipeline = device->createPipepline({
-        .shaders = pipelineShaders,
-        .colourFormats = { &colourFormat, 1 },
-    });
+    auto pipeline = device->createPipeline({
+                                                   .shaders = pipelineShaders,
+                                                   .colourFormats = {&colourFormat, 1},
+                                           });
 
     auto sampler = device->createSampler({});
 
@@ -119,6 +119,8 @@ void main() {
         .persistentlyMapped = true,
         .name = "test_buffer"
     });
+
+    buffer = device->resizeBuffer(buffer, 100);
 
     i32 data[] = {
             2, 1, 2

@@ -631,7 +631,7 @@ auto canta::Device::createCommandPool(CommandPool::CreateInfo info) -> std::expe
     return pool;
 }
 
-auto canta::Device::createShaderModule(ShaderModule::CreateInfo info) -> ShaderHandle {
+auto canta::Device::createShaderModule(ShaderModule::CreateInfo info, ShaderHandle oldHandle) -> ShaderHandle {
     VkShaderModule module = {};
     VkShaderModuleCreateInfo createInfo = {};
     createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
@@ -642,8 +642,11 @@ auto canta::Device::createShaderModule(ShaderModule::CreateInfo info) -> ShaderH
     if (result != VK_SUCCESS)
         return {};
 
-    auto index = _shaderList.allocate();
-    auto handle = _shaderList.getHandle(index);
+    ShaderHandle handle = {};
+    if (oldHandle)
+        handle = _shaderList.reallocate(oldHandle);
+    else
+        handle = _shaderList.allocate();
 
     handle->_device = this;
     handle->_module = module;
@@ -653,7 +656,7 @@ auto canta::Device::createShaderModule(ShaderModule::CreateInfo info) -> ShaderH
     return handle;
 }
 
-auto canta::Device::createPipepline(Pipeline::CreateInfo info) -> PipelineHandle {
+auto canta::Device::createPipeline(Pipeline::CreateInfo info, PipelineHandle oldHandle) -> PipelineHandle {
     ShaderInterface interface = {};
     std::vector<VkPipelineShaderStageCreateInfo> shaderStages = {};
     for (auto& shaderInfo : info.shaders) {
@@ -868,8 +871,11 @@ auto canta::Device::createPipepline(Pipeline::CreateInfo info) -> PipelineHandle
             return {};
     }
 
-    auto index = _pipelineList.allocate();
-    auto handle = _pipelineList.getHandle(index);
+    PipelineHandle handle = {};
+    if (oldHandle)
+        handle = _pipelineList.reallocate(oldHandle);
+    else
+        handle = _pipelineList.allocate();
 
     handle->_device = this;
     handle->_pipeline = pipeline;
@@ -879,7 +885,7 @@ auto canta::Device::createPipepline(Pipeline::CreateInfo info) -> PipelineHandle
     return handle;
 }
 
-auto canta::Device::createImage(Image::CreateInfo info) -> ImageHandle {
+auto canta::Device::createImage(Image::CreateInfo info, ImageHandle oldHandle) -> ImageHandle {
     VkImage image;
     VmaAllocation allocation;
     VkImageCreateInfo createInfo = {};
@@ -924,8 +930,11 @@ auto canta::Device::createImage(Image::CreateInfo info) -> ImageHandle {
 
     setDebugName(image, info.name);
 
-    auto index = _imageList.allocate();
-    auto handle = _imageList.getHandle(index);
+    ImageHandle handle = {};
+    if (oldHandle)
+        handle = _imageList.reallocate(oldHandle);
+    else
+        handle = _imageList.allocate();
 
     handle->_device = this;
     handle->_image = image;
@@ -945,7 +954,7 @@ auto canta::Device::createImage(Image::CreateInfo info) -> ImageHandle {
     bool isSampled = (info.usage & ImageUsage::SAMPLED) == ImageUsage::SAMPLED;
     bool isStorage = (info.usage & ImageUsage::STORAGE) == ImageUsage::STORAGE;
 
-    updateBindlessImage(index, handle->defaultView(), isSampled, isStorage);
+    updateBindlessImage(handle.index(), handle->defaultView(), isSampled, isStorage);
 
     return handle;
 }
@@ -969,8 +978,7 @@ auto canta::Device::registerImage(Image::CreateInfo info, VkImage image, VkImage
     defaultView._image = nullptr;
     defaultView._view = view;
 
-    auto index = _imageList.allocate();
-    auto handle = _imageList.getHandle(index);
+    auto handle = _imageList.allocate();
 
     handle->_device = this;
     handle->_image = image;
@@ -990,12 +998,12 @@ auto canta::Device::registerImage(Image::CreateInfo info, VkImage image, VkImage
     bool isSampled = (info.usage & ImageUsage::SAMPLED) == ImageUsage::SAMPLED;
     bool isStorage = (info.usage & ImageUsage::STORAGE) == ImageUsage::STORAGE;
 
-    updateBindlessImage(index, handle->defaultView(), isSampled, isStorage);
+    updateBindlessImage(handle.index(), handle->defaultView(), isSampled, isStorage);
 
     return handle;
 }
 
-auto canta::Device::createBuffer(Buffer::CreateInfo info) -> BufferHandle {
+auto canta::Device::createBuffer(Buffer::CreateInfo info, BufferHandle oldHandle) -> BufferHandle {
     info.usage |= BufferUsage::TRANSFER_DST | BufferUsage::TRANSFER_SRC | BufferUsage::STORAGE | BufferUsage::DEVICE_ADDRESS;
 
     VkBuffer buffer;
@@ -1033,8 +1041,11 @@ auto canta::Device::createBuffer(Buffer::CreateInfo info) -> BufferHandle {
     deviceAddressInfo.buffer = buffer;
     auto address = vkGetBufferDeviceAddress(logicalDevice(), &deviceAddressInfo);
 
-    auto index = _bufferList.allocate();
-    auto handle = _bufferList.getHandle(index);
+    BufferHandle handle = {};
+    if (oldHandle)
+        handle = _bufferList.reallocate(oldHandle);
+    else
+        handle = _bufferList.allocate();
 
     handle->_device = this;
     handle->_buffer = buffer;
@@ -1043,17 +1054,19 @@ auto canta::Device::createBuffer(Buffer::CreateInfo info) -> BufferHandle {
     handle->_size = info.size;
     handle->_usage = info.usage;
     handle->_type = info.type;
+    handle->_requiredFlags = info.requiredFlags;
+    handle->_preferredFlags = info.preferredFlags;
     handle->_name = info.name;
 
     if (info.persistentlyMapped)
         handle->_mapped = handle->map();
 
-    updateBindlessBuffer(index, *handle);
+    updateBindlessBuffer(handle.index(), *handle);
 
     return handle;
 }
 
-auto canta::Device::createSampler(Sampler::CreateInfo info) -> SamplerHandle {
+auto canta::Device::createSampler(Sampler::CreateInfo info, SamplerHandle oldHandle) -> SamplerHandle {
     VkSampler sampler;
 
     VkSamplerCreateInfo createInfo = {};
@@ -1076,15 +1089,30 @@ auto canta::Device::createSampler(Sampler::CreateInfo info) -> SamplerHandle {
 
     VK_TRY(vkCreateSampler(logicalDevice(), &createInfo, nullptr, &sampler));
 
-    auto index = _samplerList.allocate();
-    auto handle = _samplerList.getHandle(index);
+    SamplerHandle handle = {};
+    if (oldHandle)
+        handle = _samplerList.reallocate(oldHandle);
+    else
+        handle = _samplerList.allocate();
 
     handle->_device = this;
     handle->_sampler = sampler;
 
-    updateBindlessSampler(index, *handle);
+    updateBindlessSampler(handle.index(), *handle);
 
     return handle;
+}
+
+auto canta::Device::resizeBuffer(canta::BufferHandle handle, u32 newSize) -> BufferHandle {
+    return createBuffer({
+        .size = newSize,
+        .usage = handle->usage(),
+        .type = handle->type(),
+        .requiredFlags = handle->_requiredFlags,
+        .preferredFlags = handle->_preferredFlags,
+        .persistentlyMapped = handle->persitentlyMapped(),
+        .name = handle->name()
+    }, handle);
 }
 
 void canta::Device::setDebugName(u32 type, u64 object, std::string_view name) const {

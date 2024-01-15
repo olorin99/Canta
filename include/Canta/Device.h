@@ -155,17 +155,14 @@ namespace canta {
         auto createCommandPool(CommandPool::CreateInfo info) -> std::expected<CommandPool, Error>;
 
 
-        auto createShaderModule(ShaderModule::CreateInfo info) -> ShaderHandle;
+        auto createShaderModule(ShaderModule::CreateInfo info, ShaderHandle oldHandle = {}) -> ShaderHandle;
+        auto createPipeline(Pipeline::CreateInfo info, PipelineHandle oldHandle = {}) -> PipelineHandle;
+        auto createImage(Image::CreateInfo info, ImageHandle oldHandle = {}) -> ImageHandle;
+        auto createBuffer(Buffer::CreateInfo info, BufferHandle oldHandle = {}) -> BufferHandle;
+        auto createSampler(Sampler::CreateInfo info, SamplerHandle oldHandle = {}) -> SamplerHandle;
 
-        auto createPipepline(Pipeline::CreateInfo info) -> PipelineHandle;
-
-        auto createImage(Image::CreateInfo info) -> ImageHandle;
         auto registerImage(Image::CreateInfo info, VkImage image, VkImageView view) -> ImageHandle;
-
-        auto createBuffer(Buffer::CreateInfo info) -> BufferHandle;
-
-        auto createSampler(Sampler::CreateInfo info) -> SamplerHandle;
-
+        auto resizeBuffer(BufferHandle handle, u32 newSize) -> BufferHandle;
 
         void setDebugName(u32 type, u64 object, std::string_view name) const;
 

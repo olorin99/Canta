@@ -124,7 +124,7 @@ namespace canta {
             return list;
         }
 
-        auto allocate() -> i32 {
+        auto allocate() -> ResourceHandle {
             i32 index = -1;
             if (!_freeResources.empty()) {
                 index = _freeResources.back();
@@ -142,13 +142,15 @@ namespace canta {
                     _destroyQueue.push_back(std::make_pair(_destroyDelay, index));
                 };
             }
-            return index;
+            return getHandle(index);
         }
 
         auto reallocate(ResourceHandle handle) -> ResourceHandle {
             i32 oldIndex = handle.index();
-            i32 newIndex = allocate();
+            auto newHandle = allocate();
+            auto newIndex = newHandle.index();
             _resources[newIndex].swap(_resources[oldIndex]);
+            _resources[oldIndex]->first = std::move(_resources[newIndex]->first);
             _resources[newIndex]->second.index = newIndex;
             _resources[oldIndex]->second.index = oldIndex;
             _resources[oldIndex]->second.count = 0;

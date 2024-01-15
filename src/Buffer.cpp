@@ -20,6 +20,8 @@ canta::Buffer::Buffer(canta::Buffer &&rhs) noexcept {
     std::swap(_mapped, rhs._mapped);
     _mapped._buffer = this;
     rhs._mapped._buffer = &rhs;
+    std::swap(_requiredFlags, rhs._requiredFlags);
+    std::swap(_preferredFlags, rhs._preferredFlags);
     std::swap(_name, rhs._name);
 }
 
@@ -34,6 +36,8 @@ auto canta::Buffer::operator=(canta::Buffer &&rhs) noexcept -> Buffer & {
     std::swap(_mapped, rhs._mapped);
     _mapped._buffer = this;
     rhs._mapped._buffer = &rhs;
+    std::swap(_requiredFlags, rhs._requiredFlags);
+    std::swap(_preferredFlags, rhs._preferredFlags);
     std::swap(_name, rhs._name);
     return *this;
 }

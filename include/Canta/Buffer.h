@@ -34,8 +34,10 @@ namespace canta {
 
         auto buffer() const -> VkBuffer { return _buffer; }
         auto address() const -> u64 { return _deviceAddress; }
+        auto type() const -> MemoryType { return _type; }
         auto usage() const -> BufferUsage { return _usage; }
         auto size() const -> u32 { return _size; }
+        auto persitentlyMapped() const -> bool { return _mapped._address; }
         auto name() const -> std::string_view { return _name; }
 
         class Mapped {
@@ -78,6 +80,8 @@ namespace canta {
         BufferUsage _usage = BufferUsage::TRANSFER_DST;
         MemoryType _type = MemoryType::DEVICE;
         Mapped _mapped = {};
+        u32 _requiredFlags = 0;
+        u32 _preferredFlags = 0;
         std::string _name = {};
 
     };
