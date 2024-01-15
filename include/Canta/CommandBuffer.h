@@ -59,6 +59,12 @@ namespace canta {
 
         void bindPipeline(PipelineHandle pipeline);
 
+        void pushConstants(ShaderStage stage, std::span<const u8> data, u32 offset = 0);
+        template <typename T>
+        void pushConstants(ShaderStage stage, const T& data, u32 offset = 0) {
+            pushConstants(stage, std::span<const u8>(reinterpret_cast<const u8*>(&data), sizeof(T)), offset);
+        }
+
         void draw(u32 count, u32 instanceCount = 1, u32 first = 0, u32 firstInstance = 0);
 
         void barrier(ImageBarrier barrier);

@@ -62,13 +62,21 @@ namespace canta {
 
         Pipeline() = default;
 
+        ~Pipeline();
+
+        Pipeline(Pipeline&& rhs) noexcept;
+        auto operator=(Pipeline&& rhs) noexcept -> Pipeline&;
+
         auto pipeline() const -> VkPipeline { return _pipeline; }
+        auto layout() const -> VkPipelineLayout { return _layout; }
         auto mode() const -> PipelineMode { return _mode; }
 
     private:
         friend Device;
 
+        Device* _device = nullptr;
         VkPipeline _pipeline = VK_NULL_HANDLE;
+        VkPipelineLayout _layout = VK_NULL_HANDLE;
         PipelineMode _mode = PipelineMode::GRAPHICS;
 
 

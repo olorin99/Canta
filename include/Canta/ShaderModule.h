@@ -17,7 +17,6 @@ namespace canta {
 
         struct CreateInfo {
             std::span<u32> spirv = {};
-            std::string_view main = {};
             ShaderStage stage = ShaderStage::NONE;
         };
 

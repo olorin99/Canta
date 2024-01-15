@@ -148,6 +148,11 @@ void canta::CommandBuffer::bindPipeline(PipelineHandle pipeline) {
     _currentPipeline = pipeline;
 }
 
+void canta::CommandBuffer::pushConstants(canta::ShaderStage stage, std::span<const u8> data, u32 offset) {
+    assert(offset + data.size() <= 128);
+    vkCmdPushConstants(_buffer, _currentPipeline->layout(), static_cast<VkShaderStageFlagBits>(stage), offset, data.size(), data.data());
+}
+
 void canta::CommandBuffer::draw(u32 count, u32 instanceCount, u32 first, u32 firstInstance) {
     assert(_currentPipeline);
     assert(_currentPipeline->mode() == PipelineMode::GRAPHICS);

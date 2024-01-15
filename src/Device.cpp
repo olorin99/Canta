@@ -480,7 +480,7 @@ canta::Device::~Device() {
         vkDestroyShaderModule(logicalDevice(), module.module(), nullptr);
     });
     _pipelineList.clearAll([&](auto& pipeline) {
-        vkDestroyPipeline(logicalDevice(), pipeline.pipeline(), nullptr);
+        pipeline = {};
     });
     _imageList.clearAll([](auto& image) {
         image = {};
@@ -534,8 +534,7 @@ void canta::Device::gc() {
         module._module = VK_NULL_HANDLE;
     });
     _pipelineList.clearQueue([&](auto& pipeline) {
-        vkDestroyPipeline(logicalDevice(), pipeline.pipeline(), nullptr);
-        pipeline._pipeline = VK_NULL_HANDLE;
+        pipeline = {};
     });
     _imageList.clearQueue([](auto& image) {
         image = {};
@@ -729,6 +728,7 @@ auto canta::Device::createPipepline(Pipeline::CreateInfo info) -> PipelineHandle
         range.stageFlags |= static_cast<VkShaderStageFlagBits>(interface.getPushRange(i).stage);
         range.size = interface.getPushRange(i).size;
         range.offset = interface.getPushRange(i).offset;
+        pushConstantRanges.push_back(range);
     }
 
     VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
@@ -872,12 +872,12 @@ auto canta::Device::createPipepline(Pipeline::CreateInfo info) -> PipelineHandle
             return {};
     }
 
-    vkDestroyPipelineLayout(logicalDevice(), pipelineLayout, nullptr);
-
     auto index = _pipelineList.allocate();
     auto handle = _pipelineList.getHandle(index);
 
+    handle->_device = this;
     handle->_pipeline = pipeline;
+    handle->_layout = pipelineLayout;
     handle->_mode = info.mode;
 
     return handle;

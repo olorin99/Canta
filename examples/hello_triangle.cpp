@@ -59,13 +59,11 @@ void main() {
 
     auto vertexShader = device->createShaderModule({
         .spirv = vertexSpirv,
-        .main = "main",
         .stage = canta::ShaderStage::VERTEX
     });
 
     auto fragmentShader = device->createShaderModule({
         .spirv = fragmentSpirv,
-        .main = "main",
         .stage = canta::ShaderStage::FRAGMENT
     });
 
