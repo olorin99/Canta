@@ -586,6 +586,34 @@ namespace canta {
         ONE_MINUS_SRC1_ALPHA = VK_BLEND_FACTOR_ONE_MINUS_SRC1_ALPHA,
     };
 
+    enum class Filter {
+        NEAREST = VK_FILTER_NEAREST,
+        LINEAR = VK_FILTER_LINEAR,
+        CUBIC = VK_FILTER_CUBIC_EXT,
+    };
+
+    enum class AddressMode {
+        REPEAT = VK_SAMPLER_ADDRESS_MODE_REPEAT,
+        MIRRORED_REPEAT = VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT,
+        CLAMP_TO_EDGE = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
+        CLAMP_TO_BORDER = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER,
+        MIRROR_CLAMP_TO_EDGE = VK_SAMPLER_ADDRESS_MODE_MIRROR_CLAMP_TO_EDGE,
+    };
+
+    enum class MipmapMode {
+        NEAREST = VK_SAMPLER_MIPMAP_MODE_NEAREST,
+        LINEAR = VK_SAMPLER_MIPMAP_MODE_LINEAR,
+    };
+
+    enum class BorderColour {
+        TRANSPARENT_BLACK_FLOAT = VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK,
+        TRANSPARENT_BLACK_INT = VK_BORDER_COLOR_INT_TRANSPARENT_BLACK,
+        OPAQUE_BLACK_FLOAT = VK_BORDER_COLOR_FLOAT_OPAQUE_BLACK,
+        OPAQUE_BLACK_INT = VK_BORDER_COLOR_INT_OPAQUE_BLACK,
+        OPAQUE_WHITE_FLOAT = VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE,
+        OPAQUE_WHITE_INT = VK_BORDER_COLOR_INT_OPAQUE_WHITE,
+    };
+
 #define ENUM_OPERATOR(enum, op) \
     constexpr enum operator op(enum lhs, enum rhs) noexcept { \
         return static_cast<enum>(static_cast<std::underlying_type<enum>::type>(lhs) op static_cast<std::underlying_type<enum>::type>(rhs)); \

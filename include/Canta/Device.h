@@ -17,6 +17,7 @@
 #include <Canta/Pipeline.h>
 #include <Canta/Image.h>
 #include <Canta/Buffer.h>
+#include <Canta/Sampler.h>
 
 #define VMA_STATIC_VULKAN_FUNCTIONS 0
 #define VMA_DYNAMIC_VULKAN_FUNCTIONS 0
@@ -38,6 +39,7 @@ namespace canta {
     using PipelineHandle = Handle<Pipeline, ResourceList<Pipeline>>;
     using ImageHandle = Handle<Image, ResourceList<Image>>;
     using BufferHandle = Handle<Buffer, ResourceList<Buffer>>;
+    using SamplerHandle = Handle<Sampler, ResourceList<Sampler>>;
 
     struct Limits {
         u32 maxImageDimensions1D = 0;
@@ -162,6 +164,8 @@ namespace canta {
 
         auto createBuffer(Buffer::CreateInfo info) -> BufferHandle;
 
+        auto createSampler(Sampler::CreateInfo info) -> SamplerHandle;
+
 
         void setDebugName(u32 type, u64 object, std::string_view name) const;
 
@@ -189,6 +193,7 @@ namespace canta {
 
         void updateBindlessImage(u32 index, const Image::View& image, bool sampled, bool storage);
         void updateBindlessBuffer(u32 index, const Buffer& buffer);
+        void updateBindlessSampler(u32 index, const Sampler& sampler);
 
         VkInstance _instance = VK_NULL_HANDLE;
         VkPhysicalDevice _physicalDevice = VK_NULL_HANDLE;
@@ -217,6 +222,7 @@ namespace canta {
         ResourceList<Pipeline> _pipelineList;
         ResourceList<Image> _imageList;
         ResourceList<Buffer> _bufferList;
+        ResourceList<Sampler> _samplerList;
 
     };
 

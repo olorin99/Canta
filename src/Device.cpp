@@ -488,6 +488,9 @@ canta::Device::~Device() {
     _bufferList.clearAll([](auto& buffer) {
         buffer = {};
     });
+    _samplerList.clearAll([](auto& sampler) {
+        sampler = {};
+    });
 
 #ifndef NDEBUG
     vkDestroyDebugUtilsMessengerEXT(_instance, _debugMessenger, nullptr);
@@ -544,6 +547,9 @@ void canta::Device::gc() {
     });
     _bufferList.clearQueue([](auto& buffer) {
         buffer = {};
+    });
+    _samplerList.clearQueue([](auto& sampler) {
+        sampler = {};
     });
 }
 
@@ -1063,6 +1069,40 @@ auto canta::Device::createBuffer(Buffer::CreateInfo info) -> BufferHandle {
     return handle;
 }
 
+auto canta::Device::createSampler(Sampler::CreateInfo info) -> SamplerHandle {
+    VkSampler sampler;
+
+    VkSamplerCreateInfo createInfo = {};
+    createInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+    createInfo.magFilter = static_cast<VkFilter>(info.filter);
+    createInfo.minFilter = static_cast<VkFilter>(info.filter);
+    createInfo.mipmapMode = static_cast<VkSamplerMipmapMode>(info.mipmapMode);
+    createInfo.addressModeU = static_cast<VkSamplerAddressMode>(info.addressMode);
+    createInfo.addressModeV = createInfo.addressModeU;
+    createInfo.addressModeW = createInfo.addressModeV;
+    createInfo.mipLodBias = info.mipLodBias;
+    createInfo.anisotropyEnable = info.anisotropy;
+    createInfo.maxAnisotropy = info.maxAnisotropy == 0 ? limits().maxSamplerAnisotropy : info.maxAnisotropy;
+    createInfo.compareEnable = info.compare;
+    createInfo.compareOp = static_cast<VkCompareOp>(info.compareOp);
+    createInfo.minLod = info.minLod;
+    createInfo.maxLod = info.maxLod;
+    createInfo.borderColor = static_cast<VkBorderColor>(info.borderColour);
+    createInfo.unnormalizedCoordinates = info.unnormalisedCoordinates;
+
+    VK_TRY(vkCreateSampler(logicalDevice(), &createInfo, nullptr, &sampler));
+
+    auto index = _samplerList.allocate();
+    auto handle = _samplerList.getHandle(index);
+
+    handle->_device = this;
+    handle->_sampler = sampler;
+
+    updateBindlessSampler(index, *handle);
+
+    return handle;
+}
+
 void canta::Device::setDebugName(u32 type, u64 object, std::string_view name) const {
 #ifndef NDEBUG
     VkDebugUtilsObjectNameInfoEXT objectNameInfo = {};
@@ -1125,6 +1165,23 @@ void canta::Device::updateBindlessBuffer(u32 index, const canta::Buffer &buffer)
     descriptorWrite.dstSet = _bindlessSet;
     descriptorWrite.dstBinding = CANTA_BINDLESS_STORAGE_BUFFERS;
     descriptorWrite.pBufferInfo = &bufferInfo;
+
+    vkUpdateDescriptorSets(logicalDevice(), 1, &descriptorWrite, 0, nullptr);
+}
+
+void canta::Device::updateBindlessSampler(u32 index, const canta::Sampler &sampler) {
+    VkWriteDescriptorSet descriptorWrite = {};
+
+    VkDescriptorImageInfo samplerInfo = {};
+    samplerInfo.sampler = sampler.sampler();
+
+    descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    descriptorWrite.descriptorCount = 1;
+    descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
+    descriptorWrite.dstArrayElement = index;
+    descriptorWrite.dstSet = _bindlessSet;
+    descriptorWrite.dstBinding = CANTA_BINDLESS_SAMPLERS;
+    descriptorWrite.pImageInfo = &samplerInfo;
 
     vkUpdateDescriptorSets(logicalDevice(), 1, &descriptorWrite, 0, nullptr);
 }

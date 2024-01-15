@@ -104,6 +104,7 @@ void main() {
         .colourFormats = { &colourFormat, 1 },
     });
 
+    auto sampler = device->createSampler({});
 
     auto image = device->createImage({
         .width = 100,

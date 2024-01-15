@@ -33,6 +33,8 @@ add_library(Canta
         include/Canta/Image.h
         src/Buffer.cpp
         include/Canta/Buffer.h
+        src/Sampler.cpp
+        include/Canta/Sampler.h
 )
 
 add_subdirectory(third_party)
