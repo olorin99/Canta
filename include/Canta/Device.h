@@ -26,11 +26,68 @@
     assert(tryResult == VK_SUCCESS); \
 }
 
+#define CANTA_BINDLESS_SAMPLERS 0
+#define CANTA_BINDLESS_SAMPLED_IMAGES 1
+#define CANTA_BINDLESS_STORAGE_IMAGES 2
+#define CANTA_BINDLESS_STORAGE_BUFFERS 3
+
 namespace canta {
 
     using ShaderHandle = Handle<ShaderModule, ResourceList<ShaderModule>>;
     using PipelineHandle = Handle<Pipeline, ResourceList<Pipeline>>;
     using ImageHandle = Handle<Image, ResourceList<Image>>;
+
+    struct Limits {
+        u32 maxImageDimensions1D = 0;
+        u32 maxImageDimensions2D = 0;
+        u32 maxImageDimensions3D = 0;
+        u32 maxImageDimensionsCube = 0;
+
+        u32 maxDescriptorSetSamplers = 0;
+        u32 maxDescriptorSetUniformBuffers = 0;
+        u32 maxDescriptorSetStorageBuffers = 0;
+        u32 maxDescriptorSetSampledImages = 0;
+        u32 maxDescriptorSetStorageImages = 0;
+
+        u32 maxBindlessSamplers = 0;
+        u32 maxBindlessUniformBuffers = 0;
+        u32 maxBindlessStorageBuffers = 0;
+        u32 maxBindlessSampledImages = 0;
+        u32 maxBindlessStorageImages = 0;
+
+        f32 maxSamplerAnisotropy = 0;
+
+        f32 timestampPeriod = 0;
+
+        u32 maxTaskWorkGroupTotalCount = 0;
+        u32 maxTaskWorkGroupCount[3] = {};
+        u32 maxTaskWorkGroupInvocations = 0;
+        u32 maxTaskWorkGroupSize[3] = {};
+        u32 maxTaskPayloadSize = 0;
+        u32 maxTaskSharedMemorySize = 0;
+        u32 maxTaskPayloadAndSharedMemorySize = 0;
+        u32 maxMeshWorkGroupTotalCount = 0;
+        u32 maxMeshWorkGroupCount[3] = {};
+        u32 maxMeshWorkGroupInvocations = 0;
+        u32 maxMeshWorkGroupSize[3] = {};
+        u32 maxMeshSharedMemorySize = 0;
+        u32 maxMeshPayloadAndSharedMemorySize = 0;
+        u32 maxMeshOutputMemorySize = 0;
+        u32 maxMeshPayloadAndOutputMemorySize = 0;
+        u32 maxMeshOutputComponents = 0;
+        u32 maxMeshOutputVertices = 0;
+        u32 maxMeshOutputPrimitives = 0;
+        u32 maxMeshOutputLayers = 0;
+        u32 maxMeshMultiviewViewCount = 0;
+        u32 meshOutputPerVertexGranularity = 0;
+        u32 meshOutputPerPrimitiveGranularity = 0;
+        u32 maxPreferredTaskWorkGroupInvocations = 0;
+        u32 maxPreferredMeshWorkGroupInvocations = 0;
+        bool prefersLocalInvocationVertexOutput = false;
+        bool prefersLocalInvocationPrimitiveOutput = false;
+        bool prefersCompactVertexOutput = false;
+        bool prefersCompactPrimitiveOutput = false;
+    };
 
     struct Properties {
         u32 apiVersion;
@@ -40,7 +97,7 @@ namespace canta {
         u32 deviceID;
         PhysicalDeviceType deviceType;
         std::string deviceName;
-        int limits;
+        Limits limits;
     };
 
     constexpr const u32 FRAMES_IN_FLIGHT = 2;
@@ -80,6 +137,9 @@ namespace canta {
         auto physicalDevice() const -> VkPhysicalDevice { return _physicalDevice; }
         auto logicalDevice() const -> VkDevice { return _logicalDevice; }
         auto allocator() const -> VmaAllocator { return _allocator; }
+
+        auto properties() const -> const Properties& { return _properties; }
+        auto limits() const -> const Limits& { return _properties.limits; }
 
         auto queue(QueueType type) const -> VkQueue;
 
@@ -124,6 +184,8 @@ namespace canta {
 
         Device() = default;
 
+        void updateBindlessImage(u32 index, const Image::View& image, bool sampled, bool storage);
+
         VkInstance _instance = VK_NULL_HANDLE;
         VkPhysicalDevice _physicalDevice = VK_NULL_HANDLE;
         VkDevice _logicalDevice = VK_NULL_HANDLE;
@@ -141,8 +203,11 @@ namespace canta {
 
         VmaAllocator _allocator = VK_NULL_HANDLE;
 
-
         Semaphore _frameTimeline = {};
+
+        VkDescriptorPool _bindlessPool = VK_NULL_HANDLE;
+        VkDescriptorSetLayout _bindlessLayout = VK_NULL_HANDLE;
+        VkDescriptorSet _bindlessSet = VK_NULL_HANDLE;
 
         ResourceList<ShaderModule> _shaderList;
         ResourceList<Pipeline> _pipelineList;

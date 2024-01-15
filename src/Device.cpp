@@ -84,6 +84,68 @@ canta::Properties getPhysicalDeviceProperties(VkPhysicalDevice deviceProperties)
     properties.deviceType = static_cast<canta::PhysicalDeviceType>(deviceProperties2.properties.deviceType);
     properties.deviceName = deviceProperties2.properties.deviceName;
 
+    properties.limits.maxImageDimensions1D = deviceProperties2.properties.limits.maxImageDimension1D;
+    properties.limits.maxImageDimensions2D = deviceProperties2.properties.limits.maxImageDimension2D;
+    properties.limits.maxImageDimensions3D = deviceProperties2.properties.limits.maxImageDimension3D;
+    properties.limits.maxImageDimensionsCube = deviceProperties2.properties.limits.maxImageDimensionCube;
+
+    properties.limits.maxDescriptorSetSamplers = deviceProperties2.properties.limits.maxDescriptorSetSamplers;
+    properties.limits.maxDescriptorSetUniformBuffers = deviceProperties2.properties.limits.maxDescriptorSetUniformBuffers;
+    properties.limits.maxDescriptorSetStorageBuffers = deviceProperties2.properties.limits.maxDescriptorSetStorageBuffers;
+    properties.limits.maxDescriptorSetSampledImages = deviceProperties2.properties.limits.maxDescriptorSetSampledImages;
+    properties.limits.maxDescriptorSetStorageImages = deviceProperties2.properties.limits.maxDescriptorSetStorageImages;
+
+    u32 maxBindlessCount = 1 << 16;
+
+    // Check against limits for case when driver doesnt report correct correct values (e.g. amdgpu-pro on linux)
+    properties.limits.maxBindlessSamplers = indexingProperties.maxDescriptorSetUpdateAfterBindSamplers < std::numeric_limits<u32>::max() - 10000 ? std::min(indexingProperties.maxDescriptorSetUpdateAfterBindSamplers - 100, maxBindlessCount) : 10000;
+    properties.limits.maxBindlessUniformBuffers = indexingProperties.maxDescriptorSetUpdateAfterBindUniformBuffers < std::numeric_limits<u32>::max() - 10000 ? std::min(indexingProperties.maxDescriptorSetUpdateAfterBindUniformBuffers - 100, maxBindlessCount) : 1000;
+    properties.limits.maxBindlessStorageBuffers = indexingProperties.maxDescriptorSetUpdateAfterBindStorageBuffers < std::numeric_limits<u32>::max() - 10000 ? std::min(indexingProperties.maxDescriptorSetUpdateAfterBindStorageBuffers - 100, maxBindlessCount) : 1000;
+    properties.limits.maxBindlessSampledImages = indexingProperties.maxDescriptorSetUpdateAfterBindSampledImages < std::numeric_limits<u32>::max() - 10000 ? std::min(indexingProperties.maxDescriptorSetUpdateAfterBindSampledImages - 100, maxBindlessCount) : 1000;
+    properties.limits.maxBindlessStorageImages = indexingProperties.maxDescriptorSetUpdateAfterBindStorageImages < std::numeric_limits<u32>::max() - 10000 ? std::min(indexingProperties.maxDescriptorSetUpdateAfterBindStorageImages - 100, maxBindlessCount) : 1000;
+
+    properties.limits.maxSamplerAnisotropy = deviceProperties2.properties.limits.maxSamplerAnisotropy;
+
+    properties.limits.timestampPeriod = deviceProperties2.properties.limits.timestampPeriod;
+
+
+    properties.limits.maxTaskWorkGroupTotalCount = meshShaderProperties.maxTaskWorkGroupTotalCount;
+    properties.limits.maxTaskWorkGroupCount[0] = meshShaderProperties.maxTaskWorkGroupCount[0];
+    properties.limits.maxTaskWorkGroupCount[1] = meshShaderProperties.maxTaskWorkGroupCount[1];
+    properties.limits.maxTaskWorkGroupCount[2] = meshShaderProperties.maxTaskWorkGroupCount[2];
+    properties.limits.maxTaskWorkGroupInvocations = meshShaderProperties.maxTaskWorkGroupInvocations;
+    properties.limits.maxTaskWorkGroupSize[0] = meshShaderProperties.maxTaskWorkGroupSize[0];
+    properties.limits.maxTaskWorkGroupSize[1] = meshShaderProperties.maxTaskWorkGroupSize[1];
+    properties.limits.maxTaskWorkGroupSize[2] = meshShaderProperties.maxTaskWorkGroupSize[2];
+    properties.limits.maxTaskPayloadSize = meshShaderProperties.maxTaskPayloadSize;
+    properties.limits.maxTaskSharedMemorySize = meshShaderProperties.maxTaskSharedMemorySize;
+    properties.limits.maxTaskPayloadAndSharedMemorySize = meshShaderProperties.maxTaskPayloadAndSharedMemorySize;
+    properties.limits.maxMeshWorkGroupTotalCount = meshShaderProperties.maxMeshWorkGroupTotalCount;
+    properties.limits.maxMeshWorkGroupCount[0] = meshShaderProperties.maxMeshWorkGroupCount[0];
+    properties.limits.maxMeshWorkGroupCount[1] = meshShaderProperties.maxMeshWorkGroupCount[1];
+    properties.limits.maxMeshWorkGroupCount[2] = meshShaderProperties.maxMeshWorkGroupCount[2];
+    properties.limits.maxMeshWorkGroupInvocations = meshShaderProperties.maxMeshWorkGroupInvocations;
+    properties.limits.maxMeshWorkGroupSize[0] = meshShaderProperties.maxMeshWorkGroupSize[0];
+    properties.limits.maxMeshWorkGroupSize[1] = meshShaderProperties.maxMeshWorkGroupSize[1];
+    properties.limits.maxMeshWorkGroupSize[2] = meshShaderProperties.maxMeshWorkGroupSize[2];
+    properties.limits.maxMeshSharedMemorySize = meshShaderProperties.maxMeshSharedMemorySize;
+    properties.limits.maxMeshPayloadAndSharedMemorySize = meshShaderProperties.maxMeshPayloadAndSharedMemorySize;
+    properties.limits.maxMeshOutputMemorySize = meshShaderProperties.maxMeshOutputMemorySize;
+    properties.limits.maxMeshPayloadAndOutputMemorySize = meshShaderProperties.maxMeshPayloadAndOutputMemorySize;
+    properties.limits.maxMeshOutputComponents = meshShaderProperties.maxMeshOutputComponents;
+    properties.limits.maxMeshOutputVertices = meshShaderProperties.maxMeshOutputVertices;
+    properties.limits.maxMeshOutputPrimitives = meshShaderProperties.maxMeshOutputPrimitives;
+    properties.limits.maxMeshOutputLayers = meshShaderProperties.maxMeshOutputLayers;
+    properties.limits.maxMeshMultiviewViewCount = meshShaderProperties.maxMeshMultiviewViewCount;
+    properties.limits.meshOutputPerVertexGranularity = meshShaderProperties.meshOutputPerVertexGranularity;
+    properties.limits.meshOutputPerPrimitiveGranularity = meshShaderProperties.meshOutputPerPrimitiveGranularity;
+    properties.limits.maxPreferredTaskWorkGroupInvocations = meshShaderProperties.maxPreferredTaskWorkGroupInvocations;
+    properties.limits.maxPreferredMeshWorkGroupInvocations = meshShaderProperties.maxPreferredMeshWorkGroupInvocations;
+    properties.limits.prefersLocalInvocationVertexOutput = meshShaderProperties.prefersLocalInvocationVertexOutput;
+    properties.limits.prefersLocalInvocationPrimitiveOutput = meshShaderProperties.prefersLocalInvocationPrimitiveOutput;
+    properties.limits.prefersCompactVertexOutput = meshShaderProperties.prefersCompactVertexOutput;
+    properties.limits.prefersCompactPrimitiveOutput = meshShaderProperties.prefersCompactPrimitiveOutput;
+
     return properties;
 }
 
@@ -334,6 +396,79 @@ auto canta::Device::create(canta::Device::CreateInfo info) noexcept -> std::expe
         .name = "frameTimelineSemaphore"
     }).value();
 
+
+    VkDescriptorPoolSize poolSizes[] = {
+            { VK_DESCRIPTOR_TYPE_SAMPLER, device->limits().maxBindlessSamplers },
+            { VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, device->limits().maxBindlessSampledImages },
+            { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, device->limits().maxBindlessStorageImages },
+            { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, device->limits().maxBindlessStorageBuffers },
+    };
+
+    VkDescriptorPoolCreateInfo bindlessPoolCreateInfo = {};
+    bindlessPoolCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+    bindlessPoolCreateInfo.flags = VK_DESCRIPTOR_POOL_CREATE_UPDATE_AFTER_BIND_BIT;
+    bindlessPoolCreateInfo.maxSets = 1;
+    bindlessPoolCreateInfo.poolSizeCount = 4;
+    bindlessPoolCreateInfo.pPoolSizes = poolSizes;
+    VK_TRY(vkCreateDescriptorPool(device->logicalDevice(), &bindlessPoolCreateInfo, nullptr, &device->_bindlessPool));
+    device->setDebugName(VK_OBJECT_TYPE_DESCRIPTOR_POOL, (u64)device->_bindlessPool, "bindless_pool");
+
+    VkDescriptorSetLayoutBinding bindlessLayoutBindings[4] = {};
+
+    bindlessLayoutBindings[0].descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
+    bindlessLayoutBindings[0].descriptorCount = device->limits().maxBindlessSamplers;
+    bindlessLayoutBindings[0].binding = CANTA_BINDLESS_SAMPLERS;
+    bindlessLayoutBindings[0].stageFlags = VK_SHADER_STAGE_ALL;
+    bindlessLayoutBindings[0].pImmutableSamplers = nullptr;
+
+    bindlessLayoutBindings[1].descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+    bindlessLayoutBindings[1].descriptorCount = device->limits().maxBindlessSampledImages;
+    bindlessLayoutBindings[1].binding = CANTA_BINDLESS_SAMPLED_IMAGES;
+    bindlessLayoutBindings[1].stageFlags = VK_SHADER_STAGE_ALL;
+    bindlessLayoutBindings[1].pImmutableSamplers = nullptr;
+
+    bindlessLayoutBindings[2].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+    bindlessLayoutBindings[2].descriptorCount = device->limits().maxBindlessStorageImages;
+    bindlessLayoutBindings[2].binding = CANTA_BINDLESS_STORAGE_IMAGES;
+    bindlessLayoutBindings[2].stageFlags = VK_SHADER_STAGE_ALL;
+    bindlessLayoutBindings[2].pImmutableSamplers = nullptr;
+
+    bindlessLayoutBindings[3].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+    bindlessLayoutBindings[3].descriptorCount = device->limits().maxBindlessStorageBuffers;
+    bindlessLayoutBindings[3].binding = CANTA_BINDLESS_STORAGE_BUFFERS;
+    bindlessLayoutBindings[3].stageFlags = VK_SHADER_STAGE_ALL;
+    bindlessLayoutBindings[3].pImmutableSamplers = nullptr;
+
+    VkDescriptorSetLayoutCreateInfo bindlessLayoutCreateInfo = {};
+    bindlessLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+    bindlessLayoutCreateInfo.bindingCount = 4;
+    bindlessLayoutCreateInfo.pBindings = bindlessLayoutBindings;
+    bindlessLayoutCreateInfo.flags = VK_DESCRIPTOR_SET_LAYOUT_CREATE_UPDATE_AFTER_BIND_POOL_BIT;
+
+    VkDescriptorBindingFlags bindingFlags[4] = {
+            VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT | VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT,
+            VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT | VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT,
+            VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT | VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT,
+            VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT | VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT,
+    };
+
+    VkDescriptorSetLayoutBindingFlagsCreateInfo bindlessExtendedInfo = {};
+    bindlessExtendedInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO;
+    bindlessExtendedInfo.bindingCount = 4;
+    bindlessExtendedInfo.pBindingFlags = bindingFlags;
+    bindlessLayoutCreateInfo.pNext = &bindlessExtendedInfo;
+
+    VK_TRY(vkCreateDescriptorSetLayout(device->logicalDevice(), &bindlessLayoutCreateInfo, nullptr, &device->_bindlessLayout));
+
+    VkDescriptorSetAllocateInfo bindlessAllocInfo = {};
+    bindlessAllocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+    bindlessAllocInfo.descriptorSetCount = 1;
+    bindlessAllocInfo.descriptorPool = device->_bindlessPool;
+    bindlessAllocInfo.pSetLayouts = &device->_bindlessLayout;
+
+    VK_TRY(vkAllocateDescriptorSets(device->logicalDevice(), &bindlessAllocInfo, &device->_bindlessSet));
+    device->setDebugName(VK_OBJECT_TYPE_DESCRIPTOR_SET, (u64)device->_bindlessSet, "bindless_set");
+
     return device;
 }
 
@@ -358,6 +493,9 @@ canta::Device::~Device() {
     _frameTimeline = {};
 
     vmaDestroyAllocator(_allocator);
+
+    vkDestroyDescriptorSetLayout(_logicalDevice, _bindlessLayout, nullptr);
+    vkDestroyDescriptorPool(_logicalDevice, _bindlessPool, nullptr);
 
     vkDestroyDevice(_logicalDevice, nullptr);
     vkDestroyInstance(_instance, nullptr);
@@ -808,6 +946,11 @@ auto canta::Device::createImage(Image::CreateInfo info) -> ImageHandle {
     handle->_defaultView = handle->createView({});
     handle->_name = info.name;
 
+    bool isSampled = (info.usage & ImageUsage::SAMPLED) == ImageUsage::SAMPLED;
+    bool isStorage = (info.usage & ImageUsage::STORAGE) == ImageUsage::STORAGE;
+
+    updateBindlessImage(index, handle->defaultView(), isSampled, isStorage);
+
     return handle;
 }
 
@@ -860,4 +1003,40 @@ void canta::Device::setDebugName(u32 type, u64 object, std::string_view name) co
     objectNameInfo.objectHandle = object;
     vkSetDebugUtilsObjectNameEXT(logicalDevice(), &objectNameInfo);
 #endif
+}
+
+void canta::Device::updateBindlessImage(u32 index, const Image::View &image, bool sampled, bool storage) {
+    VkWriteDescriptorSet descriptorWrite[2] = {};
+    i32 writeNum = 0;
+
+    VkDescriptorImageInfo sampledImageInfo = {};
+    if (sampled) {
+        sampledImageInfo.imageView = image.view();
+        sampledImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
+        descriptorWrite[writeNum].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        descriptorWrite[writeNum].descriptorCount = 1;
+        descriptorWrite[writeNum].descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+        descriptorWrite[writeNum].dstArrayElement = index;
+        descriptorWrite[writeNum].dstSet = _bindlessSet;
+        descriptorWrite[writeNum].dstBinding = CANTA_BINDLESS_SAMPLED_IMAGES;
+        descriptorWrite[writeNum].pImageInfo = &sampledImageInfo;
+        writeNum++;
+    }
+    VkDescriptorImageInfo storageImageInfo = {};
+    if (storage) {
+        storageImageInfo.imageView = image.view();
+        storageImageInfo.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
+
+        descriptorWrite[writeNum].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        descriptorWrite[writeNum].descriptorCount = 1;
+        descriptorWrite[writeNum].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+        descriptorWrite[writeNum].dstArrayElement = index;
+        descriptorWrite[writeNum].dstSet = _bindlessSet;
+        descriptorWrite[writeNum].dstBinding = CANTA_BINDLESS_STORAGE_IMAGES;
+        descriptorWrite[writeNum].pImageInfo = &storageImageInfo;
+        writeNum++;
+    }
+
+    vkUpdateDescriptorSets(logicalDevice(), writeNum, descriptorWrite, 0, nullptr);
 }
