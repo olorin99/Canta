@@ -19,6 +19,8 @@ namespace canta {
             std::string_view name = {};
         };
 
+        CommandPool() = default;
+
         ~CommandPool();
 
         CommandPool(CommandPool&& rhs) noexcept;
@@ -31,8 +33,6 @@ namespace canta {
 
     private:
         friend Device;
-
-        CommandPool() = default;
 
         Device* _device = nullptr;
         VkCommandPool _pool = VK_NULL_HANDLE;

@@ -84,6 +84,24 @@ namespace canta {
 
         void setDebugName(u32 type, u64 object, std::string_view name) const;
 
+        template <typename T>
+        void setDebugName(T& object, std::string_view name) const {};
+
+        template <typename T>
+        void setDebugName(VkImage& object, std::string_view name) const {
+            setDebugName(VK_OBJECT_TYPE_IMAGE, (u64)object, name);
+        }
+
+        template <typename T>
+        void setDebugName(VkImageView& object, std::string_view name) const {
+            setDebugName(VK_OBJECT_TYPE_IMAGE_VIEW, (u64)object, name);
+        }
+
+        template <typename T>
+        void setDebugName(VkBuffer& object, std::string_view name) const {
+            setDebugName(VK_OBJECT_TYPE_BUFFER, (u64)object, name);
+        }
+
     private:
 
         Device() = default;

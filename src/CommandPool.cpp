@@ -4,9 +4,12 @@
 canta::CommandPool::~CommandPool() {
     if (!_device)
         return;
+    reset();
 
-//    for (auto& buffer : _commandBuffers)
-//        vkFreeCommandBuffers(_device->logicalDevice(), _pool, 1, &buffer);
+    for (auto& buffer : _buffers) {
+        auto b = buffer.buffer();
+        vkFreeCommandBuffers(_device->logicalDevice(), _pool, 1, &b);
+    }
 
     vkDestroyCommandPool(_device->logicalDevice(), _pool, nullptr);
 }
@@ -30,6 +33,7 @@ auto canta::CommandPool::operator=(canta::CommandPool &&rhs) noexcept -> Command
 
 void canta::CommandPool::reset() {
     VK_TRY(vkResetCommandPool(_device->logicalDevice(), _pool, 0));
+    _index = 0;
 }
 
 auto canta::CommandPool::getBuffer() -> CommandBuffer & {

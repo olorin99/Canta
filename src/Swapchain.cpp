@@ -1,6 +1,7 @@
 #include "Canta/Swapchain.h"
 #include <Canta/Device.h>
 #include <numeric>
+#include <format>
 
 VkSurfaceCapabilitiesKHR getCapabilities(VkPhysicalDevice device, VkSurfaceKHR surface) {
     VkSurfaceCapabilitiesKHR capabilities;
@@ -59,10 +60,13 @@ canta::Swapchain::~Swapchain() {
     if (!_device)
         return;
 
+    _frameTimeline.signal(std::numeric_limits<u64>::max());
+
     for (auto& view : _imageViews)
         vkDestroyImageView(_device->logicalDevice(), view, nullptr);
 
     vkDestroySwapchainKHR(_device->logicalDevice(), _swapchain, nullptr);
+    vkDestroySurfaceKHR(_device->instance(), _surface, nullptr);
 }
 
 canta::Swapchain::Swapchain(canta::Swapchain &&rhs) noexcept {
@@ -98,8 +102,8 @@ auto canta::Swapchain::operator=(canta::Swapchain &&rhs) noexcept -> Swapchain &
     return *this;
 }
 
-auto canta::Swapchain::acquire() -> std::expected<u32, Error> {
-    u64 frameValue = std::max(0l, static_cast<i64>(_frameTimeline.value()) - FRAMES_IN_FLIGHT);
+auto canta::Swapchain::acquire() -> std::expected<std::pair<VkImage, VkImageView>, Error> {
+    u64 frameValue = std::max(0l, static_cast<i64>(_frameTimeline.value()) - (FRAMES_IN_FLIGHT - 1));
     _frameTimeline.wait(frameValue);
 
     _semaphoreIndex = (_semaphoreIndex % _semaphores.size());
@@ -111,13 +115,13 @@ auto canta::Swapchain::acquire() -> std::expected<u32, Error> {
             recreate();
             break;
         case VK_SUBOPTIMAL_KHR:
-            recreate();
+//            recreate();
             break;
         default:
             return std::unexpected(static_cast<Error>(result));
     }
     _frameTimeline.increment();
-    return _index;
+    return std::make_pair(_images[_index], _imageViews[_index]);
 }
 
 auto canta::Swapchain::present() -> std::expected<u32, Error> {
@@ -242,6 +246,7 @@ void canta::Swapchain::createSwapchain() {
         imageViewCreateInfo.subresourceRange.layerCount = 1;
 
         vkCreateImageView(_device->logicalDevice(), &imageViewCreateInfo, nullptr, &_imageViews[i]);
+        _device->setDebugName(_imageViews[i], std::format("swapchain_view_{}", i));
     }
 }
 
@@ -250,8 +255,12 @@ void canta::Swapchain::createSemaphores() {
         return;
 
     for (u32 i = 0; i < _imageViews.size(); i++) {
-        auto acquire = _device->createSemaphore({}).value();
-        auto present = _device->createSemaphore({}).value();
+        auto acquire = _device->createSemaphore({
+            .name = std::format("swapchain_semaphore_{}_acquire", i)
+        }).value();
+        auto present = _device->createSemaphore({
+            .name = std::format("swapchain_semaphore_{}_present", i)
+        }).value();
         _semaphores.push_back({ std::move(acquire), std::move(present) });
     }
 }
@@ -262,4 +271,8 @@ void canta::Swapchain::recreate() {
         vkDestroyImageView(_device->logicalDevice(), view, nullptr);
 
     createSwapchain();
+}
+
+auto canta::Swapchain::flyingIndex() const -> u32 {
+    return _frameTimeline.value() % FRAMES_IN_FLIGHT;
 }

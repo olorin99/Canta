@@ -16,10 +16,14 @@ int main() {
     auto swapchain = device->createSwapchain({
         .window = &window
     });
-    auto commandPool = device->createCommandPool({
-        .queueType = canta::QueueType::GRAPHICS
-    });
-    auto& commandBuffer = commandPool->getBuffer();
+    std::array<canta::CommandPool, canta::FRAMES_IN_FLIGHT> commandPools = {};
+    for (auto& pool : commandPools)
+        pool = device->createCommandPool({
+            .queueType = canta::QueueType::GRAPHICS
+        }).value();
+//    auto commandPool = device->createCommandPool({
+//        .queueType = canta::QueueType::GRAPHICS
+//    });
 
     std::string vertexGLSL = R"(
 #version 460
@@ -81,8 +85,11 @@ void main() {
         }
     });
 
+    auto colourFormat = swapchain->format();
+
     auto pipeline = device->createPipepline({
-        .shaders = pipelineShaders
+        .shaders = pipelineShaders,
+        .colourFormats = { &colourFormat, 1 },
     });
 
     auto mergeInputs = std::to_array({ vertexShader->interface(), fragmentShader->interface() });
@@ -119,7 +126,7 @@ void main() {
             }
         }
 
-        auto index = swapchain->acquire();
+        auto swapImage = swapchain->acquire().value();
 
         auto waits = std::to_array({
             { swapchain->frameSemaphore(), swapchain->framePrevValue() },
@@ -130,12 +137,56 @@ void main() {
             swapchain->presentSemaphore()->getPair()
         });
 
+        auto flyingIndex = swapchain->flyingIndex();
+
+        commandPools[flyingIndex].reset();
+        auto& commandBuffer = commandPools[flyingIndex].getBuffer();
+
         commandBuffer.begin();
+
+        commandBuffer.barrier({
+            .image = swapImage.first,
+            .dstStage = canta::PipelineStage::COLOUR_OUTPUT,
+            .dstAccess = canta::Access::COLOUR_WRITE,
+            .dstLayout = canta::ImageLayout::COLOUR_ATTACHMENT
+        });
+
+        auto attachments = std::to_array({
+            canta::Attachment{
+                .imageView = swapImage.second,
+                .imageLayout = canta::ImageLayout::COLOUR_ATTACHMENT
+            }
+        });
+
+        commandBuffer.beginRendering({
+            .size = window.extent(),
+            .colourAttachments = attachments
+        });
+        commandBuffer.setViewport({
+            static_cast<f32>(window.extent().x()),
+            static_cast<f32>(window.extent().y())
+        });
+        commandBuffer.bindPipeline(pipeline);
+        commandBuffer.draw(3);
+        commandBuffer.endRendering();
+
+        commandBuffer.barrier({
+            .image = swapImage.first,
+            .srcStage = canta::PipelineStage::COLOUR_OUTPUT,
+            .dstStage = canta::PipelineStage::BOTTOM,
+            .srcAccess = canta::Access::COLOUR_WRITE,
+            .dstAccess = canta::Access::MEMORY_WRITE | canta::Access::MEMORY_READ,
+            .srcLayout = canta::ImageLayout::COLOUR_ATTACHMENT,
+            .dstLayout = canta::ImageLayout::PRESENT
+        });
+
         commandBuffer.end();
 
         commandBuffer.submit(waits, signals);
 
         swapchain->present();
     }
+
+    vkDeviceWaitIdle(device->logicalDevice());
     return 0;
 }

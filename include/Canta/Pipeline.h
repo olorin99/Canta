@@ -20,11 +20,25 @@ namespace canta {
     };
 
     struct RasterState {
-
+        CullMode cullMode = CullMode::BACK;
+        FrontFace frontFace = FrontFace::CW;
+        PolygonMode polygonMode = PolygonMode::FILL;
+        f32 lineWidth = 1.f;
+        bool depthClamp = false;
+        bool rasterDiscard = false;
+        bool depthBias = false;
     };
 
     struct DepthState {
+        bool test = false;
+        bool write = false;
+        CompareOp compareOp = CompareOp::LESS;
+    };
 
+    struct BlendState {
+        bool blend = false;
+        BlendFactor srcFactor = BlendFactor::ONE;
+        BlendFactor dstFactor = BlendFactor::ONE;
     };
 
     enum PipelineMode {
@@ -40,15 +54,22 @@ namespace canta {
             std::span<ShaderInfo> shaders = {};
             RasterState rasterState = {};
             DepthState depthState = {};
+            BlendState blendState = {};
+            std::span<Format> colourFormats = {};
+            Format depthFormat = Format::UNDEFINED;
             PipelineMode mode = PipelineMode::GRAPHICS;
         };
 
         Pipeline() = default;
 
+        auto pipeline() const -> VkPipeline { return _pipeline; }
+        auto mode() const -> PipelineMode { return _mode; }
+
     private:
         friend Device;
 
-        VkPipeline _pipeline;
+        VkPipeline _pipeline = VK_NULL_HANDLE;
+        PipelineMode _mode = PipelineMode::GRAPHICS;
 
 
     };

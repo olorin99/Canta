@@ -6,6 +6,7 @@
 #include <memory>
 #include <functional>
 #include <atomic>
+#include <cassert>
 
 namespace canta {
 
@@ -57,7 +58,7 @@ namespace canta {
         }
 
         explicit operator bool() const noexcept {
-            return _list && (!_data || _data->index > 0);
+            return _list && (!_data || _data->index >= 0);
         }
 
         auto operator*() noexcept -> T& {

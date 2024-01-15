@@ -332,6 +332,20 @@ auto canta::Device::create(canta::Device::CreateInfo info) noexcept -> std::expe
 }
 
 canta::Device::~Device() {
+    vkDeviceWaitIdle(_logicalDevice);
+
+    _shaderList.clearAll([&](auto& module) {
+        vkDestroyShaderModule(logicalDevice(), module.module(), nullptr);
+    });
+    _pipelineList.clearAll([&](auto& pipeline) {
+        vkDestroyPipeline(logicalDevice(), pipeline.pipeline(), nullptr);
+    });
+
+#ifndef NDEBUG
+    vkDestroyDebugUtilsMessengerEXT(_instance, _debugMessenger, nullptr);
+#endif
+
+    vkDestroyDevice(_logicalDevice, nullptr);
     vkDestroyInstance(_instance, nullptr);
 }
 
@@ -558,10 +572,123 @@ auto canta::Device::createPipepline(Pipeline::CreateInfo info) -> Pipelinehandle
 
     VkPipeline pipeline;
     if (info.mode == PipelineMode::GRAPHICS) {
+        VkGraphicsPipelineCreateInfo createInfo = {};
+        createInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+
+        createInfo.stageCount = shaderStages.size();
+        createInfo.pStages = shaderStages.data();
+
+        VkPipelineVertexInputStateCreateInfo vertexInputState = {};
+        vertexInputState.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+
+        VkPipelineInputAssemblyStateCreateInfo inputAssemblyState = {};
+        inputAssemblyState.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+        inputAssemblyState.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+
+        VkPipelineRenderingCreateInfo renderingCreateInfo = {};
+        renderingCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO;
+
+        renderingCreateInfo.colorAttachmentCount = info.colourFormats.size();
+        static_assert(sizeof(VkFormat) == sizeof(Format));
+        renderingCreateInfo.pColorAttachmentFormats = reinterpret_cast<VkFormat*>(info.colourFormats.data());
+        if (info.depthFormat != Format::UNDEFINED)
+            renderingCreateInfo.depthAttachmentFormat = static_cast<VkFormat>(info.depthFormat);
+
+        VkPipelineViewportStateCreateInfo viewportState = {};
+        viewportState.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+        viewportState.viewportCount = 1;
+        viewportState.scissorCount = 1;
+
+        VkPipelineRasterizationStateCreateInfo rasterisationState = {};
+        rasterisationState.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+        rasterisationState.depthClampEnable = info.rasterState.depthClamp;
+        rasterisationState.rasterizerDiscardEnable = info.rasterState.rasterDiscard;
+        rasterisationState.polygonMode = static_cast<VkPolygonMode>(info.rasterState.polygonMode);
+        rasterisationState.lineWidth = info.rasterState.lineWidth;
+        rasterisationState.cullMode = static_cast<VkCullModeFlagBits>(info.rasterState.cullMode);
+        rasterisationState.frontFace = static_cast<VkFrontFace>(info.rasterState.frontFace);
+        rasterisationState.depthBiasEnable = info.rasterState.depthBias;
+        rasterisationState.depthBiasConstantFactor = 0.f;
+        rasterisationState.depthBiasClamp = 0.f;
+        rasterisationState.depthBiasSlopeFactor = 0.f;
+
+        VkPipelineMultisampleStateCreateInfo multisampleState = {};
+        multisampleState.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+        multisampleState.sampleShadingEnable = false;
+        multisampleState.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+        multisampleState.minSampleShading = 1.f;
+        multisampleState.pSampleMask = nullptr;
+        multisampleState.alphaToCoverageEnable = false;
+        multisampleState.alphaToOneEnable = false;
+
+        VkPipelineDepthStencilStateCreateInfo depthStencilState = {};
+        depthStencilState.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+        depthStencilState.depthTestEnable = info.depthState.test;
+        depthStencilState.depthWriteEnable = info.depthState.write;
+        depthStencilState.depthCompareOp = static_cast<VkCompareOp>(info.depthState.compareOp);
+        depthStencilState.depthBoundsTestEnable = true;
+        depthStencilState.minDepthBounds = 0.f;
+        depthStencilState.maxDepthBounds = 1.f;
+        depthStencilState.stencilTestEnable = false;
+        depthStencilState.front = {};
+        depthStencilState.back = {};
+
+        VkPipelineColorBlendAttachmentState colorBlendAttachment{};
+        colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+        colorBlendAttachment.blendEnable = info.blendState.blend;
+        colorBlendAttachment.colorBlendOp = VK_BLEND_OP_ADD;
+        colorBlendAttachment.srcColorBlendFactor = static_cast<VkBlendFactor>(info.blendState.srcFactor);
+        colorBlendAttachment.dstColorBlendFactor = static_cast<VkBlendFactor>(info.blendState.dstFactor);
+        colorBlendAttachment.alphaBlendOp = VK_BLEND_OP_ADD;
+        colorBlendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
+        colorBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_DST_ALPHA;
+
+        std::vector<VkPipelineColorBlendAttachmentState> colourBlendAttachments = {};
+        for (u32 i = 0; i < info.colourFormats.size(); i++)
+            colourBlendAttachments.push_back(colorBlendAttachment);
+
+        VkPipelineColorBlendStateCreateInfo colourBlendState{};
+        colourBlendState.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+        colourBlendState.logicOpEnable = VK_FALSE;
+        colourBlendState.logicOp = VK_LOGIC_OP_COPY;
+        colourBlendState.attachmentCount = info.colourFormats.size();
+        colourBlendState.pAttachments = colourBlendAttachments.data();
+        colourBlendState.blendConstants[0] = 0.f;
+        colourBlendState.blendConstants[1] = 0.f;
+        colourBlendState.blendConstants[2] = 0.f;
+        colourBlendState.blendConstants[3] = 0.f;
+
+        VkDynamicState dynamicStates[2] = {
+                VK_DYNAMIC_STATE_VIEWPORT,
+                VK_DYNAMIC_STATE_SCISSOR,
+        };
+        VkPipelineDynamicStateCreateInfo dynamicStateCreateInfo = {};
+        dynamicStateCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
+        dynamicStateCreateInfo.dynamicStateCount = 2;
+        dynamicStateCreateInfo.pDynamicStates = dynamicStates;
+
+        createInfo.pVertexInputState = &vertexInputState;
+        createInfo.pInputAssemblyState = &inputAssemblyState;
+        createInfo.pNext = &renderingCreateInfo;
+        createInfo.renderPass = VK_NULL_HANDLE;
+        createInfo.pRasterizationState = &rasterisationState;
+        createInfo.pMultisampleState = &multisampleState;
+        createInfo.pDepthStencilState = &depthStencilState;
+        createInfo.pColorBlendState = &colourBlendState;
+        createInfo.pViewportState = &viewportState;
+        createInfo.pDynamicState = &dynamicStateCreateInfo;
+        createInfo.layout = pipelineLayout;
+        createInfo.basePipelineHandle = VK_NULL_HANDLE;
+        createInfo.basePipelineIndex = -1;
+
+        auto result = vkCreateGraphicsPipelines(logicalDevice(), VK_NULL_HANDLE, 1, &createInfo, nullptr, &pipeline);
+        if (result != VK_SUCCESS)
+            return {};
 
     } else {
         VkComputePipelineCreateInfo createInfo = {};
         createInfo.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
+
         createInfo.stage = shaderStages.front();
         createInfo.layout = pipelineLayout;
         createInfo.basePipelineHandle = VK_NULL_HANDLE;
@@ -572,10 +699,13 @@ auto canta::Device::createPipepline(Pipeline::CreateInfo info) -> Pipelinehandle
             return {};
     }
 
+    vkDestroyPipelineLayout(logicalDevice(), pipelineLayout, nullptr);
+
     auto index = _pipelineList.allocate();
     auto handle = _pipelineList.getHandle(index);
 
     handle->_pipeline = pipeline;
+    handle->_mode = info.mode;
 
     return handle;
 }

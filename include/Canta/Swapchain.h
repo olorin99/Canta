@@ -27,7 +27,7 @@ namespace canta {
         Swapchain(Swapchain&& rhs) noexcept;
         auto operator=(Swapchain&& rhs) noexcept -> Swapchain&;
 
-        auto acquire() -> std::expected<u32, Error>;
+        auto acquire() -> std::expected<std::pair<VkImage, VkImageView>, Error>;
 
         auto present() -> std::expected<u32, Error>;
 
@@ -37,10 +37,14 @@ namespace canta {
         auto frameSemaphore() -> Semaphore* { return &_frameTimeline; }
         auto frameValue() const -> u64 { return _frameTimeline.value(); }
         auto framePrevValue() const -> u64 { return std::max(0l, static_cast<i64>(_frameTimeline.value() - 1)); }
+        auto flyingIndex() const -> u32;
 
         void setPresentMode(PresentMode mode);
         auto getPresentMode() const -> PresentMode { return _presentMode; }
 
+        auto format() const -> Format { return _format; }
+
+        auto index() const -> u32 { return _index; }
 
         void resize(u32 width, u32 height);
 
