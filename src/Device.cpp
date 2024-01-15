@@ -479,18 +479,10 @@ canta::Device::~Device() {
     _shaderList.clearAll([&](auto& module) {
         vkDestroyShaderModule(logicalDevice(), module.module(), nullptr);
     });
-    _pipelineList.clearAll([&](auto& pipeline) {
-        pipeline = {};
-    });
-    _imageList.clearAll([](auto& image) {
-        image = {};
-    });
-    _bufferList.clearAll([](auto& buffer) {
-        buffer = {};
-    });
-    _samplerList.clearAll([](auto& sampler) {
-        sampler = {};
-    });
+    _pipelineList.clearAll();
+    _imageList.clearAll();
+    _bufferList.clearAll();
+    _samplerList.clearAll();
 
 #ifndef NDEBUG
     vkDestroyDebugUtilsMessengerEXT(_instance, _debugMessenger, nullptr);
@@ -539,18 +531,10 @@ void canta::Device::gc() {
         vkDestroyShaderModule(logicalDevice(), module.module(), nullptr);
         module._module = VK_NULL_HANDLE;
     });
-    _pipelineList.clearQueue([&](auto& pipeline) {
-        pipeline = {};
-    });
-    _imageList.clearQueue([](auto& image) {
-        image = {};
-    });
-    _bufferList.clearQueue([](auto& buffer) {
-        buffer = {};
-    });
-    _samplerList.clearQueue([](auto& sampler) {
-        sampler = {};
-    });
+    _pipelineList.clearQueue();
+    _imageList.clearQueue();
+    _bufferList.clearQueue();
+    _samplerList.clearQueue();
 }
 
 void canta::Device::beginFrame() {

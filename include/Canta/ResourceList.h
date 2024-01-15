@@ -156,8 +156,7 @@ namespace canta {
             return getHandle(newIndex);
         }
 
-        template <typename Func>
-        void clearQueue(Func func) {
+        void clearQueue(std::function<void(T&)> func = [](auto& resource) { resource = {}; }) {
             for (auto& destroyInfo : _destroyQueue) {
                 if (destroyInfo.first <= 0) {
                     func(_resources[destroyInfo.second]->first);
@@ -168,8 +167,7 @@ namespace canta {
             _destroyQueue.clear();
         }
 
-        template <typename Func>
-        void clearAll(Func func) {
+        void clearAll(std::function<void(T&)> func = [](auto& resource) { resource = {}; }) {
             for (auto& resource : _resources) {
                 func(resource->first);
             }
