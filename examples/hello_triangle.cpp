@@ -1,7 +1,5 @@
 #include <Canta/Device.h>
 #include <Canta/SDLWindow.h>
-
-#include <Canta/ResourceList.h>
 #include <Canta/util.h>
 
 int main() {
@@ -21,9 +19,6 @@ int main() {
         pool = device->createCommandPool({
             .queueType = canta::QueueType::GRAPHICS
         }).value();
-//    auto commandPool = device->createCommandPool({
-//        .queueType = canta::QueueType::GRAPHICS
-//    });
 
     std::string vertexGLSL = R"(
 #version 460
@@ -92,30 +87,14 @@ void main() {
         .colourFormats = { &colourFormat, 1 },
     });
 
-    auto mergeInputs = std::to_array({ vertexShader->interface(), fragmentShader->interface() });
-    auto merged = canta::ShaderInterface::merge(mergeInputs);
 
-    canta::ResourceList<i32> resourceList;
-
-    i32 index = resourceList.allocate();
-    auto handle = resourceList.getHandle(index);
-
-
-    auto handle2 = handle;
-
-    std::printf("%d, %d, %d\n", *handle2, handle2.index(), handle2.count());
-
-    {
-        auto handle3 = handle;
-        std::printf("%d, %d, %d\n", *handle2, handle2.index(), handle2.count());
-    }
-    std::printf("%d, %d, %d\n", *handle2, handle2.index(), handle2.count());
-
-    handle = handle2;
-    std::printf("%d, %d, %d\n", *handle2, handle2.index(), handle2.count());
+    auto image = device->createImage({
+        .width = 100,
+        .height = 100,
+        .format = canta::Format::RGBA8_UNORM
+    });
 
     bool running = true;
-
     SDL_Event event;
     while (running) {
         while (SDL_PollEvent(&event)) {
@@ -147,7 +126,7 @@ void main() {
         commandBuffer.begin();
 
         commandBuffer.barrier({
-            .image = swapImage.first,
+            .image = swapImage->image(),
             .dstStage = canta::PipelineStage::COLOUR_OUTPUT,
             .dstAccess = canta::Access::COLOUR_WRITE,
             .dstLayout = canta::ImageLayout::COLOUR_ATTACHMENT
@@ -155,7 +134,7 @@ void main() {
 
         auto attachments = std::to_array({
             canta::Attachment{
-                .imageView = swapImage.second,
+                .imageView = swapImage->defaultView().view(),
                 .imageLayout = canta::ImageLayout::COLOUR_ATTACHMENT
             }
         });
@@ -173,7 +152,7 @@ void main() {
         commandBuffer.endRendering();
 
         commandBuffer.barrier({
-            .image = swapImage.first,
+            .image = swapImage->image(),
             .srcStage = canta::PipelineStage::COLOUR_OUTPUT,
             .dstStage = canta::PipelineStage::BOTTOM,
             .srcAccess = canta::Access::COLOUR_WRITE,

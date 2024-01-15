@@ -75,6 +75,7 @@ canta::Swapchain::Swapchain(canta::Swapchain &&rhs) noexcept {
     std::swap(_extent, rhs._extent);
     std::swap(_format, rhs._format);
     std::swap(_index, rhs._index);
+    std::swap(_imageHandles, rhs._imageHandles);
     std::swap(_images, rhs._images);
     std::swap(_imageViews, rhs._imageViews);
     std::swap(_semaphores, rhs._semaphores);
@@ -90,6 +91,7 @@ auto canta::Swapchain::operator=(canta::Swapchain &&rhs) noexcept -> Swapchain &
     std::swap(_extent, rhs._extent);
     std::swap(_format, rhs._format);
     std::swap(_index, rhs._index);
+    std::swap(_imageHandles, rhs._imageHandles);
     std::swap(_images, rhs._images);
     std::swap(_imageViews, rhs._imageViews);
     std::swap(_semaphores, rhs._semaphores);
@@ -98,7 +100,7 @@ auto canta::Swapchain::operator=(canta::Swapchain &&rhs) noexcept -> Swapchain &
     return *this;
 }
 
-auto canta::Swapchain::acquire() -> std::expected<std::pair<VkImage, VkImageView>, Error> {
+auto canta::Swapchain::acquire() -> std::expected<ImageHandle, Error> {
     _semaphoreIndex = (_semaphoreIndex % _semaphores.size());
     auto result = vkAcquireNextImageKHR(_device->logicalDevice(), _swapchain, std::numeric_limits<u64>::max(), _semaphores[_semaphoreIndex].acquire.semaphore(), VK_NULL_HANDLE, &_index);
     switch (result) {
@@ -113,7 +115,7 @@ auto canta::Swapchain::acquire() -> std::expected<std::pair<VkImage, VkImageView
         default:
             return std::unexpected(static_cast<Error>(result));
     }
-    return std::make_pair(_images[_index], _imageViews[_index]);
+    return _imageHandles[_index];
 }
 
 auto canta::Swapchain::present() -> std::expected<u32, Error> {
@@ -239,6 +241,20 @@ void canta::Swapchain::createSwapchain() {
 
         vkCreateImageView(_device->logicalDevice(), &imageViewCreateInfo, nullptr, &_imageViews[i]);
         _device->setDebugName(_imageViews[i], std::format("swapchain_view_{}", i));
+    }
+
+    _imageHandles.resize(_images.size());
+    for (u32 i = 0; i < _imageHandles.size(); i++) {
+        _imageHandles[i] = _device->registerImage({
+            .width = _extent.width,
+            .height = _extent.height,
+            .depth = 1,
+            .format = _format,
+            .mipLevels = 1,
+            .layers = 1,
+            .usage = ImageUsage::COLOUR_ATTACHMENT | ImageUsage::TRANSFER_DST | ImageUsage::TRANSFER_SRC,
+            .name = std::format("swapchain_image_{}", i)
+        }, _images[i], _imageViews[i]);
     }
 }
 

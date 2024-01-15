@@ -28,7 +28,10 @@ add_library(Canta
         src/ShaderInterface.cpp
         include/Canta/ShaderInterface.h
         src/Pipeline.cpp
-        include/Canta/Pipeline.h)
+        include/Canta/Pipeline.h
+        src/Image.cpp
+        include/Canta/Image.h
+)
 
 add_subdirectory(third_party)
 

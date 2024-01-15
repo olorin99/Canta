@@ -347,12 +347,17 @@ canta::Device::~Device() {
     _pipelineList.clearAll([&](auto& pipeline) {
         vkDestroyPipeline(logicalDevice(), pipeline.pipeline(), nullptr);
     });
+    _imageList.clearAll([](auto& image) {
+        image = {};
+    });
 
 #ifndef NDEBUG
     vkDestroyDebugUtilsMessengerEXT(_instance, _debugMessenger, nullptr);
 #endif
 
     _frameTimeline = {};
+
+    vmaDestroyAllocator(_allocator);
 
     vkDestroyDevice(_logicalDevice, nullptr);
     vkDestroyInstance(_instance, nullptr);
@@ -393,6 +398,9 @@ void canta::Device::gc() {
     _pipelineList.clearQueue([&](auto& pipeline) {
         vkDestroyPipeline(logicalDevice(), pipeline.pipeline(), nullptr);
         pipeline._pipeline = VK_NULL_HANDLE;
+    });
+    _imageList.clearQueue([](auto& image) {
+        image = {};
     });
 }
 
@@ -512,7 +520,7 @@ auto canta::Device::createShaderModule(ShaderModule::CreateInfo info) -> ShaderH
     return handle;
 }
 
-auto canta::Device::createPipepline(Pipeline::CreateInfo info) -> Pipelinehandle {
+auto canta::Device::createPipepline(Pipeline::CreateInfo info) -> PipelineHandle {
     ShaderInterface interface = {};
     std::vector<VkPipelineShaderStageCreateInfo> shaderStages = {};
     for (auto& shaderInfo : info.shaders) {
@@ -733,6 +741,112 @@ auto canta::Device::createPipepline(Pipeline::CreateInfo info) -> Pipelinehandle
 
     handle->_pipeline = pipeline;
     handle->_mode = info.mode;
+
+    return handle;
+}
+
+auto canta::Device::createImage(Image::CreateInfo info) -> ImageHandle {
+    VkImage image;
+    VmaAllocation allocation;
+    VkImageCreateInfo createInfo = {};
+    createInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+
+    auto type = info.type;
+    if (info.type == ImageType::AUTO) {
+        if (info.depth > 1) {
+            createInfo.imageType = VK_IMAGE_TYPE_3D;
+            type = ImageType::IMAGE3D;
+        } else if (info.height > 1) {
+            createInfo.imageType = VK_IMAGE_TYPE_2D;
+            type = ImageType::IMAGE2D;
+        } else {
+            createInfo.imageType = VK_IMAGE_TYPE_1D;
+            type = ImageType::IMAGE1D;
+        }
+    } else {
+        createInfo.imageType = static_cast<VkImageType>(info.type);
+    }
+
+    createInfo.format = static_cast<VkFormat>(info.format);
+    createInfo.extent.width = info.width;
+    createInfo.extent.height = info.height;
+    createInfo.extent.depth = info.depth;
+    createInfo.mipLevels = info.mipLevels;
+    createInfo.arrayLayers = info.layers;
+
+    createInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
+    createInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    createInfo.usage = static_cast<VkImageUsageFlagBits>(info.usage);
+    createInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+    createInfo.samples = VK_SAMPLE_COUNT_1_BIT;
+
+    if (info.layers == 6)
+        createInfo.flags |= VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
+
+    VmaAllocationCreateInfo allocInfo = {};
+    allocInfo.usage = VMA_MEMORY_USAGE_AUTO;
+    allocInfo.flags = 0;
+    VK_TRY(vmaCreateImage(_allocator, &createInfo, &allocInfo, &image, &allocation, nullptr))
+
+    setDebugName(image, info.name);
+
+    auto index = _imageList.allocate();
+    auto handle = _imageList.getHandle(index);
+
+    handle->_device = this;
+    handle->_image = image;
+    handle->_allocation = allocation;
+    handle->_width = info.width;
+    handle->_height = info.height;
+    handle->_depth = info.depth;
+    handle->_layers = info.layers;
+    handle->_mips = info.mipLevels;
+    handle->_type = type;
+    handle->_format = info.format;
+    handle->_usage = info.usage;
+    handle->_layout = ImageLayout::UNDEFINED;
+    handle->_defaultView = handle->createView({});
+    handle->_name = info.name;
+
+    return handle;
+}
+
+auto canta::Device::registerImage(Image::CreateInfo info, VkImage image, VkImageView view) -> ImageHandle {
+
+    auto type = info.type;
+    if (info.type == ImageType::AUTO) {
+        if (info.depth > 1) {
+            type = ImageType::IMAGE3D;
+        } else if (info.height > 1) {
+            type = ImageType::IMAGE2D;
+        } else {
+            type = ImageType::IMAGE1D;
+        }
+    }
+
+    Image::View defaultView = {};
+    // set device as null so object destructor doesnt destroy view
+    defaultView._device = nullptr;
+    defaultView._image = nullptr;
+    defaultView._view = view;
+
+    auto index = _imageList.allocate();
+    auto handle = _imageList.getHandle(index);
+
+    handle->_device = this;
+    handle->_image = image;
+    handle->_allocation = VK_NULL_HANDLE;
+    handle->_width = info.width;
+    handle->_height = info.height;
+    handle->_depth = info.depth;
+    handle->_layers = info.layers;
+    handle->_mips = info.mipLevels;
+    handle->_type = type;
+    handle->_format = info.format;
+    handle->_usage = info.usage;
+    handle->_layout = ImageLayout::UNDEFINED;
+    handle->_defaultView = std::move(defaultView);
+    handle->_name = info.name;
 
     return handle;
 }

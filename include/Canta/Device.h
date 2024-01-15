@@ -15,6 +15,7 @@
 #include <Canta/ResourceList.h>
 #include <Canta/ShaderModule.h>
 #include <Canta/Pipeline.h>
+#include <Canta/Image.h>
 
 #define VMA_STATIC_VULKAN_FUNCTIONS 0
 #define VMA_DYNAMIC_VULKAN_FUNCTIONS 0
@@ -28,7 +29,8 @@
 namespace canta {
 
     using ShaderHandle = Handle<ShaderModule, ResourceList<ShaderModule>>;
-    using Pipelinehandle = Handle<Pipeline, ResourceList<Pipeline>>;
+    using PipelineHandle = Handle<Pipeline, ResourceList<Pipeline>>;
+    using ImageHandle = Handle<Image, ResourceList<Image>>;
 
     struct Properties {
         u32 apiVersion;
@@ -77,6 +79,7 @@ namespace canta {
         auto instance() const -> VkInstance { return _instance; }
         auto physicalDevice() const -> VkPhysicalDevice { return _physicalDevice; }
         auto logicalDevice() const -> VkDevice { return _logicalDevice; }
+        auto allocator() const -> VmaAllocator { return _allocator; }
 
         auto queue(QueueType type) const -> VkQueue;
 
@@ -90,7 +93,12 @@ namespace canta {
 
         auto createShaderModule(ShaderModule::CreateInfo info) -> ShaderHandle;
 
-        auto createPipepline(Pipeline::CreateInfo info) -> Pipelinehandle;
+        auto createPipepline(Pipeline::CreateInfo info) -> PipelineHandle;
+
+        auto createImage(Image::CreateInfo info) -> ImageHandle;
+        auto registerImage(Image::CreateInfo info, VkImage image, VkImageView view) -> ImageHandle;
+
+
 
         void setDebugName(u32 type, u64 object, std::string_view name) const;
 
@@ -138,6 +146,7 @@ namespace canta {
 
         ResourceList<ShaderModule> _shaderList;
         ResourceList<Pipeline> _pipelineList;
+        ResourceList<Image> _imageList;
 
     };
 

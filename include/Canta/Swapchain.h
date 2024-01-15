@@ -9,10 +9,14 @@
 #include <Canta/Enums.h>
 #include <Canta/Semaphore.h>
 #include <Canta/Window.h>
+#include <Canta/ResourceList.h>
 
 namespace canta {
 
     class Device;
+
+    class Image;
+    using ImageHandle = Handle<Image, ResourceList<Image>>;
 
     class Swapchain {
     public:
@@ -27,7 +31,7 @@ namespace canta {
         Swapchain(Swapchain&& rhs) noexcept;
         auto operator=(Swapchain&& rhs) noexcept -> Swapchain&;
 
-        auto acquire() -> std::expected<std::pair<VkImage, VkImageView>, Error>;
+        auto acquire() -> std::expected<ImageHandle, Error>;
 
         auto present() -> std::expected<u32, Error>;
 
@@ -61,6 +65,7 @@ namespace canta {
         Format _format = Format::UNDEFINED;
         u32 _index;
 
+        std::vector<ImageHandle> _imageHandles = {};
         std::vector<VkImage> _images = {};
         std::vector<VkImageView> _imageViews = {};
         struct SemaphorePair {
