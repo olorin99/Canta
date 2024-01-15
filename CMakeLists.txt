@@ -31,6 +31,8 @@ add_library(Canta
         include/Canta/Pipeline.h
         src/Image.cpp
         include/Canta/Image.h
+        src/Buffer.cpp
+        include/Canta/Buffer.h
 )
 
 add_subdirectory(third_party)

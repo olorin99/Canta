@@ -485,6 +485,9 @@ canta::Device::~Device() {
     _imageList.clearAll([](auto& image) {
         image = {};
     });
+    _bufferList.clearAll([](auto& buffer) {
+        buffer = {};
+    });
 
 #ifndef NDEBUG
     vkDestroyDebugUtilsMessengerEXT(_instance, _debugMessenger, nullptr);
@@ -538,6 +541,9 @@ void canta::Device::gc() {
     });
     _imageList.clearQueue([](auto& image) {
         image = {};
+    });
+    _bufferList.clearQueue([](auto& buffer) {
+        buffer = {};
     });
 }
 
@@ -991,6 +997,69 @@ auto canta::Device::registerImage(Image::CreateInfo info, VkImage image, VkImage
     handle->_defaultView = std::move(defaultView);
     handle->_name = info.name;
 
+    bool isSampled = (info.usage & ImageUsage::SAMPLED) == ImageUsage::SAMPLED;
+    bool isStorage = (info.usage & ImageUsage::STORAGE) == ImageUsage::STORAGE;
+
+    updateBindlessImage(index, handle->defaultView(), isSampled, isStorage);
+
+    return handle;
+}
+
+auto canta::Device::createBuffer(Buffer::CreateInfo info) -> BufferHandle {
+    info.usage |= BufferUsage::TRANSFER_DST | BufferUsage::TRANSFER_SRC | BufferUsage::STORAGE | BufferUsage::DEVICE_ADDRESS;
+
+    VkBuffer buffer;
+    VmaAllocation allocation;
+    VkBufferCreateInfo createInfo = {};
+    createInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+
+    createInfo.size = info.size;
+    createInfo.usage = static_cast<VkBufferUsageFlagBits>(info.usage);
+    createInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+    VmaAllocationCreateInfo allocInfo = {};
+    allocInfo.usage = VMA_MEMORY_USAGE_AUTO;
+    allocInfo.requiredFlags = info.requiredFlags;
+    allocInfo.preferredFlags = info.preferredFlags;
+
+    switch (info.type) {
+        case MemoryType::DEVICE:
+            info.persistentlyMapped = false;
+            break;
+        case MemoryType::STAGING:
+            allocInfo.flags |= VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
+            break;
+        case MemoryType::READBACK:
+            allocInfo.flags |= VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT;
+            break;
+    }
+
+    VK_TRY(vmaCreateBuffer(_allocator, &createInfo, &allocInfo, &buffer, &allocation, nullptr));
+
+    setDebugName(buffer, info.name);
+
+    VkBufferDeviceAddressInfo deviceAddressInfo = {};
+    deviceAddressInfo.sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO;
+    deviceAddressInfo.buffer = buffer;
+    auto address = vkGetBufferDeviceAddress(logicalDevice(), &deviceAddressInfo);
+
+    auto index = _bufferList.allocate();
+    auto handle = _bufferList.getHandle(index);
+
+    handle->_device = this;
+    handle->_buffer = buffer;
+    handle->_allocation = allocation;
+    handle->_deviceAddress = address;
+    handle->_size = info.size;
+    handle->_usage = info.usage;
+    handle->_type = info.type;
+    handle->_name = info.name;
+
+    if (info.persistentlyMapped)
+        handle->_mapped = handle->map();
+
+    updateBindlessBuffer(index, *handle);
+
     return handle;
 }
 
@@ -1039,4 +1108,23 @@ void canta::Device::updateBindlessImage(u32 index, const Image::View &image, boo
     }
 
     vkUpdateDescriptorSets(logicalDevice(), writeNum, descriptorWrite, 0, nullptr);
+}
+
+void canta::Device::updateBindlessBuffer(u32 index, const canta::Buffer &buffer) {
+    VkWriteDescriptorSet descriptorWrite = {};
+
+    VkDescriptorBufferInfo bufferInfo = {};
+    bufferInfo.buffer = buffer.buffer();
+    bufferInfo.offset = 0;
+    bufferInfo.range = buffer.size();
+
+    descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    descriptorWrite.descriptorCount = 1;
+    descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+    descriptorWrite.dstArrayElement = index;
+    descriptorWrite.dstSet = _bindlessSet;
+    descriptorWrite.dstBinding = CANTA_BINDLESS_STORAGE_BUFFERS;
+    descriptorWrite.pBufferInfo = &bufferInfo;
+
+    vkUpdateDescriptorSets(logicalDevice(), 1, &descriptorWrite, 0, nullptr);
 }

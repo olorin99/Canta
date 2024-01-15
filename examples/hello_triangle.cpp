@@ -23,7 +23,22 @@ int main() {
     std::string vertexGLSL = R"(
 #version 460
 
+#extension GL_EXT_nonuniform_qualifier : enable
+#extension GL_GOOGLE_include_directive : enable
+#extension GL_EXT_buffer_reference : enable
+#extension GL_EXT_buffer_reference2 : enable
+#extension GL_EXT_scalar_block_layout : enable
+#extension GL_EXT_shader_explicit_arithmetic_types : enable
+
 layout (location = 0) out vec3 colour;
+
+layout (scalar, buffer_reference, buffer_reference_align = 8) readonly buffer SomeBuffer {
+    int data[];
+};
+
+layout (push_constant) uniform Push {
+    SomeBuffer bufferAddress;
+};
 
 vec2 trianglePositions[3] = vec2[](
     vec2(0.5, -0.5),
@@ -39,7 +54,8 @@ vec3 triangleColours[3] = vec3[](
 
 void main() {
     gl_Position = vec4(trianglePositions[gl_VertexIndex], 0.5, 1.0);
-    colour = triangleColours[gl_VertexIndex];
+//    colour = triangleColours[gl_VertexIndex];
+    colour = triangleColours[bufferAddress.data[gl_VertexIndex]];
 }
 )";
 
@@ -54,7 +70,10 @@ void main() {
 }
 )";
 
-    auto vertexSpirv = canta::util::compileGLSLToSpirv("triangleVertex", vertexGLSL, canta::ShaderStage::VERTEX).value();
+    auto vertexSpirv = canta::util::compileGLSLToSpirv("triangleVertex", vertexGLSL, canta::ShaderStage::VERTEX).transform_error([](const auto& error) {
+        std::printf("%s", error.c_str());
+        return error;
+    }).value();
     auto fragmentSpirv = canta::util::compileGLSLToSpirv("triangleFragment", fragmentGLSL, canta::ShaderStage::FRAGMENT).value();
 
     auto vertexShader = device->createShaderModule({
@@ -91,6 +110,20 @@ void main() {
         .height = 100,
         .format = canta::Format::RGBA8_UNORM
     });
+
+    auto buffer = device->createBuffer({
+        .size = sizeof(i32) * 3,
+        .usage = canta::BufferUsage::STORAGE,
+        .type = canta::MemoryType::STAGING,
+        .persistentlyMapped = true,
+        .name = "test_buffer"
+    });
+
+    i32 data[] = {
+            2, 1, 2
+    };
+
+    buffer->data(data);
 
     bool running = true;
     SDL_Event event;
@@ -146,6 +179,7 @@ void main() {
             static_cast<f32>(window.extent().y())
         });
         commandBuffer.bindPipeline(pipeline);
+        commandBuffer.pushConstants(canta::ShaderStage::VERTEX, buffer->address());
         commandBuffer.draw(3);
         commandBuffer.endRendering();
 
