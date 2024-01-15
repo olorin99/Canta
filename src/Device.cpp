@@ -328,10 +328,17 @@ auto canta::Device::create(canta::Device::CreateInfo info) noexcept -> std::expe
 
     VK_TRY(vmaCreateAllocator(&allocatorCreateInfo, &device->_allocator));
 
+
+    device->_frameTimeline = device->createSemaphore({
+        .initialValue = 0,
+        .name = "frameTimelineSemaphore"
+    }).value();
+
     return device;
 }
 
 canta::Device::~Device() {
+    _frameTimeline.signal(std::numeric_limits<u64>::max());
     vkDeviceWaitIdle(_logicalDevice);
 
     _shaderList.clearAll([&](auto& module) {
@@ -344,6 +351,8 @@ canta::Device::~Device() {
 #ifndef NDEBUG
     vkDestroyDebugUtilsMessengerEXT(_instance, _debugMessenger, nullptr);
 #endif
+
+    _frameTimeline = {};
 
     vkDestroyDevice(_logicalDevice, nullptr);
     vkDestroyInstance(_instance, nullptr);
@@ -359,6 +368,7 @@ canta::Device::Device(canta::Device &&rhs) noexcept {
     std::swap(_computeQueue, rhs._computeQueue);
     std::swap(_transferQueue, rhs._transferQueue);
     std::swap(_allocator, rhs._allocator);
+    std::swap(_frameTimeline, rhs._frameTimeline);
 }
 
 auto canta::Device::operator=(canta::Device &&rhs) noexcept -> Device & {
@@ -371,7 +381,29 @@ auto canta::Device::operator=(canta::Device &&rhs) noexcept -> Device & {
     std::swap(_computeQueue, rhs._computeQueue);
     std::swap(_transferQueue, rhs._transferQueue);
     std::swap(_allocator, rhs._allocator);
+    std::swap(_frameTimeline, rhs._frameTimeline);
     return *this;
+}
+
+void canta::Device::gc() {
+    _shaderList.clearQueue([&](auto& module) {
+        vkDestroyShaderModule(logicalDevice(), module.module(), nullptr);
+        module._module = VK_NULL_HANDLE;
+    });
+    _pipelineList.clearQueue([&](auto& pipeline) {
+        vkDestroyPipeline(logicalDevice(), pipeline.pipeline(), nullptr);
+        pipeline._pipeline = VK_NULL_HANDLE;
+    });
+}
+
+void canta::Device::beginFrame() {
+    u64 frameValue = std::max(0l, static_cast<i64>(_frameTimeline.value()) - (FRAMES_IN_FLIGHT - 1));
+    _frameTimeline.wait(frameValue);
+    _frameTimeline.increment();
+}
+
+void canta::Device::endFrame() {
+
 }
 
 auto canta::Device::queue(canta::QueueType type) const -> VkQueue {
@@ -400,11 +432,6 @@ auto canta::Device::createSwapchain(Swapchain::CreateInfo info) -> std::expected
 
     swapchain.createSwapchain();
     swapchain.createSemaphores();
-
-    swapchain._frameTimeline = createSemaphore({
-        .initialValue = 0,
-        .name = "frameTimelineSemaphore"
-    }).value();
 
     return swapchain;
 }

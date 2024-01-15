@@ -60,8 +60,6 @@ canta::Swapchain::~Swapchain() {
     if (!_device)
         return;
 
-    _frameTimeline.signal(std::numeric_limits<u64>::max());
-
     for (auto& view : _imageViews)
         vkDestroyImageView(_device->logicalDevice(), view, nullptr);
 
@@ -82,7 +80,6 @@ canta::Swapchain::Swapchain(canta::Swapchain &&rhs) noexcept {
     std::swap(_semaphores, rhs._semaphores);
     std::swap(_semaphoreIndex, rhs._semaphoreIndex);
     std::swap(_selector, rhs._selector);
-    std::swap(_frameTimeline, rhs._frameTimeline);
 }
 
 auto canta::Swapchain::operator=(canta::Swapchain &&rhs) noexcept -> Swapchain & {
@@ -98,14 +95,10 @@ auto canta::Swapchain::operator=(canta::Swapchain &&rhs) noexcept -> Swapchain &
     std::swap(_semaphores, rhs._semaphores);
     std::swap(_semaphoreIndex, rhs._semaphoreIndex);
     std::swap(_selector, rhs._selector);
-    std::swap(_frameTimeline, rhs._frameTimeline);
     return *this;
 }
 
 auto canta::Swapchain::acquire() -> std::expected<std::pair<VkImage, VkImageView>, Error> {
-    u64 frameValue = std::max(0l, static_cast<i64>(_frameTimeline.value()) - (FRAMES_IN_FLIGHT - 1));
-    _frameTimeline.wait(frameValue);
-
     _semaphoreIndex = (_semaphoreIndex % _semaphores.size());
     auto result = vkAcquireNextImageKHR(_device->logicalDevice(), _swapchain, std::numeric_limits<u64>::max(), _semaphores[_semaphoreIndex].acquire.semaphore(), VK_NULL_HANDLE, &_index);
     switch (result) {
@@ -120,7 +113,6 @@ auto canta::Swapchain::acquire() -> std::expected<std::pair<VkImage, VkImageView
         default:
             return std::unexpected(static_cast<Error>(result));
     }
-    _frameTimeline.increment();
     return std::make_pair(_images[_index], _imageViews[_index]);
 }
 
@@ -271,8 +263,4 @@ void canta::Swapchain::recreate() {
         vkDestroyImageView(_device->logicalDevice(), view, nullptr);
 
     createSwapchain();
-}
-
-auto canta::Swapchain::flyingIndex() const -> u32 {
-    return _frameTimeline.value() % FRAMES_IN_FLIGHT;
 }

@@ -64,6 +64,16 @@ namespace canta {
         Device(Device&& rhs) noexcept;
         auto operator=(Device&& rhs) noexcept -> Device&;
 
+        void gc();
+
+        void beginFrame();
+        void endFrame();
+
+        auto frameSemaphore() -> Semaphore* { return &_frameTimeline; }
+        auto frameValue() const -> u64 { return _frameTimeline.value(); }
+        auto framePrevValue() const -> u64 { return std::max(0l, static_cast<i64>(_frameTimeline.value()) - 1); }
+        auto flyingIndex() const -> u32 { return _frameTimeline.value() % FRAMES_IN_FLIGHT; }
+
         auto instance() const -> VkInstance { return _instance; }
         auto physicalDevice() const -> VkPhysicalDevice { return _physicalDevice; }
         auto logicalDevice() const -> VkDevice { return _logicalDevice; }
@@ -123,6 +133,8 @@ namespace canta {
 
         VmaAllocator _allocator = VK_NULL_HANDLE;
 
+
+        Semaphore _frameTimeline = {};
 
         ResourceList<ShaderModule> _shaderList;
         ResourceList<Pipeline> _pipelineList;

@@ -125,19 +125,21 @@ void main() {
                     break;
             }
         }
+        device->beginFrame();
+        device->gc();
 
         auto swapImage = swapchain->acquire().value();
 
         auto waits = std::to_array({
-            { swapchain->frameSemaphore(), swapchain->framePrevValue() },
+            { device->frameSemaphore(), device->framePrevValue() },
             swapchain->acquireSemaphore()->getPair()
         });
         auto signals = std::to_array({
-            swapchain->frameSemaphore()->getPair(),
+            device->frameSemaphore()->getPair(),
             swapchain->presentSemaphore()->getPair()
         });
 
-        auto flyingIndex = swapchain->flyingIndex();
+        auto flyingIndex = device->flyingIndex();
 
         commandPools[flyingIndex].reset();
         auto& commandBuffer = commandPools[flyingIndex].getBuffer();
@@ -185,6 +187,8 @@ void main() {
         commandBuffer.submit(waits, signals);
 
         swapchain->present();
+
+        device->endFrame();
     }
 
     vkDeviceWaitIdle(device->logicalDevice());
