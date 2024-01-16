@@ -14,7 +14,14 @@ namespace canta {
     class Device;
 
     class Pipeline;
+    class Image;
+    class Buffer;
+    class Sampler;
+
     using PipelineHandle = Handle<Pipeline, ResourceList<Pipeline>>;
+    using ImageHandle = Handle<Image, ResourceList<Image>>;
+    using BufferHandle = Handle<Buffer, ResourceList<Buffer>>;
+    using SamplerHandle = Handle<Sampler, ResourceList<Sampler>>;
 
     struct Attachment {
         VkImageView imageView = VK_NULL_HANDLE;
@@ -66,6 +73,25 @@ namespace canta {
         }
 
         void draw(u32 count, u32 instanceCount = 1, u32 first = 0, u32 firstInstance = 0);
+
+        void dispatchWorkgroups(u32 x = 1, u32 y = 1, u32 z = 1);
+        void dispatchThreads(u32 x = 1, u32 y = 1, u32 z = 0);
+
+        struct BlitInfo {
+            ImageHandle src = {};
+            u32 srcMip = 0;
+            u32 srcLayer = 0;
+            u32 srcLayerCount = 0;
+            ImageHandle dst = {};
+            u32 dstMip = 0;
+            u32 dstLayer = 0;
+            u32 dstLayerCount = 0;
+            ImageLayout srcLayout = ImageLayout::UNDEFINED;
+            ImageLayout dstLayout = ImageLayout::UNDEFINED;
+            Filter filter = Filter::LINEAR;
+        };
+        void blit(BlitInfo info);
+        void clearImage(ImageHandle handle, ImageLayout layout = ImageLayout::GENERAL, const std::array<f32, 4>& clearColour = { 0, 0, 0, 1 });
 
         void barrier(ImageBarrier barrier);
 

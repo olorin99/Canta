@@ -1,6 +1,8 @@
 #include "Canta/CommandBuffer.h"
 #include <Canta/Device.h>
 #include <Canta/Pipeline.h>
+#include <Canta/Buffer.h>
+#include <Canta/Image.h>
 
 canta::CommandBuffer::CommandBuffer(canta::CommandBuffer &&rhs) noexcept {
     std::swap(_device, rhs._device);
@@ -146,6 +148,8 @@ void canta::CommandBuffer::bindPipeline(PipelineHandle pipeline) {
         return;
     vkCmdBindPipeline(_buffer, pipeline->mode() == PipelineMode::GRAPHICS ? VK_PIPELINE_BIND_POINT_GRAPHICS : VK_PIPELINE_BIND_POINT_COMPUTE, pipeline->pipeline());
     _currentPipeline = pipeline;
+    auto set = _device->bindlessSet();
+    vkCmdBindDescriptorSets(_buffer, pipeline->mode() == PipelineMode::GRAPHICS ? VK_PIPELINE_BIND_POINT_GRAPHICS : VK_PIPELINE_BIND_POINT_COMPUTE, _currentPipeline->layout(), 0, 1, &set, 0, nullptr);
 }
 
 void canta::CommandBuffer::pushConstants(canta::ShaderStage stage, std::span<const u8> data, u32 offset) {
@@ -158,6 +162,52 @@ void canta::CommandBuffer::draw(u32 count, u32 instanceCount, u32 first, u32 fir
     assert(_currentPipeline->mode() == PipelineMode::GRAPHICS);
     vkCmdDraw(_buffer, count, instanceCount, first, firstInstance);
 }
+
+void canta::CommandBuffer::dispatchWorkgroups(u32 x, u32 y, u32 z) {
+    vkCmdDispatch(_buffer, x, y, z);
+}
+
+void canta::CommandBuffer::dispatchThreads(u32 x, u32 y, u32 z) {
+
+}
+
+void canta::CommandBuffer::blit(canta::CommandBuffer::BlitInfo info) {
+    VkImageSubresourceLayers srcSubresource = {};
+    srcSubresource.aspectMask = aspectMask(info.src->format());
+    srcSubresource.mipLevel = info.srcMip;
+    srcSubresource.baseArrayLayer = info.srcLayer;
+    srcSubresource.layerCount = info.srcLayerCount == 0 ? info.src->layers() : info.srcLayerCount;
+
+    VkImageSubresourceLayers dstSubresource = {};
+    dstSubresource.aspectMask = aspectMask(info.dst->format());
+    dstSubresource.mipLevel = info.dstMip;
+    dstSubresource.baseArrayLayer = info.dstLayer;
+    dstSubresource.layerCount = info.dstLayerCount == 0 ? info.dst->layers() : info.dstLayerCount;
+
+    VkImageBlit blit = {};
+    blit.srcSubresource = srcSubresource;
+    blit.srcOffsets[0] = { 0, 0, 0 };
+    blit.srcOffsets[1] = { static_cast<i32>(info.src->width()), static_cast<i32>(info.src->height()), static_cast<i32>(info.src->depth()) };
+
+    blit.dstSubresource = dstSubresource;
+    blit.dstOffsets[0] = { 0, 0, 0 };
+    blit.dstOffsets[1] = { static_cast<i32>(info.dst->width()), static_cast<i32>(info.dst->height()), static_cast<i32>(info.dst->depth()) };
+
+    vkCmdBlitImage(_buffer, info.src->image(), static_cast<VkImageLayout>(info.srcLayout), info.dst->image(), static_cast<VkImageLayout>(info.dstLayout), 1, &blit, static_cast<VkFilter>(info.filter));
+}
+
+void canta::CommandBuffer::clearImage(ImageHandle handle, ImageLayout layout, const std::array<f32, 4> &clearColour) {
+    VkClearColorValue clearValue = { clearColour[0], clearColour[1], clearColour[2], clearColour[3] };
+    VkImageSubresourceRange range = {};
+    range.aspectMask = aspectMask(handle->format());
+    range.baseMipLevel = 0;
+    range.levelCount = handle->mips();
+    range.baseArrayLayer = 0;
+    range.layerCount = handle->layers();
+
+    vkCmdClearColorImage(_buffer, handle->image(), static_cast<VkImageLayout>(layout), &clearValue, 1, &range);
+}
+
 
 void canta::CommandBuffer::barrier(ImageBarrier barrier) {
     VkImageMemoryBarrier2 imageBarrier = {};

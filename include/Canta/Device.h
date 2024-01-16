@@ -145,6 +145,8 @@ namespace canta {
         auto properties() const -> const Properties& { return _properties; }
         auto limits() const -> const Limits& { return _properties.limits; }
 
+        auto bindlessSet() const -> VkDescriptorSet { return _bindlessSet; }
+
         auto queue(QueueType type) const -> VkQueue;
 
 

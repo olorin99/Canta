@@ -666,6 +666,10 @@ namespace canta {
         }
         return false;
     }
+
+    constexpr inline VkImageAspectFlagBits aspectMask(Format format) {
+        return isDepthFormat(format) ? VK_IMAGE_ASPECT_DEPTH_BIT : VK_IMAGE_ASPECT_COLOR_BIT;
+    }
 }
 
 #endif //CANTA_ENUMS_H

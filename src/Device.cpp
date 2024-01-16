@@ -672,17 +672,19 @@ auto canta::Device::createPipeline(Pipeline::CreateInfo info, PipelineHandle old
     }
 
     std::vector<VkDescriptorSetLayout> setLayouts = {};
+    setLayouts.push_back(_bindlessLayout);
 
-    for (u32 i = 0; i < interface.setCount(); i++) {
+    for (u32 i = 1; i < interface.setCount(); i++) {
         std::vector<VkDescriptorSetLayoutBinding> layoutBindings = {};
         u32 layoutBindingCount = 0;
         auto& set = interface.getSet(i);
+        layoutBindings.resize(set.bindingCount);
 
         for (u32 j = 0; j < set.bindingCount; j++) {
             auto& binding = set.bindings[j];
 
-            if (binding.type == ShaderInterface::BindingType::NONE)
-                break;
+//            if (binding.type == ShaderInterface::BindingType::NONE)
+//                break;
 
             VkDescriptorSetLayoutBinding layoutBinding = {};
 
