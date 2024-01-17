@@ -490,6 +490,9 @@ canta::Device::~Device() {
 
     _frameTimeline = {};
 
+    for (auto& queryPool : _timestampPools)
+        vkDestroyQueryPool(_logicalDevice, queryPool, nullptr);
+
     vmaDestroyAllocator(_allocator);
 
     vkDestroyDescriptorSetLayout(_logicalDevice, _bindlessLayout, nullptr);
@@ -1206,4 +1209,48 @@ void canta::Device::updateBindlessSampler(u32 index, const canta::Sampler &sampl
     descriptorWrite.pImageInfo = &samplerInfo;
 
     vkUpdateDescriptorSets(logicalDevice(), 1, &descriptorWrite, 0, nullptr);
+}
+
+auto canta::Device::createTimer() -> Timer {
+    constexpr const u32 poolQueryCount = 10;
+
+    u32 poolIndex = 0;
+    u32 queryIndex = 0;
+    if (!_freeTimers.empty()) {
+        auto freeSlot = _freeTimers.back();
+        _freeTimers.pop_back();
+        poolIndex = freeSlot.poolIndex;
+        queryIndex = freeSlot.queryIndex;
+    } else if (_lastPoolQueryCount < poolQueryCount && !_timestampPools.empty()) {
+        poolIndex = _timestampPools.size() - 1;
+        queryIndex = _lastPoolQueryCount++;
+    } else {
+        _lastPoolQueryCount = 0;
+        VkQueryPoolCreateInfo createInfo = {};
+        createInfo.sType = VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO;
+        createInfo.queryType = VK_QUERY_TYPE_TIMESTAMP;
+        createInfo.queryCount = poolQueryCount * 2;
+        VkQueryPool pool;
+        VK_TRY(vkCreateQueryPool(logicalDevice(), &createInfo, nullptr, &pool));
+        vkResetQueryPool(logicalDevice(), pool, 0, createInfo.queryCount);
+        poolIndex = _timestampPools.size();
+        queryIndex = _lastPoolQueryCount++;
+        _timestampPools.push_back(pool);
+    }
+
+    Timer timer = {};
+
+    timer._device = this;
+    timer._queryPoolIndex = poolIndex;
+    timer._index = queryIndex;
+    timer._value = 0;
+
+    return timer;
+}
+
+void canta::Device::destroyTimer(u32 poolIndex, u32 queryIndex) {
+    _freeTimers.push_back({
+        .poolIndex = poolIndex,
+        .queryIndex = queryIndex
+    });
 }

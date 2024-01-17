@@ -213,6 +213,10 @@ void main() {
         .usage = canta::ImageUsage::STORAGE | canta::ImageUsage::TRANSFER_SRC | canta::ImageUsage::TRANSFER_DST
     });
 
+    canta::Timer timers[canta::FRAMES_IN_FLIGHT] = {};
+    for (auto& timer : timers)
+        timer = device->createTimer();
+
     bool running = true;
     SDL_Event event;
     while (running) {
@@ -243,6 +247,8 @@ void main() {
         auto& commandBuffer = commandPools[flyingIndex].getBuffer();
 
         commandBuffer.begin();
+        std::printf("%lu\n", timers[(flyingIndex - 1) % canta::FRAMES_IN_FLIGHT].result().value());
+        timers[flyingIndex].begin(commandBuffer);
 
         commandBuffer.pushDebugLabel("clear");
         commandBuffer.barrier({
@@ -321,6 +327,7 @@ void main() {
             .dstLayout = canta::ImageLayout::PRESENT
         });
 
+        timers[flyingIndex].end(commandBuffer);
         commandBuffer.end();
 
         commandBuffer.submit(waits, signals);

@@ -18,6 +18,7 @@
 #include <Canta/Image.h>
 #include <Canta/Buffer.h>
 #include <Canta/Sampler.h>
+#include <Canta/Timer.h>
 
 #define VMA_STATIC_VULKAN_FUNCTIONS 0
 #define VMA_DYNAMIC_VULKAN_FUNCTIONS 0
@@ -188,6 +189,11 @@ namespace canta {
             setDebugName(VK_OBJECT_TYPE_BUFFER, (u64)object, name);
         }
 
+        auto timestampPools() -> std::span<VkQueryPool> { return _timestampPools; }
+
+        auto createTimer() -> Timer;
+        void destroyTimer(u32 poolIndex, u32 queryIndex);
+
     private:
 
         Device() = default;
@@ -212,6 +218,14 @@ namespace canta {
         u32 _transferIndex = 0;
 
         VmaAllocator _allocator = VK_NULL_HANDLE;
+
+        std::vector<VkQueryPool> _timestampPools = {};
+        u32 _lastPoolQueryCount = 0;
+        struct FreeTimer {
+            u32 poolIndex = 0;
+            u32 queryIndex = 0;
+        };
+        std::vector<FreeTimer> _freeTimers = {};
 
         Semaphore _frameTimeline = {};
 
