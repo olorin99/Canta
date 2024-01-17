@@ -205,6 +205,6 @@ void main() {
         device->endFrame();
     }
 
-    vkDeviceWaitIdle(device->logicalDevice());
+    device->waitIdle();
     return 0;
 }

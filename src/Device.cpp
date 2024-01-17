@@ -559,6 +559,13 @@ auto canta::Device::queue(canta::QueueType type) const -> VkQueue {
     return VK_NULL_HANDLE;
 }
 
+auto canta::Device::waitIdle() const -> std::expected<bool, Error> {
+    auto result = vkDeviceWaitIdle(logicalDevice());
+    if (result != VK_SUCCESS)
+        return std::unexpected(static_cast<Error>(result));
+    return true;
+}
+
 auto canta::Device::createSwapchain(Swapchain::CreateInfo info) -> std::expected<Swapchain, Error> {
     Swapchain swapchain = {};
     swapchain._device = this;

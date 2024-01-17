@@ -149,6 +149,8 @@ namespace canta {
 
         auto queue(QueueType type) const -> VkQueue;
 
+        auto waitIdle() const -> std::expected<bool, Error>;
+
 
         auto createSwapchain(Swapchain::CreateInfo info) -> std::expected<Swapchain, Error>;
 
