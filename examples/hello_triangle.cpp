@@ -160,7 +160,7 @@ void main() {
         commandBuffer.begin();
 
         commandBuffer.barrier({
-            .image = swapImage->image(),
+            .image = swapImage,
             .dstStage = canta::PipelineStage::COLOUR_OUTPUT,
             .dstAccess = canta::Access::COLOUR_WRITE,
             .dstLayout = canta::ImageLayout::COLOUR_ATTACHMENT
@@ -187,7 +187,7 @@ void main() {
         commandBuffer.endRendering();
 
         commandBuffer.barrier({
-            .image = swapImage->image(),
+            .image = swapImage,
             .srcStage = canta::PipelineStage::COLOUR_OUTPUT,
             .dstStage = canta::PipelineStage::BOTTOM,
             .srcAccess = canta::Access::COLOUR_WRITE,

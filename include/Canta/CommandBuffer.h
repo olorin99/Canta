@@ -36,13 +36,34 @@ namespace canta {
     };
 
     struct ImageBarrier {
-        VkImage image = VK_NULL_HANDLE;
+        ImageHandle image = {};
         PipelineStage srcStage = PipelineStage::TOP;
         PipelineStage dstStage = PipelineStage::BOTTOM;
         Access srcAccess = Access::MEMORY_READ | Access::MEMORY_WRITE;
         Access dstAccess = Access::MEMORY_READ | Access::MEMORY_WRITE;
         ImageLayout srcLayout = ImageLayout::UNDEFINED;
         ImageLayout dstLayout = ImageLayout::UNDEFINED;
+        u32 srcQueue = -1;
+        u32 dstQueue = -1;
+    };
+
+    struct BufferBarrier {
+        BufferHandle buffer = {};
+        PipelineStage srcStage = PipelineStage::TOP;
+        PipelineStage dstStage = PipelineStage::BOTTOM;
+        Access srcAccess = Access::MEMORY_READ | Access::MEMORY_WRITE;
+        Access dstAccess = Access::MEMORY_READ | Access::MEMORY_WRITE;
+        u32 offset = 0;
+        u32 size = 0;
+        u32 srcQueue = -1;
+        u32 dstQueue = -1;
+    };
+
+    struct MemoryBarrier {
+        PipelineStage srcStage = PipelineStage::TOP;
+        PipelineStage dstStage = PipelineStage::BOTTOM;
+        Access srcAccess = Access::MEMORY_READ | Access::MEMORY_WRITE;
+        Access dstAccess = Access::MEMORY_READ | Access::MEMORY_WRITE;
     };
 
     class CommandBuffer {
@@ -94,6 +115,8 @@ namespace canta {
         void clearImage(ImageHandle handle, ImageLayout layout = ImageLayout::GENERAL, const std::array<f32, 4>& clearColour = { 0, 0, 0, 1 });
 
         void barrier(ImageBarrier barrier);
+        void barrier(BufferBarrier barrier);
+        void barrier(MemoryBarrier barrier);
 
     private:
         friend CommandPool;

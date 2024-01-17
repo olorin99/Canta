@@ -238,14 +238,14 @@ void main() {
         commandBuffer.begin();
 
         commandBuffer.barrier({
-            .image = image->image(),
+            .image = image,
             .dstStage = canta::PipelineStage::TRANSFER,
             .dstAccess = canta::Access::TRANSFER_READ | canta::Access::TRANSFER_WRITE,
             .dstLayout = canta::ImageLayout::GENERAL
         });
         commandBuffer.clearImage(image);
         commandBuffer.barrier({
-            .image = image->image(),
+            .image = image,
             .srcStage = canta::PipelineStage::TRANSFER,
             .dstStage = canta::PipelineStage::COMPUTE_SHADER,
             .srcAccess = canta::Access::TRANSFER_WRITE | canta::Access::TRANSFER_READ,
@@ -271,7 +271,7 @@ void main() {
         commandBuffer.dispatchWorkgroups();
 
         commandBuffer.barrier({
-            .image = image->image(),
+            .image = image,
             .srcStage = canta::PipelineStage::COMPUTE_SHADER,
             .dstStage = canta::PipelineStage::TRANSFER,
             .srcAccess = canta::Access::SHADER_WRITE | canta::Access::SHADER_READ,
@@ -280,7 +280,7 @@ void main() {
             .dstLayout = canta::ImageLayout::TRANSFER_SRC
         });
         commandBuffer.barrier({
-            .image = swapImage->image(),
+            .image = swapImage,
             .dstStage = canta::PipelineStage::TRANSFER,
             .dstAccess = canta::Access::TRANSFER_WRITE | canta::Access::TRANSFER_READ,
             .dstLayout = canta::ImageLayout::TRANSFER_DST
@@ -294,7 +294,7 @@ void main() {
         });
 
         commandBuffer.barrier({
-            .image = swapImage->image(),
+            .image = swapImage,
             .srcStage = canta::PipelineStage::TRANSFER,
             .dstStage = canta::PipelineStage::BOTTOM,
             .srcAccess = canta::Access::TRANSFER_WRITE | canta::Access::TRANSFER_READ,

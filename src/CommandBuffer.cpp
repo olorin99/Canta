@@ -212,15 +212,15 @@ void canta::CommandBuffer::clearImage(ImageHandle handle, ImageLayout layout, co
 void canta::CommandBuffer::barrier(ImageBarrier barrier) {
     VkImageMemoryBarrier2 imageBarrier = {};
     imageBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
-    imageBarrier.image = barrier.image;
+    imageBarrier.image = barrier.image->image();
     imageBarrier.srcStageMask = static_cast<VkPipelineStageFlagBits>(barrier.srcStage);
     imageBarrier.dstStageMask = static_cast<VkPipelineStageFlagBits>(barrier.dstStage);
     imageBarrier.srcAccessMask = static_cast<VkAccessFlagBits>(barrier.srcAccess);
     imageBarrier.dstAccessMask = static_cast<VkAccessFlagBits>(barrier.dstAccess);
     imageBarrier.oldLayout = static_cast<VkImageLayout>(barrier.srcLayout);
     imageBarrier.newLayout = static_cast<VkImageLayout>(barrier.dstLayout);
-    imageBarrier.srcQueueFamilyIndex = -1;
-    imageBarrier.dstQueueFamilyIndex = -1;
+    imageBarrier.srcQueueFamilyIndex = barrier.srcQueue;
+    imageBarrier.dstQueueFamilyIndex = barrier.dstQueue;
 
     imageBarrier.subresourceRange.layerCount = 1;
     imageBarrier.subresourceRange.baseArrayLayer = 0;
@@ -232,5 +232,40 @@ void canta::CommandBuffer::barrier(ImageBarrier barrier) {
     info.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
     info.imageMemoryBarrierCount = 1;
     info.pImageMemoryBarriers = &imageBarrier;
+    vkCmdPipelineBarrier2(_buffer, &info);
+}
+
+void canta::CommandBuffer::barrier(canta::BufferBarrier barrier) {
+    VkBufferMemoryBarrier2 bufferBarrier = {};
+    bufferBarrier.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2;
+    bufferBarrier.buffer = barrier.buffer->buffer();
+    bufferBarrier.srcStageMask = static_cast<VkPipelineStageFlagBits>(barrier.srcStage);
+    bufferBarrier.dstStageMask = static_cast<VkPipelineStageFlagBits>(barrier.dstStage);
+    bufferBarrier.srcAccessMask = static_cast<VkAccessFlagBits>(barrier.srcAccess);
+    bufferBarrier.dstAccessMask = static_cast<VkAccessFlagBits>(barrier.dstAccess);
+    bufferBarrier.srcQueueFamilyIndex = barrier.srcQueue;
+    bufferBarrier.dstQueueFamilyIndex = barrier.dstQueue;
+    bufferBarrier.offset = barrier.offset;
+    bufferBarrier.size = barrier.size == 0 ? VK_WHOLE_SIZE : barrier.size;
+
+    VkDependencyInfo info = {};
+    info.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
+    info.imageMemoryBarrierCount = 1;
+    info.pBufferMemoryBarriers = &bufferBarrier;
+    vkCmdPipelineBarrier2(_buffer, &info);
+}
+
+void canta::CommandBuffer::barrier(canta::MemoryBarrier barrier) {
+    VkMemoryBarrier2 memoryBarrier = {};
+    memoryBarrier.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER_2;
+    memoryBarrier.srcStageMask = static_cast<VkPipelineStageFlagBits>(barrier.srcStage);
+    memoryBarrier.dstStageMask = static_cast<VkPipelineStageFlagBits>(barrier.dstStage);
+    memoryBarrier.srcAccessMask = static_cast<VkAccessFlagBits>(barrier.srcAccess);
+    memoryBarrier.dstAccessMask = static_cast<VkAccessFlagBits>(barrier.dstAccess);
+
+    VkDependencyInfo info = {};
+    info.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
+    info.imageMemoryBarrierCount = 1;
+    info.pMemoryBarriers = &memoryBarrier;
     vkCmdPipelineBarrier2(_buffer, &info);
 }
