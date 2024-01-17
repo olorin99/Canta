@@ -87,6 +87,10 @@ namespace canta {
 
         void bindPipeline(PipelineHandle pipeline);
 
+        void bindVertexBuffer(BufferHandle handle);
+        void bindVertexBuffers(std::span<BufferHandle> handles, u32 first = 0, u32 offset = 0);
+        void bindIndexBuffer(BufferHandle handle, u32 offset = 0, u32 indexType = VK_INDEX_TYPE_UINT32);
+
         void pushConstants(ShaderStage stage, std::span<const u8> data, u32 offset = 0);
         template <typename T>
         void pushConstants(ShaderStage stage, const T& data, u32 offset = 0) {
@@ -121,10 +125,14 @@ namespace canta {
         };
         void blit(BlitInfo info);
         void clearImage(ImageHandle handle, ImageLayout layout = ImageLayout::GENERAL, const std::array<f32, 4>& clearColour = { 0, 0, 0, 1 });
+        void clearBuffer(BufferHandle handle, u32 clearValue = 0, u32 offset = 0, u32 size = 0);
 
         void barrier(ImageBarrier barrier);
         void barrier(BufferBarrier barrier);
         void barrier(MemoryBarrier barrier);
+
+        void pushDebugLabel(std::string_view label, std::array<f32, 4> colour = { 0, 1, 0, 1 });
+        void popDebugLabel();
 
     private:
         friend CommandPool;

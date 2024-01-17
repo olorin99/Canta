@@ -244,6 +244,7 @@ void main() {
 
         commandBuffer.begin();
 
+        commandBuffer.pushDebugLabel("clear");
         commandBuffer.barrier({
             .image = image,
             .dstStage = canta::PipelineStage::TRANSFER,
@@ -260,6 +261,7 @@ void main() {
             .srcLayout = canta::ImageLayout::GENERAL,
             .dstLayout = canta::ImageLayout::GENERAL
         });
+        commandBuffer.popDebugLabel();
 
         commandBuffer.bindPipeline(pipeline);
         struct PushA {

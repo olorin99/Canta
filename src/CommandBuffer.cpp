@@ -152,6 +152,28 @@ void canta::CommandBuffer::bindPipeline(PipelineHandle pipeline) {
     vkCmdBindDescriptorSets(_buffer, pipeline->mode() == PipelineMode::GRAPHICS ? VK_PIPELINE_BIND_POINT_GRAPHICS : VK_PIPELINE_BIND_POINT_COMPUTE, _currentPipeline->layout(), 0, 1, &set, 0, nullptr);
 }
 
+void canta::CommandBuffer::bindVertexBuffer(canta::BufferHandle handle) {
+    assert(handle);
+    VkDeviceSize offset = 0;
+    auto buffer = handle->buffer();
+    vkCmdBindVertexBuffers(_buffer, 0, 1, &buffer, &offset);
+}
+
+void canta::CommandBuffer::bindVertexBuffers(std::span<BufferHandle> handles, u32 first, u32 offset) {
+    VkDeviceSize off = offset;
+    VkBuffer buffers[handles.size()];
+    for (u32 i = 0; i < handles.size(); i++) {
+        assert(handles[i]);
+        buffers[i] = handles[i]->buffer();
+    }
+    vkCmdBindVertexBuffers(_buffer, first, handles.size(), buffers, &off);
+}
+
+void canta::CommandBuffer::bindIndexBuffer(canta::BufferHandle handle, u32 offset, u32 indexType) {
+    assert(handle);
+    vkCmdBindIndexBuffer(_buffer, handle->buffer(), offset, static_cast<VkIndexType>(indexType));
+}
+
 void canta::CommandBuffer::pushConstants(canta::ShaderStage stage, std::span<const u8> data, u32 offset) {
     assert(offset + data.size() <= 128);
     vkCmdPushConstants(_buffer, _currentPipeline->layout(), static_cast<VkShaderStageFlagBits>(stage), offset, data.size(), data.data());
@@ -283,6 +305,9 @@ void canta::CommandBuffer::clearImage(ImageHandle handle, ImageLayout layout, co
     vkCmdClearColorImage(_buffer, handle->image(), static_cast<VkImageLayout>(layout), &clearValue, 1, &range);
 }
 
+void canta::CommandBuffer::clearBuffer(canta::BufferHandle handle, u32 clearValue, u32 offset, u32 size) {
+    vkCmdFillBuffer(_buffer, handle->buffer(), offset, size == 0 ? handle->size() - offset : size, clearValue);
+}
 
 void canta::CommandBuffer::barrier(ImageBarrier barrier) {
     VkImageMemoryBarrier2 imageBarrier = {};
@@ -343,4 +368,21 @@ void canta::CommandBuffer::barrier(canta::MemoryBarrier barrier) {
     info.imageMemoryBarrierCount = 1;
     info.pMemoryBarriers = &memoryBarrier;
     vkCmdPipelineBarrier2(_buffer, &info);
+}
+
+void canta::CommandBuffer::pushDebugLabel(std::string_view label, std::array<f32, 4> colour) {
+#ifndef NDEBUG
+    VkDebugUtilsLabelEXT labelInfo = {};
+    labelInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT;
+    labelInfo.pLabelName = label.data();
+    for (u32 i = 0; i < 4; i++)
+        labelInfo.color[i] = colour[i];
+    vkCmdBeginDebugUtilsLabelEXT(_buffer, &labelInfo);
+#endif
+}
+
+void canta::CommandBuffer::popDebugLabel() {
+#ifndef NDEBUG
+    vkCmdEndDebugUtilsLabelEXT(_buffer);
+#endif
 }
