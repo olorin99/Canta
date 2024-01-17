@@ -157,10 +157,74 @@ void canta::CommandBuffer::pushConstants(canta::ShaderStage stage, std::span<con
     vkCmdPushConstants(_buffer, _currentPipeline->layout(), static_cast<VkShaderStageFlagBits>(stage), offset, data.size(), data.data());
 }
 
-void canta::CommandBuffer::draw(u32 count, u32 instanceCount, u32 first, u32 firstInstance) {
+void canta::CommandBuffer::draw(u32 count, u32 instanceCount, u32 first, u32 firstInstance, bool indexed) {
     assert(_currentPipeline);
     assert(_currentPipeline->mode() == PipelineMode::GRAPHICS);
-    vkCmdDraw(_buffer, count, instanceCount, first, firstInstance);
+    if (indexed) {
+        vkCmdDrawIndexed(_buffer, count, instanceCount, first, 0, firstInstance);
+    } else {
+        vkCmdDraw(_buffer, count, instanceCount, first, firstInstance);
+    }
+}
+
+void canta::CommandBuffer::drawIndirect(canta::BufferHandle commands, u32 offset, u32 drawCount, bool indexed, u32 stride) {
+    assert(_currentPipeline);
+    assert(_currentPipeline->mode() == PipelineMode::GRAPHICS);
+    if (indexed) {
+        if (stride == 0)
+            stride = sizeof(VkDrawIndexedIndirectCommand);
+        vkCmdDrawIndexedIndirect(_buffer, commands->buffer(), offset, drawCount, stride);
+    } else {
+        if (stride == 0)
+            stride = sizeof(VkDrawIndirectCommand);
+        vkCmdDrawIndirect(_buffer, commands->buffer(), offset, drawCount, stride);
+    }
+}
+
+void canta::CommandBuffer::drawIndirectCount(canta::BufferHandle commands, u32 offset, canta::BufferHandle countBuffer, u32 countOffset, bool indexed, u32 stride) {
+    assert(_currentPipeline);
+    assert(_currentPipeline->mode() == PipelineMode::GRAPHICS);
+    u32 maxDrawCount = (commands->size() - offset) / stride;
+    if (indexed) {
+        if (stride == 0)
+            stride = sizeof(VkDrawIndexedIndirectCommand);
+        vkCmdDrawIndexedIndirectCount(_buffer, commands->buffer(), offset, countBuffer->buffer(), countOffset, maxDrawCount, stride);
+    } else {
+        if (stride == 0)
+            stride = sizeof(VkDrawIndirectCommand);
+        vkCmdDrawIndirectCount(_buffer, commands->buffer(), offset, countBuffer->buffer(), countOffset, maxDrawCount, stride);
+    }
+}
+
+void canta::CommandBuffer::drawMeshTasksWorkgroups(u32 x, u32 y, u32 z) {
+    assert(_currentPipeline);
+    assert(_currentPipeline->mode() == PipelineMode::GRAPHICS);
+    assert(_currentPipeline->interface().stagePresent(ShaderStage::MESH));
+    vkCmdDrawMeshTasksEXT(_buffer, x, y, z);
+}
+
+void canta::CommandBuffer::drawMeshTasksThreads(u32 x, u32 y, u32 z) {
+    ende::math::Vec<3, u32> localSize = { 1, 1, 1 };
+    if (_currentPipeline->interface().stagePresent(ShaderStage::TASK))
+        localSize = _currentPipeline->interface().localSize(ShaderStage::TASK);
+    else
+        localSize = _currentPipeline->interface().localSize(ShaderStage::MESH);
+    drawMeshTasksWorkgroups(std::ceil(static_cast<f32>(x) / static_cast<f32>(localSize.x())), std::ceil(static_cast<f32>(y) / static_cast<f32>(localSize.y())), std::ceil(static_cast<f32>(z) / static_cast<f32>(localSize.z())));
+}
+
+void canta::CommandBuffer::drawMeshTasksIndirect(canta::BufferHandle commands, u32 offset, u32 drawCount, u32 stride) {
+    assert(_currentPipeline);
+    assert(_currentPipeline->mode() == PipelineMode::GRAPHICS);
+    assert(_currentPipeline->interface().stagePresent(ShaderStage::MESH));
+    vkCmdDrawMeshTasksIndirectEXT(_buffer, commands->buffer(), offset, drawCount, stride);
+}
+
+void canta::CommandBuffer::drawMeshTasksIndirectCount(canta::BufferHandle commands, u32 offset, canta::BufferHandle countBuffer, u32 countOffset, u32 stride) {
+    assert(_currentPipeline);
+    assert(_currentPipeline->mode() == PipelineMode::GRAPHICS);
+    assert(_currentPipeline->interface().stagePresent(ShaderStage::MESH));
+    u32 maxDrawCount = (commands->size() - offset) / stride;
+    vkCmdDrawMeshTasksIndirectCountEXT(_buffer, commands->buffer(), offset, countBuffer->buffer(), countOffset, maxDrawCount, stride);
 }
 
 void canta::CommandBuffer::dispatchWorkgroups(u32 x, u32 y, u32 z) {
@@ -173,6 +237,13 @@ void canta::CommandBuffer::dispatchWorkgroups(u32 x, u32 y, u32 z) {
 void canta::CommandBuffer::dispatchThreads(u32 x, u32 y, u32 z) {
     auto localSize = _currentPipeline->interface().localSize(ShaderStage::COMPUTE);
     dispatchWorkgroups(std::ceil(static_cast<f32>(x) / static_cast<f32>(localSize.x())), std::ceil(static_cast<f32>(y) / static_cast<f32>(localSize.y())), std::ceil(static_cast<f32>(z) / static_cast<f32>(localSize.z())));
+}
+
+void canta::CommandBuffer::dispatchIndirect(canta::BufferHandle commands, u32 offset) {
+    assert(_currentPipeline);
+    assert(_currentPipeline->mode() == PipelineMode::COMPUTE);
+    assert(_currentPipeline->interface().stagePresent(ShaderStage::COMPUTE));
+    vkCmdDispatchIndirect(_buffer, commands->buffer(), offset);
 }
 
 void canta::CommandBuffer::blit(canta::CommandBuffer::BlitInfo info) {

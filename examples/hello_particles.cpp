@@ -32,11 +32,12 @@ int main() {
 #extension GL_EXT_scalar_block_layout : enable
 #extension GL_EXT_shader_explicit_arithmetic_types : enable
 
-layout (local_size_x = 32, local_size_y = 32) in;
+layout (local_size_x = 32) in;
 
 struct Particle {
     vec2 position;
     vec2 velocity;
+    vec3 colour;
     int radius;
 };
 
@@ -46,11 +47,13 @@ layout (scalar, buffer_reference, buffer_reference_align = 8) readonly buffer Pa
 
 layout (push_constant) uniform Push {
     ParticleBuffer particleBuffer;
+    int maxParticles;
+    int padding;
 };
 
 void main() {
-    const uint idx = gl_GlobalInvocationID.x + gl_GlobalInvocationID.y * gl_NumWorkGroups.x * gl_WorkGroupSize.x;
-    if (idx >= 100)
+    const uint idx = gl_GlobalInvocationID.x;
+    if (idx >= maxParticles)
         return;
     Particle particle = particleBuffer.particles[idx];
 
@@ -84,13 +87,14 @@ void main() {
 #extension GL_EXT_scalar_block_layout : enable
 #extension GL_EXT_shader_explicit_arithmetic_types : enable
 
-layout (local_size_x = 32, local_size_y = 32) in;
+layout (local_size_x = 32) in;
 
 layout (set = 0, binding = 2) uniform writeonly image2D storageImages[];
 
 struct Particle {
     vec2 position;
     vec2 velocity;
+    vec3 colour;
     int radius;
 };
 
@@ -101,17 +105,17 @@ layout (scalar, buffer_reference, buffer_reference_align = 8) readonly buffer Pa
 layout (push_constant) uniform Push {
     ParticleBuffer particleBuffer;
     int imageIndex;
-    int padding;
+    int maxParticles;
 };
 
 void main() {
-    const uint idx = gl_GlobalInvocationID.x + gl_GlobalInvocationID.y * gl_NumWorkGroups.x * gl_WorkGroupSize.x;
-    if (idx >= 100)
+    const uint idx = gl_GlobalInvocationID.x;
+    if (idx >= maxParticles)
         return;
 
     Particle particle = particleBuffer.particles[idx];
 
-    vec4 colour = vec4(1, 0, 0, 1);
+    vec4 colour = vec4(particle.colour, 1);
 
     for (int x = -particle.radius; x < particle.radius; x++) {
         for (int y = -particle.radius; y < particle.radius; y++) {
@@ -167,11 +171,12 @@ void main() {
         .mode = canta::PipelineMode::COMPUTE
     });
 
-    constexpr const u32 numParticles = 100;
+    constexpr const u32 numParticles = 1000;
 
     struct Particle {
         ende::math::Vec<2, f32> position;
         ende::math::Vec<2, f32> velocity;
+        ende::math::Vec<3, f32> colour;
         i32 radius;
     };
 
@@ -188,12 +193,14 @@ void main() {
     std::uniform_real_distribution<f32> xDist(0, window.extent().x());
     std::uniform_real_distribution<f32> yDist(0, window.extent().y());
     std::uniform_real_distribution<f32> velDist(0, 10);
+    std::uniform_real_distribution<f32> colourDist(0, 1);
 
     std::array<Particle, numParticles> particles = {};
     for (u32 i = 0; i < numParticles; i++) {
         particles[i] = {
                 .position = { xDist(re), yDist(re) },
                 .velocity = { velDist(re), velDist(re) },
+                .colour = { colourDist(re), colourDist(re), colourDist(re) },
                 .radius = static_cast<i32>(velDist(re))
         };
     }
@@ -255,20 +262,29 @@ void main() {
         });
 
         commandBuffer.bindPipeline(pipeline);
-        commandBuffer.pushConstants(canta::ShaderStage::COMPUTE, buffer->address());
-        commandBuffer.dispatchWorkgroups();
+        struct PushA {
+            u64 address;
+            i32 maxParticles;
+            i32 padding;
+        };
+        commandBuffer.pushConstants(canta::ShaderStage::COMPUTE, PushA{
+            .address = buffer->address(),
+            .maxParticles = numParticles
+        });
+        commandBuffer.dispatchThreads(numParticles);
 
         commandBuffer.bindPipeline(pipelineDraw);
         struct Push {
             u64 address;
             i32 index;
-            i32 padding;
+            i32 maxParticles;
         };
         commandBuffer.pushConstants(canta::ShaderStage::COMPUTE, Push{
             .address = buffer->address(),
-            .index = image.index()
+            .index = image.index(),
+            .maxParticles = numParticles
         });
-        commandBuffer.dispatchWorkgroups();
+        commandBuffer.dispatchThreads(numParticles);
 
         commandBuffer.barrier({
             .image = image,

@@ -93,10 +93,18 @@ namespace canta {
             pushConstants(stage, std::span<const u8>(reinterpret_cast<const u8*>(&data), sizeof(T)), offset);
         }
 
-        void draw(u32 count, u32 instanceCount = 1, u32 first = 0, u32 firstInstance = 0);
+        void draw(u32 count, u32 instanceCount = 1, u32 first = 0, u32 firstInstance = 0, bool indexed = false);
+        void drawIndirect(BufferHandle commands, u32 offset, u32 drawCount, bool indexed = false, u32 stride = 0);
+        void drawIndirectCount(BufferHandle commands, u32 offset, BufferHandle countBuffer, u32 countOffset, bool indexed = false, u32 stride = 0);
+
+        void drawMeshTasksWorkgroups(u32 x, u32 y, u32 z);
+        void drawMeshTasksThreads(u32 x, u32 y, u32 z);
+        void drawMeshTasksIndirect(BufferHandle commands, u32 offset, u32 drawCount, u32 stride = sizeof(VkDrawMeshTasksIndirectCommandEXT));
+        void drawMeshTasksIndirectCount(BufferHandle commands, u32 offset, BufferHandle countBuffer, u32 countOffset, u32 stride = sizeof(VkDrawMeshTasksIndirectCommandEXT));
 
         void dispatchWorkgroups(u32 x = 1, u32 y = 1, u32 z = 1);
-        void dispatchThreads(u32 x = 1, u32 y = 1, u32 z = 0);
+        void dispatchThreads(u32 x = 1, u32 y = 1, u32 z = 1);
+        void dispatchIndirect(BufferHandle commands, u32 offset);
 
         struct BlitInfo {
             ImageHandle src = {};
