@@ -115,7 +115,6 @@ namespace canta {
             u32 applicationVersion = 0;
             std::function<u32(const Properties&)> selector = {};
             bool enableMeshShading = true;
-            bool enableMeshShadingFallback = true;
 
             std::span<const char* const> instanceExtensions = {};
             std::span<const char* const> deviceExtensions = {};
@@ -145,6 +144,8 @@ namespace canta {
 
         auto properties() const -> const Properties& { return _properties; }
         auto limits() const -> const Limits& { return _properties.limits; }
+        // avoid - loops all supported extensions
+        auto isExtensionEnabled(std::string_view extensionName) -> bool;
 
         auto bindlessSet() const -> VkDescriptorSet { return _bindlessSet; }
 
@@ -195,6 +196,7 @@ namespace canta {
         void destroyTimer(u32 poolIndex, u32 queryIndex);
 
     private:
+        friend CommandBuffer;
 
         Device() = default;
 
@@ -209,6 +211,7 @@ namespace canta {
         VkDebugUtilsMessengerEXT _debugMessenger = VK_NULL_HANDLE;
 
         Properties _properties = {};
+        std::vector<std::string> _enabledExtensions = {};
 
         VkQueue _graphicsQueue = VK_NULL_HANDLE;
         u32 _graphicsIndex = 0;
@@ -226,6 +229,11 @@ namespace canta {
             u32 queryIndex = 0;
         };
         std::vector<FreeTimer> _freeTimers = {};
+
+        std::array<BufferHandle, FRAMES_IN_FLIGHT> _markerBuffers = {};
+        std::vector<std::string> _markerCommands[FRAMES_IN_FLIGHT] = {};
+        u32 _markerOffset = 0;
+        u32 _marker = 0;
 
         Semaphore _frameTimeline = {};
 

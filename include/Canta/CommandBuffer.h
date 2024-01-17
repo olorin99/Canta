@@ -134,6 +134,8 @@ namespace canta {
         void pushDebugLabel(std::string_view label, std::array<f32, 4> colour = { 0, 1, 0, 1 });
         void popDebugLabel();
 
+        void writeMarker(PipelineStage stage, std::string_view command);
+
     private:
         friend CommandPool;
 

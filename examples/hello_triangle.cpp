@@ -11,6 +11,8 @@ int main() {
         .instanceExtensions = window.requiredExtensions()
     }).value();
 
+    std::printf("VK_AMD_BUFFER_MARKER is%s enabled", device->isExtensionEnabled(VK_AMD_BUFFER_MARKER_EXTENSION_NAME) ? "" : " not");
+
     auto swapchain = device->createSwapchain({
         .window = &window
     });

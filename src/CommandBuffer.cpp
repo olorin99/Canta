@@ -3,6 +3,7 @@
 #include <Canta/Pipeline.h>
 #include <Canta/Buffer.h>
 #include <Canta/Image.h>
+#include <format>
 
 canta::CommandBuffer::CommandBuffer(canta::CommandBuffer &&rhs) noexcept {
     std::swap(_device, rhs._device);
@@ -184,8 +185,10 @@ void canta::CommandBuffer::draw(u32 count, u32 instanceCount, u32 first, u32 fir
     assert(_currentPipeline->mode() == PipelineMode::GRAPHICS);
     if (indexed) {
         vkCmdDrawIndexed(_buffer, count, instanceCount, first, 0, firstInstance);
+        writeMarker(PipelineStage::VERTEX_SHADER | PipelineStage::FRAGMENT_SHADER, std::format("drawIndexed({}, {}, {}, {})", count, instanceCount, first, firstInstance));
     } else {
         vkCmdDraw(_buffer, count, instanceCount, first, firstInstance);
+        writeMarker(PipelineStage::VERTEX_SHADER | PipelineStage::FRAGMENT_SHADER, std::format("draw({}, {}, {}, {})", count, instanceCount, first, firstInstance));
     }
 }
 
@@ -196,10 +199,12 @@ void canta::CommandBuffer::drawIndirect(canta::BufferHandle commands, u32 offset
         if (stride == 0)
             stride = sizeof(VkDrawIndexedIndirectCommand);
         vkCmdDrawIndexedIndirect(_buffer, commands->buffer(), offset, drawCount, stride);
+        writeMarker(PipelineStage::VERTEX_SHADER | PipelineStage::FRAGMENT_SHADER, std::format("drawIndexedIndirect({}, {}, {}, {})", commands.index(), offset, drawCount, stride));
     } else {
         if (stride == 0)
             stride = sizeof(VkDrawIndirectCommand);
         vkCmdDrawIndirect(_buffer, commands->buffer(), offset, drawCount, stride);
+        writeMarker(PipelineStage::VERTEX_SHADER | PipelineStage::FRAGMENT_SHADER, std::format("drawIndirect({}, {}, {}, {})", commands.index(), offset, drawCount, stride));
     }
 }
 
@@ -211,10 +216,12 @@ void canta::CommandBuffer::drawIndirectCount(canta::BufferHandle commands, u32 o
         if (stride == 0)
             stride = sizeof(VkDrawIndexedIndirectCommand);
         vkCmdDrawIndexedIndirectCount(_buffer, commands->buffer(), offset, countBuffer->buffer(), countOffset, maxDrawCount, stride);
+        writeMarker(PipelineStage::VERTEX_SHADER | PipelineStage::FRAGMENT_SHADER, std::format("drawIndexedIndirectCount({}, {}, {}, {}, {}, {})", commands.index(), offset, countBuffer.index(), countOffset, maxDrawCount, stride));
     } else {
         if (stride == 0)
             stride = sizeof(VkDrawIndirectCommand);
         vkCmdDrawIndirectCount(_buffer, commands->buffer(), offset, countBuffer->buffer(), countOffset, maxDrawCount, stride);
+        writeMarker(PipelineStage::VERTEX_SHADER | PipelineStage::FRAGMENT_SHADER, std::format("drawIndirectCount({}, {}, {}, {}, {}, {})", commands.index(), offset, countBuffer.index(), countOffset, maxDrawCount, stride));
     }
 }
 
@@ -223,6 +230,7 @@ void canta::CommandBuffer::drawMeshTasksWorkgroups(u32 x, u32 y, u32 z) {
     assert(_currentPipeline->mode() == PipelineMode::GRAPHICS);
     assert(_currentPipeline->interface().stagePresent(ShaderStage::MESH));
     vkCmdDrawMeshTasksEXT(_buffer, x, y, z);
+    writeMarker(PipelineStage::MESH_SHADER | PipelineStage::TASK_SHADER | PipelineStage::FRAGMENT_SHADER, std::format("meshTasks({}, {}, {})", x, y, z));
 }
 
 void canta::CommandBuffer::drawMeshTasksThreads(u32 x, u32 y, u32 z) {
@@ -239,6 +247,7 @@ void canta::CommandBuffer::drawMeshTasksIndirect(canta::BufferHandle commands, u
     assert(_currentPipeline->mode() == PipelineMode::GRAPHICS);
     assert(_currentPipeline->interface().stagePresent(ShaderStage::MESH));
     vkCmdDrawMeshTasksIndirectEXT(_buffer, commands->buffer(), offset, drawCount, stride);
+    writeMarker(PipelineStage::MESH_SHADER | PipelineStage::TASK_SHADER | PipelineStage::FRAGMENT_SHADER, std::format("meshTasksIndirect({}, {}, {}, {})", commands.index(), offset, drawCount, stride));
 }
 
 void canta::CommandBuffer::drawMeshTasksIndirectCount(canta::BufferHandle commands, u32 offset, canta::BufferHandle countBuffer, u32 countOffset, u32 stride) {
@@ -247,6 +256,7 @@ void canta::CommandBuffer::drawMeshTasksIndirectCount(canta::BufferHandle comman
     assert(_currentPipeline->interface().stagePresent(ShaderStage::MESH));
     u32 maxDrawCount = (commands->size() - offset) / stride;
     vkCmdDrawMeshTasksIndirectCountEXT(_buffer, commands->buffer(), offset, countBuffer->buffer(), countOffset, maxDrawCount, stride);
+    writeMarker(PipelineStage::MESH_SHADER | PipelineStage::TASK_SHADER | PipelineStage::FRAGMENT_SHADER, std::format("meshTasksIndirectCount({}, {}, {}, {}, {}, {})", commands.index(), offset, countBuffer.index(), countOffset, maxDrawCount, stride));
 }
 
 void canta::CommandBuffer::dispatchWorkgroups(u32 x, u32 y, u32 z) {
@@ -254,6 +264,7 @@ void canta::CommandBuffer::dispatchWorkgroups(u32 x, u32 y, u32 z) {
     assert(_currentPipeline->mode() == PipelineMode::COMPUTE);
     assert(_currentPipeline->interface().stagePresent(ShaderStage::COMPUTE));
     vkCmdDispatch(_buffer, x, y, z);
+    writeMarker(PipelineStage::COMPUTE_SHADER, std::format("dispatch({}, {}, {})", x, y, z));
 }
 
 void canta::CommandBuffer::dispatchThreads(u32 x, u32 y, u32 z) {
@@ -266,6 +277,7 @@ void canta::CommandBuffer::dispatchIndirect(canta::BufferHandle commands, u32 of
     assert(_currentPipeline->mode() == PipelineMode::COMPUTE);
     assert(_currentPipeline->interface().stagePresent(ShaderStage::COMPUTE));
     vkCmdDispatchIndirect(_buffer, commands->buffer(), offset);
+    writeMarker(PipelineStage::COMPUTE_SHADER, std::format("dispatchIndirect({}, {})", commands.index(), offset));
 }
 
 void canta::CommandBuffer::blit(canta::CommandBuffer::BlitInfo info) {
@@ -384,5 +396,16 @@ void canta::CommandBuffer::pushDebugLabel(std::string_view label, std::array<f32
 void canta::CommandBuffer::popDebugLabel() {
 #ifndef NDEBUG
     vkCmdEndDebugUtilsLabelEXT(_buffer);
+#endif
+}
+
+void canta::CommandBuffer::writeMarker(canta::PipelineStage stage, std::string_view command) {
+#ifndef NDEBUG
+    if (_device->_markerBuffers[_device->flyingIndex()]) {
+        vkCmdWriteBufferMarkerAMD(_buffer, static_cast<VkPipelineStageFlagBits>(stage), _device->_markerBuffers[_device->flyingIndex()]->buffer(), _device->_markerOffset, _device->_marker);
+        _device->_markerCommands[_device->flyingIndex()].push_back(command.data());
+        _device->_markerOffset += sizeof(u32);
+        _device->_marker++;
+    }
 #endif
 }

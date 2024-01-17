@@ -248,12 +248,41 @@ auto canta::Device::create(canta::Device::CreateInfo info) noexcept -> std::expe
     }
 
 
+    u32 supportedDeviceExtensionCount = 0;
+    vkEnumerateDeviceExtensionProperties(device->physicalDevice(), nullptr, &supportedDeviceExtensionCount, nullptr);
+    std::vector<VkExtensionProperties> supportedExtensions(supportedDeviceExtensionCount);
+    vkEnumerateDeviceExtensionProperties(device->physicalDevice(), nullptr, &supportedDeviceExtensionCount, supportedExtensions.data());
+
+    const auto isExtensionSupported = [&](std::string_view extensionName) {
+        for (auto& extension : supportedExtensions) {
+            if (strcmp(extension.extensionName, extensionName.data()) == 0)
+                return true;
+        }
+        return false;
+    };
+
+#define REQUIRE_EXTENSION(extension, extensionList)             \
+    if (isExtensionSupported(extension))                        \
+        (extensionList).push_back(extension);                   \
+    else                                                        \
+        return std::unexpected(Error::EXTENSION_NOT_PRESENT);
+
+#define ENABLE_EXTENSION(extension, extensionList) \
+    if (isExtensionSupported(extension))           \
+        (extensionList).push_back(extension);
 
     // init logical device
     std::vector<const char*> deviceExtensions;
-    deviceExtensions.insert(deviceExtensions.end(), info.deviceExtensions.begin(), info.deviceExtensions.end());
-    deviceExtensions.push_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
-    deviceExtensions.push_back(VK_EXT_MESH_SHADER_EXTENSION_NAME);
+    for (auto& extension : info.deviceExtensions) {
+        REQUIRE_EXTENSION(extension, deviceExtensions);
+    }
+    REQUIRE_EXTENSION(VK_KHR_SWAPCHAIN_EXTENSION_NAME, deviceExtensions);
+    if (info.enableMeshShading) {
+        REQUIRE_EXTENSION(VK_EXT_MESH_SHADER_EXTENSION_NAME, deviceExtensions);
+    }
+#ifndef NDEBUG
+    ENABLE_EXTENSION(VK_AMD_BUFFER_MARKER_EXTENSION_NAME, deviceExtensions);
+#endif
 
     VkPhysicalDeviceFeatures2 deviceFeatures2 = {};
     deviceFeatures2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
@@ -316,6 +345,9 @@ auto canta::Device::create(canta::Device::CreateInfo info) noexcept -> std::expe
     auto result = vkCreateDevice(device->_physicalDevice, &deviceCreateInfo, nullptr, &device->_logicalDevice);
     if (result != VK_SUCCESS)
         return std::unexpected(static_cast<Error>(result));
+
+    device->_enabledExtensions.insert(device->_enabledExtensions.begin(), deviceExtensions.begin(), deviceExtensions.end());
+    device->_enabledExtensions.insert(device->_enabledExtensions.begin(), instanceExtensions.begin(), instanceExtensions.end());
 
     volkLoadDevice(device->_logicalDevice);
 
@@ -469,12 +501,30 @@ auto canta::Device::create(canta::Device::CreateInfo info) noexcept -> std::expe
     VK_TRY(vkAllocateDescriptorSets(device->logicalDevice(), &bindlessAllocInfo, &device->_bindlessSet));
     device->setDebugName(VK_OBJECT_TYPE_DESCRIPTOR_SET, (u64)device->_bindlessSet, "bindless_set");
 
+#ifndef NDEBUG
+    if (device->isExtensionEnabled(VK_AMD_BUFFER_MARKER_EXTENSION_NAME)) {
+        for (u32 i = 0; auto& buffer : device->_markerBuffers) {
+            buffer = device->createBuffer({
+                .size = sizeof(u32) * 1000,
+                .usage = BufferUsage::TRANSFER_DST,
+                .type = MemoryType::READBACK,
+                .requiredFlags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT,
+                .persistentlyMapped = true,
+                .name = std::format("marker_buffer_{}", i++)
+            });
+        }
+    }
+#endif
+
     return device;
 }
 
 canta::Device::~Device() {
     _frameTimeline.signal(std::numeric_limits<u64>::max());
     vkDeviceWaitIdle(_logicalDevice);
+
+    for (auto& buffer : _markerBuffers)
+        buffer = {};
 
     _shaderList.clearAll([&](auto& module) {
         vkDestroyShaderModule(logicalDevice(), module.module(), nullptr);
@@ -544,10 +594,25 @@ void canta::Device::beginFrame() {
     u64 frameValue = std::max(0l, static_cast<i64>(_frameTimeline.value()) - (FRAMES_IN_FLIGHT - 1));
     _frameTimeline.wait(frameValue);
     _frameTimeline.increment();
+
+#ifndef NDEBUG
+    _markerOffset = 0;
+    _marker = 0;
+    _markerCommands[flyingIndex()].clear();
+    std::memset(_markerBuffers[flyingIndex()]->_mapped.address(), 0, _markerBuffers[flyingIndex()]->size());
+#endif
 }
 
 void canta::Device::endFrame() {
 
+}
+
+auto canta::Device::isExtensionEnabled(std::string_view extensionName) -> bool {
+    for (auto& extension : _enabledExtensions) {
+        if (strcmp(extension.c_str(), extensionName.data()) == 0)
+            return true;
+    }
+    return false;
 }
 
 auto canta::Device::queue(canta::QueueType type) const -> VkQueue {
