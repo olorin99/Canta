@@ -883,6 +883,7 @@ auto canta::Device::createPipeline(Pipeline::CreateInfo info, PipelineHandle old
     handle->_pipeline = pipeline;
     handle->_layout = pipelineLayout;
     handle->_mode = info.mode;
+    handle->_interface = interface;
 
     return handle;
 }

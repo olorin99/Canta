@@ -269,3 +269,15 @@ auto canta::ShaderInterface::getBindingMemberList(u32 set, u32 binding) const ->
         members.push_back(value);
     return members;
 }
+
+auto canta::ShaderInterface::localSize(canta::ShaderStage stage) const -> ende::math::Vec<3, u32> {
+    for (auto& sizePair : _localSizes) {
+        if (sizePair.second == stage)
+            return sizePair.first;
+    }
+    return { 1, 1, 1 };
+}
+
+auto canta::ShaderInterface::stagePresent(canta::ShaderStage stage) const -> bool {
+    return (_stages & stage) == stage;
+}

@@ -96,6 +96,10 @@ namespace canta {
 
         auto bindingCount(u32 set) const -> u32 { return _sets[set].bindingCount; }
 
+        auto localSize(ShaderStage stage) const -> ende::math::Vec<3, u32>;
+
+        auto stagePresent(ShaderStage stage) const -> bool;
+
     private:
 
 

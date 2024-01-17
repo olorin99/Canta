@@ -164,11 +164,15 @@ void canta::CommandBuffer::draw(u32 count, u32 instanceCount, u32 first, u32 fir
 }
 
 void canta::CommandBuffer::dispatchWorkgroups(u32 x, u32 y, u32 z) {
+    assert(_currentPipeline);
+    assert(_currentPipeline->mode() == PipelineMode::COMPUTE);
+    assert(_currentPipeline->interface().stagePresent(ShaderStage::COMPUTE));
     vkCmdDispatch(_buffer, x, y, z);
 }
 
 void canta::CommandBuffer::dispatchThreads(u32 x, u32 y, u32 z) {
-
+    auto localSize = _currentPipeline->interface().localSize(ShaderStage::COMPUTE);
+    dispatchWorkgroups(std::ceil(static_cast<f32>(x) / static_cast<f32>(localSize.x())), std::ceil(static_cast<f32>(y) / static_cast<f32>(localSize.y())), std::ceil(static_cast<f32>(z) / static_cast<f32>(localSize.z())));
 }
 
 void canta::CommandBuffer::blit(canta::CommandBuffer::BlitInfo info) {
