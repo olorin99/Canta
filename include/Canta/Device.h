@@ -19,6 +19,7 @@
 #include <Canta/Buffer.h>
 #include <Canta/Sampler.h>
 #include <Canta/Timer.h>
+#include <Canta/Queue.h>
 
 #define VMA_STATIC_VULKAN_FUNCTIONS 0
 #define VMA_DYNAMIC_VULKAN_FUNCTIONS 0
@@ -115,7 +116,8 @@ namespace canta {
             u32 applicationVersion = 0;
             std::function<u32(const Properties&)> selector = {};
             bool enableMeshShading = true;
-
+            bool enableAsyncComputeQueue = true;
+            bool enableAsyncTransferQueue = true;
             std::span<const char* const> instanceExtensions = {};
             std::span<const char* const> deviceExtensions = {};
         };
@@ -149,7 +151,7 @@ namespace canta {
 
         auto bindlessSet() const -> VkDescriptorSet { return _bindlessSet; }
 
-        auto queue(QueueType type) const -> VkQueue;
+        auto queue(QueueType type) -> Queue&;
 
         auto waitIdle() const -> std::expected<bool, Error>;
 
@@ -213,12 +215,9 @@ namespace canta {
         Properties _properties = {};
         std::vector<std::string> _enabledExtensions = {};
 
-        VkQueue _graphicsQueue = VK_NULL_HANDLE;
-        u32 _graphicsIndex = 0;
-        VkQueue _computeQueue = VK_NULL_HANDLE;
-        u32 _computeIndex = 0;
-        VkQueue _transferQueue = VK_NULL_HANDLE;
-        u32 _transferIndex = 0;
+        Queue _graphicsQueue = {};
+        Queue _computeQueue = {};
+        Queue _transferQueue = {};
 
         VmaAllocator _allocator = VK_NULL_HANDLE;
 

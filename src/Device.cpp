@@ -369,16 +369,31 @@ auto canta::Device::create(canta::Device::CreateInfo info) noexcept -> std::expe
         }
         return -1;
     };
-    device->_graphicsIndex = findQueueIndex(QueueType::GRAPHICS);
-    device->_computeIndex = findQueueIndex(QueueType::COMPUTE, QueueType::GRAPHICS);
-    device->_transferIndex = findQueueIndex(QueueType::TRANSFER, QueueType::GRAPHICS);
 
-    if (device->_graphicsIndex >= 0)
-        vkGetDeviceQueue(device->_logicalDevice, device->_graphicsIndex, 0, &device->_graphicsQueue);
-    if (device->_computeIndex >= 0)
-        vkGetDeviceQueue(device->_logicalDevice, device->_computeIndex, 0, &device->_computeQueue);
-    if (device->_transferIndex >= 0)
-        vkGetDeviceQueue(device->_logicalDevice, device->_transferIndex, 0, &device->_transferQueue);
+    {
+        u32 graphicsIndex = findQueueIndex(QueueType::GRAPHICS);
+        VkQueue graphicsQueue;
+        vkGetDeviceQueue(device->_logicalDevice, graphicsIndex, 0, &graphicsQueue);
+        device->_graphicsQueue._device = device.get();
+        device->_graphicsQueue._queue = graphicsQueue;
+        device->_graphicsQueue._familyIndex = graphicsIndex;
+    }
+    if (info.enableAsyncComputeQueue) {
+        u32 computeIndex = findQueueIndex(QueueType::COMPUTE, QueueType::GRAPHICS);
+        VkQueue computeQueue;
+        vkGetDeviceQueue(device->_logicalDevice, computeIndex, 0, &computeQueue);
+        device->_computeQueue._device = device.get();
+        device->_computeQueue._queue = computeQueue;
+        device->_computeQueue._familyIndex = computeIndex;
+    }
+    if (info.enableAsyncTransferQueue) {
+        u32 transferIndex = findQueueIndex(QueueType::TRANSFER, QueueType::GRAPHICS);
+        VkQueue transferQueue;
+        vkGetDeviceQueue(device->_logicalDevice, transferIndex, 0, &transferQueue);
+        device->_transferQueue._device = device.get();
+        device->_transferQueue._queue = transferQueue;
+        device->_transferQueue._familyIndex = transferIndex;
+    }
 
 
     // init VMA
@@ -615,7 +630,7 @@ auto canta::Device::isExtensionEnabled(std::string_view extensionName) -> bool {
     return false;
 }
 
-auto canta::Device::queue(canta::QueueType type) const -> VkQueue {
+auto canta::Device::queue(canta::QueueType type) -> Queue& {
     switch (type) {
         case QueueType::GRAPHICS:
             return _graphicsQueue;
@@ -624,7 +639,7 @@ auto canta::Device::queue(canta::QueueType type) const -> VkQueue {
         case QueueType::TRANSFER:
             return _transferQueue;
     }
-    return VK_NULL_HANDLE;
+    return _graphicsQueue;
 }
 
 auto canta::Device::waitIdle() const -> std::expected<bool, Error> {
@@ -686,13 +701,13 @@ auto canta::Device::createCommandPool(CommandPool::CreateInfo info) -> std::expe
     createInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
     switch (info.queueType) {
         case QueueType::GRAPHICS:
-            createInfo.queueFamilyIndex = _graphicsIndex;
+            createInfo.queueFamilyIndex = _graphicsQueue.familyIndex();
             break;
         case QueueType::COMPUTE:
-            createInfo.queueFamilyIndex = _computeIndex;
+            createInfo.queueFamilyIndex = _computeQueue.familyIndex();
             break;
         case QueueType::TRANSFER:
-            createInfo.queueFamilyIndex = _transferIndex;
+            createInfo.queueFamilyIndex = _transferQueue.familyIndex();
             break;
     }
     auto result = vkCreateCommandPool(logicalDevice(), &createInfo, nullptr, &pool._pool);

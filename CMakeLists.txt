@@ -37,6 +37,8 @@ add_library(Canta
         include/Canta/Sampler.h
         src/Timer.cpp
         include/Canta/Timer.h
+        src/Queue.cpp
+        include/Canta/Queue.h
 )
 
 add_subdirectory(third_party)

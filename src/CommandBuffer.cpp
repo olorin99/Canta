@@ -55,9 +55,9 @@ auto canta::CommandBuffer::submit(std::span<Semaphore::Pair> waitSemaphores, std
     submitInfo.commandBufferInfoCount = 1;
     submitInfo.pCommandBufferInfos = &commandBufferSubmitInfo;
 
-    auto queue = _device->queue(_queueType);
+    auto& queue = _device->queue(_queueType);
 
-    auto result = vkQueueSubmit2(queue, 1, &submitInfo, fence);
+    auto result = vkQueueSubmit2(queue.queue(), 1, &submitInfo, fence);
     if (result != VK_SUCCESS)
         return std::unexpected(static_cast<Error>(result));
     return true;

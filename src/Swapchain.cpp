@@ -134,7 +134,7 @@ auto canta::Swapchain::present() -> std::expected<u32, Error> {
     presentInfo.pImageIndices = &_index;
     presentInfo.pResults = nullptr;
 
-    auto result = vkQueuePresentKHR(_device->queue(QueueType::GRAPHICS), &presentInfo);
+    auto result = vkQueuePresentKHR(_device->queue(QueueType::GRAPHICS).queue(), &presentInfo);
     if (result != VK_SUCCESS)
         return std::unexpected(static_cast<Error>(result));
     return _index;
