@@ -53,7 +53,7 @@ namespace canta {
             return *this;
         }
 
-        auto operator==(const Handle& rhs) noexcept -> bool {
+        auto operator==(const Handle& rhs) const noexcept -> bool {
             return _list == rhs._list && _data == rhs._data;
         }
 

@@ -22,6 +22,11 @@ namespace canta {
 
         ShaderModule() = default;
 
+        ~ShaderModule();
+
+        ShaderModule(ShaderModule&& rhs) noexcept;
+        auto operator=(ShaderModule&& rhs) noexcept -> ShaderModule&;
+
         auto stage() const -> ShaderStage { return _stage; }
 
         auto module() const -> VkShaderModule { return _module; }

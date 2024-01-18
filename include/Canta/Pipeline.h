@@ -16,7 +16,7 @@ namespace canta {
 
     struct ShaderInfo {
         ShaderHandle module = {};
-        std::string_view entryPoint = {};
+        std::string_view entryPoint = "main";
     };
 
     struct RasterState {
@@ -64,7 +64,20 @@ namespace canta {
 
 
         struct CreateInfo {
-            std::span<ShaderInfo> shaders = {};
+            ShaderInfo vertex = {};
+            ShaderInfo tesselationControl = {};
+            ShaderInfo tesselationEvaluation = {};
+            ShaderInfo geometry = {};
+            ShaderInfo fragment = {};
+            ShaderInfo compute = {};
+            ShaderInfo rayGen = {};
+            ShaderInfo anyHit = {};
+            ShaderInfo closestHit = {};
+            ShaderInfo miss = {};
+            ShaderInfo intersection = {};
+            ShaderInfo callable = {};
+            ShaderInfo task = {};
+            ShaderInfo mesh = {};
             RasterState rasterState = {};
             DepthState depthState = {};
             BlendState blendState = {};
@@ -74,7 +87,6 @@ namespace canta {
             bool primitiveRestart = false;
             std::span<Format> colourFormats = {};
             Format depthFormat = Format::UNDEFINED;
-            PipelineMode mode = PipelineMode::GRAPHICS;
         };
 
         Pipeline() = default;

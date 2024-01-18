@@ -3,6 +3,7 @@
 #include <Canta/util.h>
 #include <Ende/math/Vec.h>
 #include <random>
+#include <Canta/PipelineManager.h>
 
 int main() {
 
@@ -128,6 +129,10 @@ void main() {
 }
 )";
 
+    canta::PipelineManager pipelineManager({
+        .device = device.get()
+    });
+
     auto particleSpirv = canta::util::compileGLSLToSpirv("particleMove", particleMoveComp, canta::ShaderStage::COMPUTE).transform_error([](const auto& error) {
         std::printf("%s", error.c_str());
         return error;
@@ -137,38 +142,22 @@ void main() {
         return error;
     }).value();
 
-    auto particleShader = device->createShaderModule({
-        .spirv = particleSpirv,
-        .stage = canta::ShaderStage::COMPUTE
-    });
-
-    auto particleDrawShader = device->createShaderModule({
-        .spirv = particleDrawSpirv,
-        .stage = canta::ShaderStage::COMPUTE
-    });
-
-    auto pipelineShaders = std::to_array({
-        canta::ShaderInfo{
-            .module = particleShader,
-            .entryPoint = "main"
+    auto pipeline = pipelineManager.getPipeline({
+        .compute = {
+            .module = pipelineManager.getShader({
+                .spirv = particleSpirv,
+                .stage = canta::ShaderStage::COMPUTE
+            })
         }
     });
 
-    auto pipeline = device->createPipeline({
-        .shaders = pipelineShaders,
-        .mode = canta::PipelineMode::COMPUTE
-    });
-
-    auto pipelineDrawShaders = std::to_array({
-        canta::ShaderInfo{
-            .module = particleDrawShader,
-            .entryPoint = "main"
+    auto pipelineDraw = pipelineManager.getPipeline({
+        .compute = {
+            .module = pipelineManager.getShader({
+                .spirv = particleDrawSpirv,
+                .stage = canta::ShaderStage::COMPUTE
+            })
         }
-    });
-
-    auto pipelineDraw = device->createPipeline({
-        .shaders = pipelineDrawShaders,
-        .mode = canta::PipelineMode::COMPUTE
     });
 
     constexpr const u32 numParticles = 1000;

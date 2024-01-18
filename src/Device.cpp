@@ -541,9 +541,7 @@ canta::Device::~Device() {
     for (auto& buffer : _markerBuffers)
         buffer = {};
 
-    _shaderList.clearAll([&](auto& module) {
-        vkDestroyShaderModule(logicalDevice(), module.module(), nullptr);
-    });
+    _shaderList.clearAll();
     _pipelineList.clearAll();
     _imageList.clearAll();
     _bufferList.clearAll();
@@ -595,10 +593,7 @@ auto canta::Device::operator=(canta::Device &&rhs) noexcept -> Device & {
 }
 
 void canta::Device::gc() {
-    _shaderList.clearQueue([&](auto& module) {
-        vkDestroyShaderModule(logicalDevice(), module.module(), nullptr);
-        module._module = VK_NULL_HANDLE;
-    });
+    _shaderList.clearQueue();
     _pipelineList.clearQueue();
     _imageList.clearQueue();
     _bufferList.clearQueue();
@@ -749,7 +744,8 @@ auto canta::Device::createShaderModule(ShaderModule::CreateInfo info, ShaderHand
 auto canta::Device::createPipeline(Pipeline::CreateInfo info, PipelineHandle oldHandle) -> PipelineHandle {
     ShaderInterface interface = {};
     std::vector<VkPipelineShaderStageCreateInfo> shaderStages = {};
-    for (auto& shaderInfo : info.shaders) {
+
+    const auto attachShader = [&](ShaderInfo& shaderInfo) {
         auto array = std::to_array({ interface, shaderInfo.module->interface() });
         interface = ShaderInterface::merge(array);
 
@@ -759,7 +755,40 @@ auto canta::Device::createPipeline(Pipeline::CreateInfo info, PipelineHandle old
         stageCreateInfo.module = shaderInfo.module->module();
         stageCreateInfo.pName = shaderInfo.entryPoint.data();
         shaderStages.push_back(stageCreateInfo);
+    };
+
+    PipelineMode mode = PipelineMode::GRAPHICS;
+
+    if (info.vertex.module)
+        attachShader(info.vertex);
+    if (info.tesselationControl.module)
+        attachShader(info.tesselationControl);
+    if (info.tesselationEvaluation.module)
+        attachShader(info.tesselationEvaluation);
+    if (info.geometry.module)
+        attachShader(info.geometry);
+    if (info.fragment.module)
+        attachShader(info.fragment);
+    if (info.compute.module) {
+        attachShader(info.compute);
+        mode = PipelineMode::COMPUTE;
     }
+    if (info.rayGen.module)
+        attachShader(info.rayGen);
+    if (info.anyHit.module)
+        attachShader(info.anyHit);
+    if (info.closestHit.module)
+        attachShader(info.closestHit);
+    if (info.miss.module)
+        attachShader(info.miss);
+    if (info.intersection.module)
+        attachShader(info.intersection);
+    if (info.callable.module)
+        attachShader(info.callable);
+    if (info.task.module)
+        attachShader(info.task);
+    if (info.mesh.module)
+        attachShader(info.mesh);
 
     std::vector<VkDescriptorSetLayout> setLayouts = {};
     setLayouts.push_back(_bindlessLayout);
@@ -835,7 +864,7 @@ auto canta::Device::createPipeline(Pipeline::CreateInfo info, PipelineHandle old
 
 
     VkPipeline pipeline;
-    if (info.mode == PipelineMode::GRAPHICS) {
+    if (mode == PipelineMode::GRAPHICS) {
         VkGraphicsPipelineCreateInfo createInfo = {};
         createInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
 
@@ -995,7 +1024,7 @@ auto canta::Device::createPipeline(Pipeline::CreateInfo info, PipelineHandle old
     handle->_device = this;
     handle->_pipeline = pipeline;
     handle->_layout = pipelineLayout;
-    handle->_mode = info.mode;
+    handle->_mode = mode;
     handle->_interface = interface;
 
     return handle;
