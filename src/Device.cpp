@@ -827,12 +827,35 @@ auto canta::Device::createPipeline(Pipeline::CreateInfo info, PipelineHandle old
         createInfo.stageCount = shaderStages.size();
         createInfo.pStages = shaderStages.data();
 
+        std::vector<VkVertexInputBindingDescription> inputBindings = {};
+        for (auto& binding : info.inputBindings) {
+            inputBindings.push_back({
+                .binding = binding.binding,
+                .stride = binding.stride,
+                .inputRate = static_cast<VkVertexInputRate>(binding.inputRate)
+            });
+
+        }
+        std::vector<VkVertexInputAttributeDescription> inputAttributes = {};
+        for (auto& attribute : info.inputAttributes) {
+            inputAttributes.push_back({
+                .location = attribute.location,
+                .binding = attribute.binding,
+                .format = static_cast<VkFormat>(attribute.format),
+                .offset = attribute.offset
+            });
+        }
         VkPipelineVertexInputStateCreateInfo vertexInputState = {};
         vertexInputState.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+        vertexInputState.vertexBindingDescriptionCount = inputBindings.size();
+        vertexInputState.pVertexBindingDescriptions = inputBindings.data();
+        vertexInputState.vertexAttributeDescriptionCount = inputAttributes.size();
+        vertexInputState.pVertexAttributeDescriptions = inputAttributes.data();
 
         VkPipelineInputAssemblyStateCreateInfo inputAssemblyState = {};
         inputAssemblyState.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-        inputAssemblyState.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+        inputAssemblyState.topology = static_cast<VkPrimitiveTopology>(info.topology);
+        inputAssemblyState.primitiveRestartEnable = info.primitiveRestart;
 
         VkPipelineRenderingCreateInfo renderingCreateInfo = {};
         renderingCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO;

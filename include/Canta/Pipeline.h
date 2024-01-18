@@ -41,6 +41,19 @@ namespace canta {
         BlendFactor dstFactor = BlendFactor::ONE;
     };
 
+    struct VertexInputBinding {
+        u32 binding = 0;
+        u32 stride = 0;
+        u32 inputRate = 0;
+    };
+
+    struct VertexInputAttribute {
+        u32 location = 0;
+        u32 binding = 0;
+        Format format = Format::RGBA32_SFLOAT;
+        u32 offset = 0;
+    };
+
     enum PipelineMode {
         GRAPHICS = 1,
         COMPUTE = 2
@@ -55,6 +68,10 @@ namespace canta {
             RasterState rasterState = {};
             DepthState depthState = {};
             BlendState blendState = {};
+            std::span<VertexInputBinding> inputBindings = {};
+            std::span<VertexInputAttribute> inputAttributes = {};
+            PrimitiveTopology topology = PrimitiveTopology::TRIANGLE_LIST;
+            bool primitiveRestart = false;
             std::span<Format> colourFormats = {};
             Format depthFormat = Format::UNDEFINED;
             PipelineMode mode = PipelineMode::GRAPHICS;
