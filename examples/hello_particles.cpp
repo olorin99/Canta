@@ -88,7 +88,7 @@ void main() {
 #extension GL_EXT_scalar_block_layout : enable
 #extension GL_EXT_shader_explicit_arithmetic_types : enable
 
-#include "bindings.glsl"
+#include "canta.glsl"
 
 layout (local_size_x = 32) in;
 
@@ -136,16 +136,10 @@ void main() {
     auto pipelineManager = canta::PipelineManager::create({
         .device = device.get()
     });
-    pipelineManager.addVirtualFile("bindings.glsl", R"(
-#ifndef CANTA_BINDINGS_GLSL
-#define CANTA_BINDINGS_GLSL
-
-#define CANTA_USE_STORAGE_IMAGE(type, annotation, name) layout (set = 0, binding = 2) uniform annotation type name[];
-
-#define CANTA_GET_STORAGE_IMAGE(name, index) name[index]
-
-#endif
-)");
+    const char* cantaFile =
+        #include <Canta/canta.glsl>
+    ;
+    pipelineManager.addVirtualFile("canta.glsl", cantaFile);
 
     auto pipeline = pipelineManager.getPipeline({
         .compute = {

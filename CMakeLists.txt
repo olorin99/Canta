@@ -3,6 +3,8 @@ project(Canta)
 
 set(CMAKE_CXX_STANDARD 23)
 
+add_compile_definitions(CANTA_SRC_DIR="${CMAKE_SOURCE_DIR}")
+
 find_package(SDL2 REQUIRED)
 
 add_library(Canta
