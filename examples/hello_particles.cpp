@@ -88,9 +88,13 @@ void main() {
 #extension GL_EXT_scalar_block_layout : enable
 #extension GL_EXT_shader_explicit_arithmetic_types : enable
 
+#include "bindings.glsl"
+
 layout (local_size_x = 32) in;
 
-layout (set = 0, binding = 2) uniform writeonly image2D storageImages[];
+//layout (set = 0, binding = 2) uniform writeonly image2D storageImages[];
+
+CANTA_USE_STORAGE_IMAGE(image2D, writeonly, storageImages);
 
 struct Particle {
     vec2 position;
@@ -132,15 +136,16 @@ void main() {
     auto pipelineManager = canta::PipelineManager::create({
         .device = device.get()
     });
+    pipelineManager.addVirtualFile("bindings.glsl", R"(
+#ifndef CANTA_BINDINGS_GLSL
+#define CANTA_BINDINGS_GLSL
 
-    auto particleSpirv = canta::util::compileGLSLToSpirv("particleMove", particleMoveComp, canta::ShaderStage::COMPUTE).transform_error([](const auto& error) {
-        std::printf("%s", error.c_str());
-        return error;
-    }).value();
-    auto particleDrawSpirv = canta::util::compileGLSLToSpirv("particleDraw", particleDrawComp, canta::ShaderStage::COMPUTE).transform_error([](const auto& error) {
-        std::printf("%s", error.c_str());
-        return error;
-    }).value();
+#define CANTA_USE_STORAGE_IMAGE(type, annotation, name) layout (set = 0, binding = 2) uniform annotation type name[];
+
+#define CANTA_GET_STORAGE_IMAGE(name, index) name[index]
+
+#endif
+)");
 
     auto pipeline = pipelineManager.getPipeline({
         .compute = {
@@ -154,7 +159,7 @@ void main() {
     auto pipelineDraw = pipelineManager.getPipeline({
         .compute = {
             .module = pipelineManager.getShader({
-                .spirv = particleDrawSpirv,
+                .glsl = particleDrawComp,
                 .stage = canta::ShaderStage::COMPUTE
             })
         }

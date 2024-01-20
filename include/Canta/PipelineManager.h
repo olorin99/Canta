@@ -11,6 +11,7 @@ namespace canta {
     struct ShaderDescription {
         std::filesystem::path path = {};
         std::span<u32> spirv = {};
+        std::string_view glsl = {};
         ShaderStage stage = ShaderStage::NONE;
     };
 }
@@ -47,6 +48,8 @@ namespace canta {
 
         void reloadAll(bool force = false);
 
+        void addVirtualFile(const std::filesystem::path& path, const std::string& contents);
+
     private:
 
         PipelineManager() = default;
@@ -56,6 +59,12 @@ namespace canta {
 
         auto createShader(ShaderDescription info, ShaderHandle handle = {}) -> ShaderHandle;
 
+        struct Macro {
+            std::string name;
+            std::string value;
+        };
+        auto compileGLSL(std::string_view glsl, ShaderStage stage, std::span<Macro> macros = {}) -> std::expected<std::vector<u32>, std::string>;
+
         Device* _device = nullptr;
         std::filesystem::path _rootPath = {};
         tsl::robin_map<ShaderDescription, ShaderHandle> _shaders;
@@ -63,6 +72,8 @@ namespace canta {
 
         ende::fs::FileWatcher _fileWatcher = {};
         tsl::robin_map<std::filesystem::path, std::pair<ShaderDescription, std::vector<Pipeline::CreateInfo>>> _watchedPipelines;
+
+        std::vector<std::pair<std::string, std::string>> _virtualFiles = {};
 
     };
 

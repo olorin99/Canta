@@ -3,6 +3,8 @@
 #include <Ende/util/hash.h>
 #include <Canta/util.h>
 #include <Ende/filesystem/File.h>
+#include <format>
+#include <shaderc/shaderc.hpp>
 
 size_t std::hash<canta::Pipeline::CreateInfo>::operator()(const canta::Pipeline::CreateInfo &object) const {
     u64 hash = 0;
@@ -203,27 +205,219 @@ auto canta::PipelineManager::createShader(canta::ShaderDescription info, ShaderH
     ShaderModule::CreateInfo createInfo = {};
     createInfo.spirv = info.spirv;
     createInfo.stage = info.stage;
+    std::vector<u32> spirv = {};
     if (!info.path.empty()) {
         auto shaderFile = ende::fs::File::open(_rootPath / info.path);
         auto glsl = shaderFile->read();
-        auto spirv = util::compileGLSLToSpirv("", glsl, info.stage).transform_error([](const auto& error) {
+        spirv = compileGLSL(glsl, info.stage).transform_error([](const auto& error) {
             std::printf("%s", error.c_str());
             return error;
         }).value();
-        createInfo.spirv = spirv;
-        auto h = _device->createShaderModule(createInfo, handle);
         if (!handle) {
             auto watcher = _watchedPipelines.find(info.path);
             if (watcher == _watchedPipelines.end())
                 _fileWatcher.addWatch(_rootPath / info.path);
-            auto it1 = _shaders.insert(std::make_pair(info, h));
         }
-        return h;
+    } else if (!info.glsl.empty()) {
+        spirv = compileGLSL(info.glsl, info.stage).transform_error([](const auto& error) {
+            std::printf("%s", error.c_str());
+            return error;
+        }).value();
     }
+    if (!spirv.empty())
+        createInfo.spirv = spirv;
+
+
     auto h = _device->createShaderModule(createInfo, handle);
     if (!handle) {
         auto it1 = _shaders.insert(std::make_pair(info, h));
         return it1.first->second;
     }
     return h;
+}
+
+void canta::PipelineManager::addVirtualFile(const std::filesystem::path &path, const std::string& contents) {
+    _virtualFiles.push_back({ path.string(), contents });
+}
+
+
+struct FileInfo {
+    std::string path = {};
+    std::string contents = {};
+    bool isVirtual = false;
+};
+
+class FileFinder {
+public:
+
+    FileFinder(std::vector<std::pair<std::string, std::string>>& virtualFileList)
+        : _virtualFileList(virtualFileList)
+    {}
+
+    FileInfo* findReadableFilepath(const std::string& path) const {
+        for (auto& virtualFile : _virtualFileList) {
+            if (virtualFile.first == path) {
+                return new FileInfo{
+                    .path = virtualFile.first,
+                    .contents = virtualFile.second,
+                    .isVirtual = true
+                };
+            }
+        }
+
+        for (const auto& prefix : _searchPaths) {
+            std::string prefixed_filename = prefix + ((prefix.empty() || prefix.back() == '/') ? "" : "/") + path;
+            auto file = ende::fs::File::open(prefixed_filename, ende::fs::in);
+            if (file) {
+                return new FileInfo{
+                    .path = prefixed_filename,
+                    .contents = file->read(),
+                    .isVirtual = false
+                };
+            }
+        }
+        return nullptr;
+    }
+
+    FileInfo* findRelativeReadableFilepath(const std::string& requestingPath, const std::string& fileName) const {
+        for (auto& virtualFile : _virtualFileList) {
+            if (virtualFile.first == fileName) {
+                return new FileInfo{
+                        .path = virtualFile.first,
+                        .contents = virtualFile.second,
+                        .isVirtual = true
+                };
+            }
+        }
+
+        size_t last_slash = requestingPath.find_last_of("/\\");
+        std::string dir_name = requestingPath;
+        if (last_slash != std::string::npos) {
+            dir_name = requestingPath.substr(0, last_slash);
+        }
+        if (dir_name.size() == requestingPath.size()) {
+            dir_name = {};
+        }
+
+        std::string relative_filename = dir_name + ((dir_name.empty() || dir_name.back() == '/') ? "" : "/") + fileName;
+
+        auto file = ende::fs::File::open(relative_filename, ende::fs::in);
+        if (file) {
+            return new FileInfo{
+                .path = relative_filename,
+                .contents = file->read(),
+                .isVirtual = false
+            };
+        }
+        return findReadableFilepath(fileName);
+    }
+
+    void addSearchPath(const std::string& path) {
+        _searchPaths.push_back(path);
+    }
+
+private:
+
+    std::vector<std::pair<std::string, std::string>>& _virtualFileList;
+    std::vector<std::string> _searchPaths;
+
+};
+
+class FileIncluder : public shaderc::CompileOptions::IncluderInterface {
+public:
+
+    explicit FileIncluder(const FileFinder* fileFinder)
+        : _fileFinder(fileFinder)
+    {}
+
+    ~FileIncluder() override = default;
+
+    shaderc_include_result* GetInclude(const char* requestedSource, shaderc_include_type type, const char* requestingSource, size_t includeDepth) override {
+
+        auto file = (type == shaderc_include_type_relative) ? _fileFinder->findRelativeReadableFilepath(requestingSource, requestedSource)
+                                                            : _fileFinder->findReadableFilepath(requestedSource);
+
+        auto result = new shaderc_include_result{file->path.data(), file->path.size(), file->contents.data(), file->contents.size(), file};
+        return result;
+    }
+
+    void ReleaseInclude(shaderc_include_result* result) override {
+        delete static_cast<FileInfo*>(result->user_data);
+        delete result;
+    }
+
+private:
+
+    const FileFinder* _fileFinder = nullptr;
+
+};
+
+auto canta::PipelineManager::compileGLSL(std::string_view glsl, canta::ShaderStage stage, std::span<Macro> macros) -> std::expected<std::vector<u32>, std::string> {
+    shaderc_shader_kind kind = {};
+    switch (stage) {
+        case ShaderStage::VERTEX:
+            kind = shaderc_shader_kind::shaderc_vertex_shader;
+            break;
+        case ShaderStage::TESS_CONTROL:
+            kind = shaderc_shader_kind::shaderc_tess_control_shader;
+            break;
+        case ShaderStage::TESS_EVAL:
+            kind = shaderc_shader_kind::shaderc_tess_evaluation_shader;
+            break;
+        case ShaderStage::GEOMETRY:
+            kind = shaderc_shader_kind::shaderc_geometry_shader;
+            break;
+        case ShaderStage::FRAGMENT:
+            kind = shaderc_shader_kind::shaderc_fragment_shader;
+            break;
+        case ShaderStage::COMPUTE:
+            kind = shaderc_shader_kind::shaderc_compute_shader;
+            break;
+        case ShaderStage::RAYGEN:
+            kind = shaderc_shader_kind::shaderc_raygen_shader;
+            break;
+        case ShaderStage::ANY_HIT:
+            kind = shaderc_shader_kind::shaderc_anyhit_shader;
+            break;
+        case ShaderStage::CLOSEST_HIT:
+            kind = shaderc_shader_kind::shaderc_closesthit_shader;
+            break;
+        case ShaderStage::MISS:
+            kind = shaderc_shader_kind::shaderc_miss_shader;
+            break;
+        case ShaderStage::INTERSECTION:
+            kind = shaderc_shader_kind::shaderc_intersection_shader;
+            break;
+        case ShaderStage::CALLABLE:
+            kind = shaderc_shader_kind::shaderc_callable_shader;
+            break;
+        case ShaderStage::TASK:
+            kind = shaderc_shader_kind::shaderc_task_shader;
+            break;
+        case ShaderStage::MESH:
+            kind = shaderc_shader_kind::shaderc_mesh_shader;
+            break;
+        default:
+            return std::unexpected("invalid shader stage used for compilation");
+    }
+
+
+    shaderc::Compiler compiler = {};
+    shaderc::CompileOptions options = {};
+
+    options.SetTargetEnvironment(shaderc_target_env_vulkan, shaderc_env_version_vulkan_1_3);
+    options.SetTargetSpirv(shaderc_spirv_version_1_6);
+
+    auto finder = new FileFinder(_virtualFiles);
+    options.SetIncluder(std::make_unique<FileIncluder>(finder));
+
+    for (auto& macro : macros)
+        options.AddMacroDefinition(macro.name, macro.value);
+
+    shaderc::SpvCompilationResult result = compiler.CompileGlslToSpv(glsl.data(), kind, "canta_shader", options);
+    if (result.GetCompilationStatus() != shaderc_compilation_status_success) {
+        return std::unexpected(std::format("Failed to compiler shader :\nErrors: {}\nWarnings: {}\nMessage: {}", result.GetNumErrors(), result.GetNumWarnings(), result.GetErrorMessage()));
+    }
+
+    return std::vector<u32>(result.cbegin(), result.cend());
 }

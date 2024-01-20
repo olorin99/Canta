@@ -26,6 +26,13 @@ layout (push_constant) uniform Push {
     int padding;
 };
 
+bool outOfBounds(vec2 position) {
+    if (position.x > 1920 || position.x < 0 || position.y > 1080 || position.y < 0)
+        return true;
+
+    return false;
+}
+
 void main() {
     const uint idx = gl_GlobalInvocationID.x;
     if (idx >= maxParticles)
@@ -33,22 +40,12 @@ void main() {
     Particle particle = particleBuffer.particles[idx];
 
     vec2 newPosition = particle.position + particle.velocity;
-    if (newPosition.x > 1920) {
-        vec2 newVelocity = reflect(particle.velocity, vec2(-1, 0));
+    if (outOfBounds(newPosition)) {
+        const vec2 screenCenter = vec2(1920 / 2, 1080 / 2);
+
+        vec2 direction = normalize(screenCenter - newPosition);
+        vec2 newVelocity = direction * length(particle.velocity);
         particle.velocity = newVelocity;
-        newPosition += normalize(newVelocity);
-    } else if (newPosition.x < 0) {
-        vec2 newVelocity = reflect(particle.velocity, vec2(1, 0));
-        particle.velocity = newVelocity;
-        newPosition += normalize(newVelocity);
-    } else if (newPosition.y > 1080) {
-        vec2 newVelocity = reflect(particle.velocity, vec2(0, -1));
-        particle.velocity = newVelocity;
-        newPosition += normalize(newVelocity);
-    } else if (newPosition.y < 0) {
-        vec2 newVelocity = reflect(particle.velocity, vec2(0, 1));
-        particle.velocity = newVelocity * 5;
-        newPosition += normalize(newVelocity);
     }
 
     particle.position = newPosition;
