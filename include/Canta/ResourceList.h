@@ -24,6 +24,7 @@ namespace canta {
             Handle handle = {};
             handle._list = list;
             handle._data = data;
+            handle._hash = s_hash++;
             return handle;
         }
 
@@ -34,7 +35,8 @@ namespace canta {
 
         Handle(const Handle& rhs)
             : _list(rhs._list),
-            _data(rhs._data)
+            _data(rhs._data),
+            _hash(rhs._hash)
         {
             if (_data)
                 ++_data->count;
@@ -104,11 +106,16 @@ namespace canta {
             return 0;
         }
 
+        auto hash() const -> u32 { return _hash; }
+
     private:
         friend List;
 
         List* _list = nullptr;
         Data* _data = nullptr;
+
+        u32 _hash = 0;
+        static u32 s_hash;
 
     };
 

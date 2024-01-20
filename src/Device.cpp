@@ -6,6 +6,12 @@
 #define VMA_DYNAMIC_VULKAN_FUNCTIONS 0
 #include <vk_mem_alloc.h>
 
+template<> u32 canta::ShaderHandle::s_hash = 0;
+template<> u32 canta::PipelineHandle::s_hash = 0;
+template<> u32 canta::ImageHandle::s_hash = 0;
+template<> u32 canta::BufferHandle::s_hash = 0;
+template<> u32 canta::SamplerHandle::s_hash = 0;
+
 template <typename T, typename U>
 void appendFeatureChain(T* start, U* next) {
     auto* oldNext = start->pNext;

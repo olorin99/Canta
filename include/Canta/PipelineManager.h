@@ -5,6 +5,7 @@
 #include <Canta/Pipeline.h>
 #include <tsl/robin_map.h>
 #include <filesystem>
+#include <Ende/filesystem/FileWatcher.h>
 
 namespace canta {
     struct ShaderDescription {
@@ -36,25 +37,32 @@ namespace canta {
             std::filesystem::path rootPath = {};
         };
 
-        PipelineManager(CreateInfo info);
-
-        struct ShaderInfo {
-            std::filesystem::path path = {};
-            ShaderStage stage = ShaderStage::NONE;
-        };
+        static auto create(CreateInfo info) -> PipelineManager;
 
         auto getShader(ShaderDescription info) -> ShaderHandle;
-
         auto getPipeline(Pipeline::CreateInfo info) -> PipelineHandle;
 
+        auto reload(ShaderHandle shader) -> ShaderHandle;
+        auto reload(PipelineHandle pipeline) -> PipelineHandle;
+
+        void reloadAll(bool force = false);
+
     private:
+
+        PipelineManager() = default;
+
+        auto reload(ShaderDescription description) -> ShaderHandle;
+        auto reload(Pipeline::CreateInfo info) -> PipelineHandle;
+
+        auto createShader(ShaderDescription info, ShaderHandle handle = {}) -> ShaderHandle;
 
         Device* _device = nullptr;
         std::filesystem::path _rootPath = {};
         tsl::robin_map<ShaderDescription, ShaderHandle> _shaders;
         tsl::robin_map<Pipeline::CreateInfo, PipelineHandle, std::hash<Pipeline::CreateInfo>> _pipelines;
 
-        std::vector<std::filesystem::path> _watchedPaths = {};
+        ende::fs::FileWatcher _fileWatcher = {};
+        tsl::robin_map<std::filesystem::path, std::pair<ShaderDescription, std::vector<Pipeline::CreateInfo>>> _watchedPipelines;
 
     };
 

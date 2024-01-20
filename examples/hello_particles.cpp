@@ -129,7 +129,7 @@ void main() {
 }
 )";
 
-    canta::PipelineManager pipelineManager({
+    auto pipelineManager = canta::PipelineManager::create({
         .device = device.get()
     });
 
@@ -145,7 +145,7 @@ void main() {
     auto pipeline = pipelineManager.getPipeline({
         .compute = {
             .module = pipelineManager.getShader({
-                .spirv = particleSpirv,
+                .path = "/home/christian/Documents/Projects/Canta/examples/particles.comp",
                 .stage = canta::ShaderStage::COMPUTE
             })
         }
@@ -218,6 +218,7 @@ void main() {
         }
         device->beginFrame();
         device->gc();
+        pipelineManager.reloadAll();
 
         auto swapImage = swapchain->acquire().value();
 

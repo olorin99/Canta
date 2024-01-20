@@ -1,0 +1,56 @@
+#version 460
+
+#extension GL_EXT_nonuniform_qualifier : enable
+#extension GL_GOOGLE_include_directive : enable
+#extension GL_EXT_buffer_reference : enable
+#extension GL_EXT_buffer_reference2 : enable
+#extension GL_EXT_scalar_block_layout : enable
+#extension GL_EXT_shader_explicit_arithmetic_types : enable
+
+layout (local_size_x = 32) in;
+
+struct Particle {
+    vec2 position;
+    vec2 velocity;
+    vec3 colour;
+    int radius;
+};
+
+layout (scalar, buffer_reference, buffer_reference_align = 8) readonly buffer ParticleBuffer {
+    Particle particles[];
+};
+
+layout (push_constant) uniform Push {
+    ParticleBuffer particleBuffer;
+    int maxParticles;
+    int padding;
+};
+
+void main() {
+    const uint idx = gl_GlobalInvocationID.x;
+    if (idx >= maxParticles)
+    return;
+    Particle particle = particleBuffer.particles[idx];
+
+    vec2 newPosition = particle.position + particle.velocity;
+    if (newPosition.x > 1920) {
+        vec2 newVelocity = reflect(particle.velocity, vec2(-1, 0));
+        particle.velocity = newVelocity;
+        newPosition += normalize(newVelocity);
+    } else if (newPosition.x < 0) {
+        vec2 newVelocity = reflect(particle.velocity, vec2(1, 0));
+        particle.velocity = newVelocity;
+        newPosition += normalize(newVelocity);
+    } else if (newPosition.y > 1080) {
+        vec2 newVelocity = reflect(particle.velocity, vec2(0, -1));
+        particle.velocity = newVelocity;
+        newPosition += normalize(newVelocity);
+    } else if (newPosition.y < 0) {
+        vec2 newVelocity = reflect(particle.velocity, vec2(0, 1));
+        particle.velocity = newVelocity * 5;
+        newPosition += normalize(newVelocity);
+    }
+
+    particle.position = newPosition;
+    particleBuffer.particles[idx] = particle;
+}

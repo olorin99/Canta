@@ -3,7 +3,7 @@ include(FetchContent)
 FetchContent_Declare(
     Ende
     GIT_REPOSITORY https://github.com/olorin99/Ende
-    GIT_TAG        9b2983c894f4be92d2cd7b1c0a65c7b860502858
+    GIT_TAG        769126fc7f08ba1a61403ec07b82a2c6d67ef662
 )
 
 FetchContent_Declare(
