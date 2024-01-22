@@ -215,6 +215,20 @@ namespace canta {
         auto createTimer() -> Timer;
         void destroyTimer(u32 poolIndex, u32 queryIndex);
 
+        struct ResourceStats {
+            u32 shaderCount = 0;
+            u32 shaderAllocated = 0;
+            u32 pipelineCount = 0;
+            u32 pipelineAllocated = 0;
+            u32 imageCount = 0;
+            u32 imageAllocated = 0;
+            u32 bufferCount = 0;
+            u32 bufferAllocated = 0;
+            u32 samplerCount = 0;
+            u32 samplerAllocated = 0;
+        };
+        auto resourceStats() const -> ResourceStats;
+
     private:
         friend CommandBuffer;
 

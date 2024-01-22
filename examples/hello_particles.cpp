@@ -167,11 +167,31 @@ void main() {
             imguiContext.processEvent(&event);
         }
         device->beginFrame();
+        auto flyingIndex = device->flyingIndex();
         device->gc();
         pipelineManager.reloadAll();
 
         imguiContext.beginFrame();
         ImGui::ShowDemoWindow();
+
+        if (ImGui::Begin("Stats")) {
+            auto frameTime = timers[flyingIndex].result().value();
+            ImGui::Text("Frame Time: %f ms", frameTime / 1000000.f);
+
+            auto resourceStats = device->resourceStats();
+            ImGui::Text("Shader Count %d", resourceStats.shaderCount);
+            ImGui::Text("Shader Allocated %d", resourceStats.shaderAllocated);
+            ImGui::Text("Pipeline Count %d", resourceStats.pipelineCount);
+            ImGui::Text("Pipeline Allocated %d", resourceStats.pipelineAllocated);
+            ImGui::Text("Image Count %d", resourceStats.imageCount);
+            ImGui::Text("Image Allocated %d", resourceStats.imageAllocated);
+            ImGui::Text("Buffer Count %d", resourceStats.bufferCount);
+            ImGui::Text("Buffer Allocated %d", resourceStats.bufferAllocated);
+            ImGui::Text("Sampler Count %d", resourceStats.samplerCount);
+            ImGui::Text("Sampler Allocated %d", resourceStats.shaderAllocated);
+        }
+        ImGui::End();
+
         ImGui::Render();
 
 
@@ -187,13 +207,10 @@ void main() {
             swapchain->presentSemaphore()->getPair()
         });
 
-        auto flyingIndex = device->flyingIndex();
-
         commandPools[flyingIndex].reset();
         auto& commandBuffer = commandPools[flyingIndex].getBuffer();
 
         commandBuffer.begin();
-        std::printf("%lu\n", timers[(flyingIndex - 1) % canta::FRAMES_IN_FLIGHT].result().value());
         timers[flyingIndex].begin(commandBuffer);
 
         renderGraph.reset();

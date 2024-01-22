@@ -1403,3 +1403,18 @@ void canta::Device::destroyTimer(u32 poolIndex, u32 queryIndex) {
         .queryIndex = queryIndex
     });
 }
+
+auto canta::Device::resourceStats() const -> ResourceStats {
+    return {
+        .shaderCount = _shaderList.used(),
+        .shaderAllocated = _shaderList.allocated(),
+        .pipelineCount = _pipelineList.used(),
+        .pipelineAllocated = _pipelineList.allocated(),
+        .imageCount = _imageList.used(),
+        .imageAllocated = _imageList.allocated(),
+        .bufferCount = _bufferList.used(),
+        .bufferAllocated = _bufferList.allocated(),
+        .samplerCount = _samplerList.used(),
+        .samplerAllocated = _samplerList.allocated(),
+    };
+}

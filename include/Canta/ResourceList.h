@@ -166,14 +166,14 @@ namespace canta {
         }
 
         void clearQueue(std::function<void(T&)> func = [](auto& resource) { resource = {}; }) {
-            for (auto& destroyInfo : _destroyQueue) {
-                if (destroyInfo.first <= 0) {
-                    func(_resources[destroyInfo.second]->first);
-                    _freeResources.push_back(destroyInfo.second);
+            for (auto it = _destroyQueue.begin(); it != _destroyQueue.end(); it++) {
+                if (it->first <= 0) {
+                    func(_resources[it->second]->first);
+                    _freeResources.push_back(it->second);
+                    _destroyQueue.erase(it--);
                 } else
-                    --destroyInfo.first;
+                    --it->first;
             }
-            _destroyQueue.clear();
         }
 
         void clearAll(std::function<void(T&)> func = [](auto& resource) { resource = {}; }) {
@@ -198,7 +198,7 @@ namespace canta {
 
         auto free() const -> u32 { return _freeResources.size(); }
 
-        auto used() const -> u32 { return allocate() - free(); }
+        auto used() const -> u32 { return allocated() - free(); }
 
     private:
         friend Handle<T, ResourceList<T>>;
