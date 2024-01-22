@@ -197,13 +197,40 @@ auto canta::RenderGraph::addPass(std::string_view name, RenderPass::Type type) -
     return _passes.back();
 }
 
-auto canta::RenderGraph::addImage(canta::ImageDescription description, canta::ImageHandle handle) -> ImageIndex {
+auto canta::RenderGraph::addClearPass(std::string_view name, canta::ImageIndex index) -> RenderPass & {
+    auto& clearPass = addPass(name);
+    clearPass.addTransferWrite(index);
+    clearPass.setExecuteFunction([index] (CommandBuffer& cmd, RenderGraph& graph) {
+        auto image = graph.getImage(index);
+        cmd.clearImage(image, ImageLayout::TRANSFER_DST);
+    });
+    return clearPass;
+}
+
+auto canta::RenderGraph::addBlitPass(std::string_view name, canta::ImageIndex src, canta::ImageIndex dst) -> RenderPass & {
+    auto& blitPass = addPass(name);
+    blitPass.addTransferRead(src);
+    blitPass.addTransferWrite(dst);
+    blitPass.setExecuteFunction([src, dst] (CommandBuffer& cmd, RenderGraph& graph) {
+        auto srcImage = graph.getImage(src);
+        auto dstImage = graph.getImage(dst);
+        cmd.blit({
+            .src = srcImage,
+            .dst = dstImage,
+            .srcLayout = ImageLayout::TRANSFER_SRC,
+            .dstLayout = ImageLayout::TRANSFER_DST
+        });
+    });
+    return blitPass;
+}
+
+auto canta::RenderGraph::addImage(canta::ImageDescription description) -> ImageIndex {
     auto it = _nameToIndex.find(description.name.data());
     if (it != _nameToIndex.end()) {
         u32 index = it->second;
-        if (handle) {
+        if (description.handle) {
             u32 imageIndex = dynamic_cast<ImageResource*>(_resources[index].get())->imageIndex;
-            _images[imageIndex] = handle;
+            _images[imageIndex] = description.handle;
         }
         return {
             .id = _resourceId++,
@@ -214,13 +241,23 @@ auto canta::RenderGraph::addImage(canta::ImageDescription description, canta::Im
     u32 index = _resources.size();
     ImageResource resource = {};
     resource.imageIndex = _images.size();
-    _images.push_back(handle);
-    resource.width = description.width;
-    resource.height = description.height;
-    resource.depth = description.depth;
-    resource.mipLevels = description.mipLevels;
-    resource.format = description.format;
-    resource.usage = description.usage;
+    _images.push_back(description.handle);
+    resource.matchesBackbuffer = description.matchesBackbuffer;
+    if (description.handle) {
+        resource.width = description.handle->width();
+        resource.height = description.handle->height();
+        resource.depth = description.handle->depth();
+        resource.mipLevels = description.handle->mips();
+        resource.format = description.handle->format();
+        resource.usage = description.handle->usage();
+    } else {
+        resource.width = description.width;
+        resource.height = description.height;
+        resource.depth = description.depth;
+        resource.mipLevels = description.mipLevels;
+        resource.format = description.format;
+        resource.usage = description.usage;
+    }
     resource.index = index;
     resource.type = ResourceType::IMAGE;
     resource.name = description.name;
@@ -232,13 +269,13 @@ auto canta::RenderGraph::addImage(canta::ImageDescription description, canta::Im
     };
 }
 
-auto canta::RenderGraph::addBuffer(canta::BufferDescription description, canta::BufferHandle handle) -> BufferIndex {
+auto canta::RenderGraph::addBuffer(canta::BufferDescription description) -> BufferIndex {
     auto it = _nameToIndex.find(description.name.data());
     if (it != _nameToIndex.end()) {
         u32 index = it->second;
-        if (handle) {
+        if (description.handle) {
             u32 bufferIndex = dynamic_cast<BufferResource*>(_resources[index].get())->bufferIndex;
-            _buffers[bufferIndex] = handle;
+            _buffers[bufferIndex] = description.handle;
         }
         return {
             .id = _resourceId++,
@@ -249,9 +286,14 @@ auto canta::RenderGraph::addBuffer(canta::BufferDescription description, canta::
     u32 index = _resources.size();
     BufferResource resource = {};
     resource.bufferIndex = _buffers.size();
-    _buffers.push_back(handle);
-    resource.size = description.size;
-    resource.usage = description.usage;
+    _buffers.push_back(description.handle);
+    if (description.handle) {
+        resource.size = description.handle->size();
+        resource.usage = description.handle->usage();
+    } else {
+        resource.size = description.size;
+        resource.usage = description.usage;
+    }
     resource.index = index;
     resource.type = ResourceType::BUFFER;
     resource.name = description.name;
@@ -383,7 +425,8 @@ auto canta::RenderGraph::execute(canta::CommandBuffer& cmd) -> std::expected<boo
 
         if (pass->_type == RenderPass::Type::GRAPHICS) {
             RenderingInfo info = {};
-            info.size = { static_cast<u32>(pass->_width), static_cast<u32>(pass->_height) };
+            i32 width = pass->_width;
+            i32 height = pass->_height;
 
             std::vector<canta::Attachment> attachments = {};
             for (auto& attachment : pass->_colourAttachments) {
@@ -393,6 +436,8 @@ auto canta::RenderGraph::execute(canta::CommandBuffer& cmd) -> std::expected<boo
                     .imageLayout = attachment.layout,
                     .clearColour = attachment.clearColor
                 });
+                if (width < 0 || height < 0)
+                    info.size = { attachmentImage->width(), attachmentImage->height() };
             }
             info.colourAttachments = attachments;
             if (pass->_depthAttachment.index >= 0) {
@@ -401,7 +446,11 @@ auto canta::RenderGraph::execute(canta::CommandBuffer& cmd) -> std::expected<boo
                     .imageView = depthAttachmentImage->defaultView().view(),
                     .imageLayout = pass->_depthAttachment.layout
                 };
+                if (width < 0 || height < 0)
+                    info.size = { depthAttachmentImage->width(), depthAttachmentImage->height() };
             }
+
+            info.size = { static_cast<u32>(width), static_cast<u32>(height) };
             cmd.beginRendering(info);
         }
         pass->_execute(cmd, *this);
@@ -506,6 +555,12 @@ void canta::RenderGraph::buildResources() {
     for (auto& resource : _resources) {
         if (resource->type == ResourceType::IMAGE) {
             auto imageResource = dynamic_cast<ImageResource*>(resource.get());
+            if (imageResource->matchesBackbuffer) {
+                auto backbufferImage = getImage({ .index = static_cast<u32>(_backbuffer) });
+                imageResource->width = backbufferImage->width();
+                imageResource->height = backbufferImage->height();
+                imageResource->depth = 1;
+            }
 
             auto image = _images[imageResource->imageIndex];
             if (!image && (!image || (image->usage() & imageResource->usage) != imageResource->usage ||

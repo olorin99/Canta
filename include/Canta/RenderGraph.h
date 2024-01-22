@@ -27,6 +27,7 @@ namespace canta {
     };
 
     struct ImageResource : public Resource {
+        bool matchesBackbuffer = true;
         u32 imageIndex = 0;
         u32 width = 1;
         u32 height = 1;
@@ -53,18 +54,21 @@ namespace canta {
     };
 
     struct ImageDescription {
+        bool matchesBackbuffer = true;
         u32 width = 1;
         u32 height = 1;
         u32 depth = 1;
         u32 mipLevels = 1;
         Format format = Format::RGBA8_UNORM;
         ImageUsage usage = ImageUsage::SAMPLED | ImageUsage::TRANSFER_SRC;
+        ImageHandle handle = {};
         std::string_view name = {};
     };
 
     struct BufferDescription {
         u32 size = 0;
         BufferUsage usage = BufferUsage::STORAGE;
+        BufferHandle handle = {};
         std::string_view name = {};
     };
 
@@ -170,9 +174,11 @@ namespace canta {
         static auto create(CreateInfo info) -> RenderGraph;
 
         auto addPass(std::string_view name, RenderPass::Type type = RenderPass::Type::COMPUTE) -> RenderPass&;
+        auto addClearPass(std::string_view name, ImageIndex index) -> RenderPass&;
+        auto addBlitPass(std::string_view name, ImageIndex src, ImageIndex dst) -> RenderPass&;
 
-        auto addImage(ImageDescription description, ImageHandle handle = {}) -> ImageIndex;
-        auto addBuffer(BufferDescription description, BufferHandle handle = {}) -> BufferIndex;
+        auto addImage(ImageDescription description) -> ImageIndex;
+        auto addBuffer(BufferDescription description) -> BufferIndex;
 
         auto addAlias(ImageIndex index) -> ImageIndex;
         auto addAlias(BufferIndex index) -> BufferIndex;

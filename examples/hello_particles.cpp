@@ -185,28 +185,19 @@ void main() {
         renderGraph.reset();
 
         auto imageIndex = renderGraph.addImage({
-            .width = 1920,
-            .height = 1080,
             .name = "image"
         });
         auto swapchainIndex = renderGraph.addImage({
-            .width = 1920,
-            .height = 1080,
+            .handle = swapImage,
             .name = "swapchain_image"
-        }, swapImage);// no
+        });
 
         auto particleBufferIndex = renderGraph.addBuffer({
-            .size = buffer->size(),
-            .usage = buffer->usage(),
+            .handle = buffer,
             .name = "particles_buffer"
-        }, buffer);
-
-        auto& clearPass = renderGraph.addPass("clear_image");
-        clearPass.addTransferWrite(imageIndex);
-        clearPass.setExecuteFunction([imageIndex](canta::CommandBuffer& cmd, canta::RenderGraph& graph) {
-            auto image = graph.getImage(imageIndex);
-            cmd.clearImage(image, canta::ImageLayout::TRANSFER_DST);
         });
+
+        renderGraph.addClearPass("clear_image", imageIndex);
 
         auto& particlesMovePass = renderGraph.addPass("particles_move");
         particlesMovePass.addStorageBufferWrite(particleBufferIndex, canta::PipelineStage::COMPUTE_SHADER);
@@ -246,19 +237,7 @@ void main() {
             cmd.dispatchThreads(numParticles);
         });
 
-        auto& blitPass = renderGraph.addPass("blit_to_swapchain");
-        blitPass.addTransferRead(imageIndex);
-        blitPass.addTransferWrite(swapchainIndex);
-        blitPass.setExecuteFunction([imageIndex, swapchainIndex](canta::CommandBuffer& cmd, canta::RenderGraph& graph) {
-            auto image = graph.getImage(imageIndex);
-            auto swapchainImage = graph.getImage(swapchainIndex);
-            cmd.blit({
-                .src = image,
-                .dst = swapchainImage,
-                .srcLayout = canta::ImageLayout::TRANSFER_SRC,
-                .dstLayout = canta::ImageLayout::TRANSFER_DST
-            });
-        });
+        renderGraph.addBlitPass("blit_to_swapchain", imageIndex, swapchainIndex);
 
         renderGraph.setBackbuffer(swapchainIndex);
         renderGraph.compile();
