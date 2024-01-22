@@ -4,79 +4,27 @@
 #include <Ende/math/Vec.h>
 #include <random>
 #include <Canta/PipelineManager.h>
+#include <Canta/RenderGraph.h>
 
 int main() {
 
     canta::SDLWindow window("Hello Triangle", 1920, 1080);
 
     auto device = canta::Device::create({
-                                                .applicationName = "hello_triangle",
-                                                .instanceExtensions = window.requiredExtensions()
-                                        }).value();
+        .applicationName = "hello_triangle",
+        .instanceExtensions = window.requiredExtensions()
+    }).value();
 
     auto swapchain = device->createSwapchain({
-                                                     .window = &window
-                                             });
+        .window = &window
+    });
     std::array<canta::CommandPool, canta::FRAMES_IN_FLIGHT> commandPools = {};
-    for (auto& pool : commandPools)
+    for (auto& pool : commandPools) {
         pool = device->createCommandPool({
-                                                 .queueType = canta::QueueType::GRAPHICS
-                                         }).value();
-
-    std::string particleMoveComp = R"(
-#version 460
-
-#extension GL_EXT_nonuniform_qualifier : enable
-#extension GL_GOOGLE_include_directive : enable
-#extension GL_EXT_buffer_reference : enable
-#extension GL_EXT_buffer_reference2 : enable
-#extension GL_EXT_scalar_block_layout : enable
-#extension GL_EXT_shader_explicit_arithmetic_types : enable
-
-layout (local_size_x = 32) in;
-
-struct Particle {
-    vec2 position;
-    vec2 velocity;
-    vec3 colour;
-    int radius;
-};
-
-layout (scalar, buffer_reference, buffer_reference_align = 8) readonly buffer ParticleBuffer {
-    Particle particles[];
-};
-
-layout (push_constant) uniform Push {
-    ParticleBuffer particleBuffer;
-    int maxParticles;
-    int padding;
-};
-
-void main() {
-    const uint idx = gl_GlobalInvocationID.x;
-    if (idx >= maxParticles)
-        return;
-    Particle particle = particleBuffer.particles[idx];
-
-    vec2 newPosition = particle.position + particle.velocity;
-    if (newPosition.x > 1920) {
-        vec2 newVelocity = reflect(particle.velocity, vec2(-1, 0));
-        particle.velocity = newVelocity;
-    } else if (newPosition.x < 0) {
-        vec2 newVelocity = reflect(particle.velocity, vec2(1, 0));
-        particle.velocity = newVelocity;
-    } else if (newPosition.y > 1080) {
-        vec2 newVelocity = reflect(particle.velocity, vec2(0, -1));
-        particle.velocity = newVelocity;
-    } else if (newPosition.y < 0) {
-        vec2 newVelocity = reflect(particle.velocity, vec2(0, 1));
-        particle.velocity = newVelocity;
+            .queueType = canta::QueueType::GRAPHICS
+        }).value();
     }
 
-    particle.position = newPosition;
-    particleBuffer.particles[idx] = particle;
-}
-)";
 
     std::string particleDrawComp = R"(
 #version 460
@@ -191,15 +139,14 @@ void main() {
 
     buffer->data(particles);
 
-    auto image = device->createImage({
-        .width = window.extent().x(),
-        .height = window.extent().y(),
-        .usage = canta::ImageUsage::STORAGE | canta::ImageUsage::TRANSFER_SRC | canta::ImageUsage::TRANSFER_DST
-    });
-
     canta::Timer timers[canta::FRAMES_IN_FLIGHT] = {};
     for (auto& timer : timers)
         timer = device->createTimer();
+
+
+    auto renderGraph = canta::RenderGraph::create({
+        .device = device.get()
+    });
 
     bool running = true;
     SDL_Event event;
@@ -235,72 +182,87 @@ void main() {
         std::printf("%lu\n", timers[(flyingIndex - 1) % canta::FRAMES_IN_FLIGHT].result().value());
         timers[flyingIndex].begin(commandBuffer);
 
-        commandBuffer.pushDebugLabel("clear");
-        commandBuffer.barrier({
-            .image = image,
-            .dstStage = canta::PipelineStage::TRANSFER,
-            .dstAccess = canta::Access::TRANSFER_READ | canta::Access::TRANSFER_WRITE,
-            .dstLayout = canta::ImageLayout::GENERAL
-        });
-        commandBuffer.clearImage(image);
-        commandBuffer.barrier({
-            .image = image,
-            .srcStage = canta::PipelineStage::TRANSFER,
-            .dstStage = canta::PipelineStage::COMPUTE_SHADER,
-            .srcAccess = canta::Access::TRANSFER_WRITE | canta::Access::TRANSFER_READ,
-            .dstAccess = canta::Access::SHADER_WRITE | canta::Access::SHADER_READ,
-            .srcLayout = canta::ImageLayout::GENERAL,
-            .dstLayout = canta::ImageLayout::GENERAL
-        });
-        commandBuffer.popDebugLabel();
+        renderGraph.reset();
 
-        commandBuffer.bindPipeline(pipeline);
-        struct PushA {
-            u64 address;
-            i32 maxParticles;
-            i32 padding;
-        };
-        commandBuffer.pushConstants(canta::ShaderStage::COMPUTE, PushA{
-            .address = buffer->address(),
-            .maxParticles = numParticles
+        auto imageIndex = renderGraph.addImage({
+            .width = 1920,
+            .height = 1080,
+            .name = "image"
         });
-        commandBuffer.dispatchThreads(numParticles);
+        auto swapchainIndex = renderGraph.addImage({
+            .width = 1920,
+            .height = 1080,
+            .name = "swapchain_image"
+        }, swapImage);// no
 
-        commandBuffer.bindPipeline(pipelineDraw);
-        struct Push {
-            u64 address;
-            i32 index;
-            i32 maxParticles;
-        };
-        commandBuffer.pushConstants(canta::ShaderStage::COMPUTE, Push{
-            .address = buffer->address(),
-            .index = image.index(),
-            .maxParticles = numParticles
-        });
-        commandBuffer.dispatchThreads(numParticles);
+        auto particleBufferIndex = renderGraph.addBuffer({
+            .size = buffer->size(),
+            .usage = buffer->usage(),
+            .name = "particles_buffer"
+        }, buffer);
 
-        commandBuffer.barrier({
-            .image = image,
-            .srcStage = canta::PipelineStage::COMPUTE_SHADER,
-            .dstStage = canta::PipelineStage::TRANSFER,
-            .srcAccess = canta::Access::SHADER_WRITE | canta::Access::SHADER_READ,
-            .dstAccess = canta::Access::TRANSFER_WRITE | canta::Access::TRANSFER_READ,
-            .srcLayout = canta::ImageLayout::GENERAL,
-            .dstLayout = canta::ImageLayout::TRANSFER_SRC
-        });
-        commandBuffer.barrier({
-            .image = swapImage,
-            .dstStage = canta::PipelineStage::TRANSFER,
-            .dstAccess = canta::Access::TRANSFER_WRITE | canta::Access::TRANSFER_READ,
-            .dstLayout = canta::ImageLayout::TRANSFER_DST
+        auto& clearPass = renderGraph.addPass("clear_image");
+        clearPass.addTransferWrite(imageIndex);
+        clearPass.setExecuteFunction([imageIndex](canta::CommandBuffer& cmd, canta::RenderGraph& graph) {
+            auto image = graph.getImage(imageIndex);
+            cmd.clearImage(image, canta::ImageLayout::TRANSFER_DST);
         });
 
-        commandBuffer.blit({
-            .src = image,
-            .dst = swapImage,
-            .srcLayout = canta::ImageLayout::TRANSFER_SRC,
-            .dstLayout = canta::ImageLayout::TRANSFER_DST
+        auto& particlesMovePass = renderGraph.addPass("particles_move");
+        particlesMovePass.addStorageBufferWrite(particleBufferIndex, canta::PipelineStage::COMPUTE_SHADER);
+        particlesMovePass.setExecuteFunction([pipeline, particleBufferIndex, numParticles](canta::CommandBuffer& cmd, canta::RenderGraph& graph) {
+            auto buffer = graph.getBuffer(particleBufferIndex);
+            cmd.bindPipeline(pipeline);
+            struct Push {
+                u64 address;
+                i32 maxParticles;
+                f32 dt;
+            };
+            cmd.pushConstants(canta::ShaderStage::COMPUTE, Push {
+                    .address = buffer->address(),
+                    .maxParticles = numParticles,
+                    .dt = 1.f / 60
+            });
+            cmd.dispatchThreads(numParticles);
         });
+
+        auto& particlesDrawPass = renderGraph.addPass("particles_draw");
+        particlesDrawPass.addStorageBufferRead(particleBufferIndex, canta::PipelineStage::COMPUTE_SHADER);
+        particlesDrawPass.addStorageImageWrite(imageIndex, canta::PipelineStage::COMPUTE_SHADER);
+        particlesDrawPass.setExecuteFunction([pipelineDraw, particleBufferIndex, imageIndex, numParticles](canta::CommandBuffer& cmd, canta::RenderGraph& graph) {
+            auto buffer = graph.getBuffer(particleBufferIndex);
+            auto image = graph.getImage(imageIndex);
+            cmd.bindPipeline(pipelineDraw);
+            struct Push {
+                u64 address;
+                i32 index;
+                i32 maxParticles;
+            };
+            cmd.pushConstants(canta::ShaderStage::COMPUTE, Push{
+                    .address = buffer->address(),
+                    .index = image.index(),
+                    .maxParticles = numParticles
+            });
+            cmd.dispatchThreads(numParticles);
+        });
+
+        auto& blitPass = renderGraph.addPass("blit_to_swapchain");
+        blitPass.addTransferRead(imageIndex);
+        blitPass.addTransferWrite(swapchainIndex);
+        blitPass.setExecuteFunction([imageIndex, swapchainIndex](canta::CommandBuffer& cmd, canta::RenderGraph& graph) {
+            auto image = graph.getImage(imageIndex);
+            auto swapchainImage = graph.getImage(swapchainIndex);
+            cmd.blit({
+                .src = image,
+                .dst = swapchainImage,
+                .srcLayout = canta::ImageLayout::TRANSFER_SRC,
+                .dstLayout = canta::ImageLayout::TRANSFER_DST
+            });
+        });
+
+        renderGraph.setBackbuffer(swapchainIndex);
+        renderGraph.compile();
+        renderGraph.execute(commandBuffer);
 
         commandBuffer.barrier({
             .image = swapImage,

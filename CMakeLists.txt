@@ -43,6 +43,8 @@ add_library(Canta
         include/Canta/Queue.h
         src/PipelineManager.cpp
         include/Canta/PipelineManager.h
+        src/RenderGraph.cpp
+        include/Canta/RenderGraph.h
 )
 
 add_subdirectory(third_party)

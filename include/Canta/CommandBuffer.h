@@ -26,13 +26,14 @@ namespace canta {
     struct Attachment {
         VkImageView imageView = VK_NULL_HANDLE;
         ImageLayout imageLayout = ImageLayout::UNDEFINED;
+        std::array<f32, 4> clearColour = { 0, 0, 0, 1 };
     };
 
     struct RenderingInfo {
         ende::math::Vec<2, u32> size = { 0, 0 };
         ende::math::Vec<2, i32> offset = { 0, 0 };
         std::span<Attachment> colourAttachments = {};
-        VkImageView depthAttachment = VK_NULL_HANDLE;
+        Attachment depthAttachment = {};
     };
 
     struct ImageBarrier {

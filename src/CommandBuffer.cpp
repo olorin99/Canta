@@ -86,6 +86,12 @@ void canta::CommandBuffer::beginRendering(RenderingInfo info) {
 
     std::vector<VkRenderingAttachmentInfo> colourAttachments(info.colourAttachments.size());
     for (u32 i = 0; i < info.colourAttachments.size(); i++) {
+        VkClearValue clearValue = {
+                info.colourAttachments[i].clearColour[0],
+                info.colourAttachments[i].clearColour[1],
+                info.colourAttachments[i].clearColour[2],
+                info.colourAttachments[i].clearColour[3],
+        };
         colourAttachments[i] = {
                 .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
                 .imageView = info.colourAttachments[i].imageView,
@@ -95,15 +101,15 @@ void canta::CommandBuffer::beginRendering(RenderingInfo info) {
                 .resolveImageLayout = VK_IMAGE_LAYOUT_UNDEFINED,
                 .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
                 .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
-                .clearValue = { 0, 0, 0, 1 }
+                .clearValue = clearValue
         };
     }
     renderingInfo.colorAttachmentCount = colourAttachments.size();
     renderingInfo.pColorAttachments = colourAttachments.data();
     VkRenderingAttachmentInfo depthAttachment = {
             .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
-            .imageView = info.depthAttachment,
-            .imageLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+            .imageView = info.depthAttachment.imageView,
+            .imageLayout = static_cast<VkImageLayout>(info.depthAttachment.imageLayout),
             .resolveMode = VK_RESOLVE_MODE_NONE,
             .resolveImageView = VK_NULL_HANDLE,
             .resolveImageLayout = VK_IMAGE_LAYOUT_UNDEFINED,
@@ -111,7 +117,7 @@ void canta::CommandBuffer::beginRendering(RenderingInfo info) {
             .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
             .clearValue = { 0, 0, 0, 1 }
     };
-    if (info.depthAttachment != VK_NULL_HANDLE) {
+    if (info.depthAttachment.imageView != VK_NULL_HANDLE) {
         renderingInfo.pDepthAttachment = &depthAttachment;
     }
 
@@ -362,7 +368,7 @@ void canta::CommandBuffer::barrier(canta::BufferBarrier barrier) {
 
     VkDependencyInfo info = {};
     info.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
-    info.imageMemoryBarrierCount = 1;
+    info.bufferMemoryBarrierCount = 1;
     info.pBufferMemoryBarriers = &bufferBarrier;
     vkCmdPipelineBarrier2(_buffer, &info);
 }
@@ -377,7 +383,7 @@ void canta::CommandBuffer::barrier(canta::MemoryBarrier barrier) {
 
     VkDependencyInfo info = {};
     info.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
-    info.imageMemoryBarrierCount = 1;
+    info.memoryBarrierCount = 1;
     info.pMemoryBarriers = &memoryBarrier;
     vkCmdPipelineBarrier2(_buffer, &info);
 }

@@ -23,7 +23,7 @@ layout (scalar, buffer_reference, buffer_reference_align = 8) readonly buffer Pa
 layout (push_constant) uniform Push {
     ParticleBuffer particleBuffer;
     int maxParticles;
-    int padding;
+    float dt;
 };
 
 bool outOfBounds(vec2 position) {
