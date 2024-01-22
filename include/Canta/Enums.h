@@ -679,6 +679,19 @@ namespace canta {
         OPAQUE_WHITE_INT = VK_BORDER_COLOR_INT_OPAQUE_WHITE,
     };
 
+    enum class LoadOp {
+        LOAD = VK_ATTACHMENT_LOAD_OP_LOAD,
+        CLEAR = VK_ATTACHMENT_LOAD_OP_CLEAR,
+        DONT_CARE = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+        NONE = VK_ATTACHMENT_LOAD_OP_NONE_EXT,
+    };
+
+    enum class StoreOp {
+        STORE = VK_ATTACHMENT_STORE_OP_STORE,
+        DONT_CARE = VK_ATTACHMENT_STORE_OP_DONT_CARE,
+        NONE = VK_ATTACHMENT_STORE_OP_NONE,
+    };
+
 #define ENUM_OPERATOR(enum, op) \
     constexpr enum operator op(enum lhs, enum rhs) noexcept { \
         return static_cast<enum>(static_cast<std::underlying_type<enum>::type>(lhs) op static_cast<std::underlying_type<enum>::type>(rhs)); \

@@ -45,6 +45,8 @@ add_library(Canta
         include/Canta/PipelineManager.h
         src/RenderGraph.cpp
         include/Canta/RenderGraph.h
+        src/ImGuiContext.cpp
+        include/Canta/ImGuiContext.h
 )
 
 add_subdirectory(third_party)
@@ -62,6 +64,7 @@ target_link_libraries(Canta
     Ende
     volk
     GPUOpen::VulkanMemoryAllocator
+    imgui
     spdlog
     ${SDL2_LIBRARIES}
     spirv-cross-cpp

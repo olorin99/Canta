@@ -5,6 +5,9 @@
 #include <random>
 #include <Canta/PipelineManager.h>
 #include <Canta/RenderGraph.h>
+#include <imgui.h>
+#include <backends/imgui_impl_sdl2.h>
+#include <Canta/ImGuiContext.h>
 
 int main() {
 
@@ -23,6 +26,34 @@ int main() {
         pool = device->createCommandPool({
             .queueType = canta::QueueType::GRAPHICS
         }).value();
+    }
+
+    IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
+    ImGui_ImplSDL2_InitForVulkan(window.window());
+
+    auto imguiContext = canta::ImGuiContext::create({
+        .device = device.get()
+    });
+
+    auto immediatePool = device->createCommandPool({
+        .queueType = canta::QueueType::GRAPHICS
+    });
+    auto& immediateBuffer = immediatePool->getBuffer();
+    immediateBuffer.begin();
+    imguiContext.createFontsTexture(immediateBuffer);
+    immediateBuffer.end();
+
+    {
+        device->beginFrame();
+        auto waits = std::to_array({
+            canta::Semaphore::Pair{ device->frameSemaphore(), device->framePrevValue() }
+        });
+        auto signals = std::to_array({
+            device->frameSemaphore()->getPair()
+        });
+        immediateBuffer.submit(waits, signals);
+        device->endFrame();
     }
 
 
@@ -157,10 +188,22 @@ void main() {
                     running = false;
                     break;
             }
+            ImGui_ImplSDL2_ProcessEvent(&event);
         }
         device->beginFrame();
         device->gc();
         pipelineManager.reloadAll();
+
+        imguiContext.beginFrame();
+        ImGui_ImplSDL2_NewFrame(window.window());
+        ImGui::NewFrame();
+
+        ImGui::ShowDemoWindow();
+
+        ImGui::Render();
+
+        imguiContext.endFrame();
+
 
         auto swapImage = swapchain->acquire().value();
 
@@ -238,18 +281,26 @@ void main() {
         });
 
         renderGraph.addBlitPass("blit_to_swapchain", imageIndex, swapchainIndex);
+        auto uiSwapchainIndex = renderGraph.addAlias(swapchainIndex);
 
-        renderGraph.setBackbuffer(swapchainIndex);
+        auto& uiPass = renderGraph.addPass("ui", canta::RenderPass::Type::GRAPHICS);
+        uiPass.addColourRead(swapchainIndex);
+        uiPass.addColourWrite(uiSwapchainIndex);
+        uiPass.setExecuteFunction([&imguiContext, &swapchain](canta::CommandBuffer& cmd, canta::RenderGraph& graph) {
+            imguiContext.render(ImGui::GetDrawData(), cmd, swapchain->format());
+        });
+
+        renderGraph.setBackbuffer(uiSwapchainIndex);
         renderGraph.compile();
         renderGraph.execute(commandBuffer);
 
         commandBuffer.barrier({
             .image = swapImage,
-            .srcStage = canta::PipelineStage::TRANSFER,
+            .srcStage = canta::PipelineStage::COLOUR_OUTPUT,
             .dstStage = canta::PipelineStage::BOTTOM,
-            .srcAccess = canta::Access::TRANSFER_WRITE | canta::Access::TRANSFER_READ,
+            .srcAccess = canta::Access::COLOUR_WRITE | canta::Access::COLOUR_READ,
             .dstAccess = canta::Access::MEMORY_WRITE | canta::Access::MEMORY_READ,
-            .srcLayout = canta::ImageLayout::TRANSFER_DST,
+            .srcLayout = canta::ImageLayout::COLOUR_ATTACHMENT,
             .dstLayout = canta::ImageLayout::PRESENT
         });
 

@@ -149,6 +149,9 @@ namespace canta {
         std::vector<Attachment> _colourAttachments = {};
         Attachment _depthAttachment = {};
 
+        std::vector<canta::Attachment> _renderingColourAttachments = {};
+        canta::Attachment _renderingDepthAttachment = {};
+
         i32 _width = -1;
         i32 _height = -1;
 
@@ -199,6 +202,7 @@ namespace canta {
 
         void buildBarriers();
         void buildResources();
+        void buildRenderAttachments();
 
         Device* _device = nullptr;
 

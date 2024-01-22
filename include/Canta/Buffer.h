@@ -62,11 +62,11 @@ namespace canta {
 
         auto map(u32 offset = 0, u32 size = 0) -> Mapped;
 
-        void data(std::span<const u8> data, u32 offset = 0);
+        auto data(std::span<const u8> data, u32 offset = 0) -> u32;
 
         template <std::ranges::range Range>
-        void data(const Range& range, u32 offset = 0) {
-            data(std::span<const u8>(reinterpret_cast<const u8*>(std::ranges::data(range)), std::ranges::size(range) * sizeof(std::ranges::range_value_t<Range>)), offset);
+        auto data(const Range& range, u32 offset = 0) -> u32 {
+            return data(std::span<const u8>(reinterpret_cast<const u8*>(std::ranges::data(range)), std::ranges::size(range) * sizeof(std::ranges::range_value_t<Range>)), offset);
         }
 
     private:

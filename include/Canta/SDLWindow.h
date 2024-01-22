@@ -21,6 +21,8 @@ namespace canta {
 
         auto extent() -> ende::math::Vec<2, u32> override;
 
+        auto window() -> SDL_Window* { return _window; }
+
     private:
 
         SDL_Window* _window = nullptr;

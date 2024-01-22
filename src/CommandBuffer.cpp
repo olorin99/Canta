@@ -94,13 +94,13 @@ void canta::CommandBuffer::beginRendering(RenderingInfo info) {
         };
         colourAttachments[i] = {
                 .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
-                .imageView = info.colourAttachments[i].imageView,
+                .imageView = info.colourAttachments[i].image->defaultView().view(),
                 .imageLayout = static_cast<VkImageLayout>(info.colourAttachments[i].imageLayout),
                 .resolveMode = VK_RESOLVE_MODE_NONE,
                 .resolveImageView = VK_NULL_HANDLE,
                 .resolveImageLayout = VK_IMAGE_LAYOUT_UNDEFINED,
-                .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
-                .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
+                .loadOp = static_cast<VkAttachmentLoadOp>(info.colourAttachments[i].loadOp),
+                .storeOp = static_cast<VkAttachmentStoreOp>(info.colourAttachments[i].storeOp),
                 .clearValue = clearValue
         };
     }
@@ -108,16 +108,16 @@ void canta::CommandBuffer::beginRendering(RenderingInfo info) {
     renderingInfo.pColorAttachments = colourAttachments.data();
     VkRenderingAttachmentInfo depthAttachment = {
             .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
-            .imageView = info.depthAttachment.imageView,
             .imageLayout = static_cast<VkImageLayout>(info.depthAttachment.imageLayout),
             .resolveMode = VK_RESOLVE_MODE_NONE,
             .resolveImageView = VK_NULL_HANDLE,
             .resolveImageLayout = VK_IMAGE_LAYOUT_UNDEFINED,
-            .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
-            .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
+            .loadOp = static_cast<VkAttachmentLoadOp>(info.depthAttachment.loadOp),
+            .storeOp = static_cast<VkAttachmentStoreOp>(info.depthAttachment.storeOp),
             .clearValue = { 0, 0, 0, 1 }
     };
-    if (info.depthAttachment.imageView != VK_NULL_HANDLE) {
+    if (info.depthAttachment.image) {
+        depthAttachment.imageView = info.depthAttachment.image->defaultView().view();
         renderingInfo.pDepthAttachment = &depthAttachment;
     }
 
@@ -186,15 +186,17 @@ void canta::CommandBuffer::pushConstants(canta::ShaderStage stage, std::span<con
     vkCmdPushConstants(_buffer, _currentPipeline->layout(), static_cast<VkShaderStageFlagBits>(stage), offset, data.size(), data.data());
 }
 
-void canta::CommandBuffer::draw(u32 count, u32 instanceCount, u32 first, u32 firstInstance, bool indexed) {
+void canta::CommandBuffer::draw(u32 count, u32 instanceCount, u32 firstVertex, u32 firstIndex, u32 firstInstance, bool indexed) {
     assert(_currentPipeline);
     assert(_currentPipeline->mode() == PipelineMode::GRAPHICS);
     if (indexed) {
-        vkCmdDrawIndexed(_buffer, count, instanceCount, first, 0, firstInstance);
-        writeMarker(PipelineStage::VERTEX_SHADER | PipelineStage::FRAGMENT_SHADER, std::format("drawIndexed({}, {}, {}, {})", count, instanceCount, first, firstInstance));
+        vkCmdDrawIndexed(_buffer, count, instanceCount, firstVertex, firstIndex, firstInstance);
+        writeMarker(PipelineStage::VERTEX_SHADER, std::format("drawIndexed({}, {}, {}, {})", count, instanceCount, firstVertex, firstInstance));
+        writeMarker(PipelineStage::FRAGMENT_SHADER, std::format("drawIndexed({}, {}, {}, {})", count, instanceCount, firstVertex, firstInstance));
     } else {
-        vkCmdDraw(_buffer, count, instanceCount, first, firstInstance);
-        writeMarker(PipelineStage::VERTEX_SHADER | PipelineStage::FRAGMENT_SHADER, std::format("draw({}, {}, {}, {})", count, instanceCount, first, firstInstance));
+        vkCmdDraw(_buffer, count, instanceCount, firstVertex, firstInstance);
+        writeMarker(PipelineStage::VERTEX_SHADER, std::format("draw({}, {}, {}, {})", count, instanceCount, firstVertex, firstInstance));
+        writeMarker(PipelineStage::FRAGMENT_SHADER, std::format("draw({}, {}, {}, {})", count, instanceCount, firstVertex, firstInstance));
     }
 }
 
@@ -325,6 +327,16 @@ void canta::CommandBuffer::clearImage(ImageHandle handle, ImageLayout layout, co
 
 void canta::CommandBuffer::clearBuffer(canta::BufferHandle handle, u32 clearValue, u32 offset, u32 size) {
     vkCmdFillBuffer(_buffer, handle->buffer(), offset, size == 0 ? handle->size() - offset : size, clearValue);
+}
+
+void canta::CommandBuffer::copyBufferToImage(canta::BufferHandle buffer, canta::ImageHandle image, ImageLayout dstLayout) {
+    VkBufferImageCopy region = {};
+    region.imageSubresource.aspectMask = aspectMask(image->format());
+    region.imageSubresource.layerCount = 1;
+    region.imageExtent.width = image->width();
+    region.imageExtent.height = image->height();
+    region.imageExtent.depth = 1;
+    vkCmdCopyBufferToImage(_buffer, buffer->buffer(), image->image(), static_cast<VkImageLayout>(dstLayout), 1, &region);
 }
 
 void canta::CommandBuffer::barrier(ImageBarrier barrier) {

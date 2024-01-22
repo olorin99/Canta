@@ -387,6 +387,7 @@ auto canta::RenderGraph::compile() -> std::expected<bool, RenderGraphError> {
 
     buildBarriers();
     buildResources();
+    buildRenderAttachments();
 
     return true;
 }
@@ -434,30 +435,19 @@ auto canta::RenderGraph::execute(canta::CommandBuffer& cmd) -> std::expected<boo
             i32 width = pass->_width;
             i32 height = pass->_height;
 
-            std::vector<canta::Attachment> attachments = {};
-            for (auto& attachment : pass->_colourAttachments) {
-                auto attachmentImage = getImage({ .index = static_cast<u32>(attachment.index) });
-                attachments.push_back({
-                    .imageView = attachmentImage->defaultView().view(),
-                    .imageLayout = attachment.layout,
-                    .clearColour = attachment.clearColor
-                });
-                if (width < 0 || height < 0) {
-                    width = attachmentImage->width();
-                    height = attachmentImage->height();
+            if (width < 0 || height < 0) {
+                if (!pass->_renderingColourAttachments.empty()) {
+                    width = pass->_renderingColourAttachments.front().image->width();
+                    height = pass->_renderingColourAttachments.front().image->height();
+                } else if (pass->_depthAttachment.index > -1) {
+                    width = pass->_renderingDepthAttachment.image->width();
+                    height = pass->_renderingDepthAttachment.image->height();
                 }
             }
-            info.colourAttachments = attachments;
+
+            info.colourAttachments = pass->_renderingColourAttachments;
             if (pass->_depthAttachment.index >= 0) {
-                auto depthAttachmentImage = getImage({ .index = static_cast<u32>(pass->_depthAttachment.index) });
-                info.depthAttachment = {
-                    .imageView = depthAttachmentImage->defaultView().view(),
-                    .imageLayout = pass->_depthAttachment.layout
-                };
-                if (width < 0 || height < 0) {
-                    width = depthAttachmentImage->width();
-                    height = depthAttachmentImage->height();
-                }
+                info.depthAttachment = pass->_renderingDepthAttachment;
             }
 
             info.size = { static_cast<u32>(width), static_cast<u32>(height) };
@@ -601,6 +591,86 @@ void canta::RenderGraph::buildResources() {
                     .name = bufferResource->name
                 });
             }
+        }
+    }
+}
+
+void canta::RenderGraph::buildRenderAttachments() {
+    auto findNextAccess = [&](i32 startIndex, u32 resource) -> std::tuple<i32, i32, RenderPass::ResourceAccess> {
+        for (i32 passIndex = startIndex + 1; passIndex < _orderedPasses.size(); passIndex++) {
+            auto& pass = _orderedPasses[passIndex];
+            for (i32 outputIndex = 0; outputIndex < pass->_outputs.size(); outputIndex++) {
+                if (pass->_outputs[outputIndex].index == resource)
+                    return { passIndex, outputIndex, pass->_outputs[outputIndex] };
+            }
+            for (i32 inputIndex = 0; inputIndex < pass->_inputs.size(); inputIndex++) {
+                if (pass->_inputs[inputIndex].index == resource)
+                    return { passIndex, inputIndex, pass->_inputs[inputIndex] };
+            }
+        }
+        return { -1, -1, {} };
+    };
+
+    auto findCurrAccess = [&](RenderPass& pass, u32 resource) -> std::tuple<bool, RenderPass::ResourceAccess> {
+        for (auto& input : pass._inputs) {
+            if (input.index == resource)
+                return { true, input };
+        }
+        for (auto& output : pass._outputs) {
+            if (output.index == resource)
+                return { false, output };
+        }
+        return { false, {} };
+    };
+
+    auto findPrevAccess = [&](i32 startIndex, u32 resource) -> std::tuple<i32, i32, RenderPass::ResourceAccess> {
+        for (i32 passIndex = startIndex; passIndex > -1; passIndex--) {
+            auto& pass = _orderedPasses[passIndex];
+            for (i32 outputIndex = 0; outputIndex < pass->_outputs.size(); outputIndex++) {
+                if (pass->_outputs[outputIndex].index == resource)
+                    return { passIndex, outputIndex, pass->_outputs[outputIndex] };
+            }
+            for (i32 inputIndex = 0; inputIndex < pass->_inputs.size(); inputIndex++) {
+                if (pass->_inputs[inputIndex].index == resource)
+                    return { passIndex, inputIndex, pass->_inputs[inputIndex] };
+            }
+        }
+        return { -1, -1, {} };
+    };
+
+    for (u32 i = 0; i < _orderedPasses.size(); i++) {
+        auto& pass = _orderedPasses[i];
+
+        pass->_renderingColourAttachments.clear();
+
+        for (auto& attachment : pass->_colourAttachments) {
+            auto image = dynamic_cast<ImageResource*>(_resources[attachment.index].get());
+            auto [prevAccessPassIndex, prevAccessIndex, prevAccess] = findPrevAccess(i - 1, image->index);
+            auto [read, access] = findCurrAccess(*pass, image->index);
+            auto [nextAccessPassIndex, nextAccessIndex, nextAccess] = findNextAccess(i, image->index);
+
+            canta::Attachment renderingAttachment = {};
+            renderingAttachment.image = _images[image->imageIndex];
+            renderingAttachment.imageLayout = attachment.layout;
+            renderingAttachment.loadOp = prevAccessPassIndex > -1 ? LoadOp::LOAD : LoadOp::CLEAR;
+            renderingAttachment.storeOp = nextAccessPassIndex > -1 ? StoreOp::STORE : StoreOp::NONE;
+            renderingAttachment.clearColour = attachment.clearColor;
+            pass->_renderingColourAttachments.push_back(renderingAttachment);
+        }
+        if (pass->_depthAttachment.index > -1) {
+
+            auto image = dynamic_cast<ImageResource*>(_resources[pass->_depthAttachment.index].get());
+            auto [prevAccessPassIndex, prevAccessIndex, prevAccess] = findPrevAccess(i - 1, image->index);
+            auto [read, access] = findCurrAccess(*pass, image->index);
+            auto [nextAccessPassIndex, nextAccessIndex, nextAccess] = findNextAccess(i, image->index);
+
+            canta::Attachment renderingAttachment = {};
+            renderingAttachment.image = _images[image->imageIndex];
+            renderingAttachment.imageLayout = pass->_depthAttachment.layout;
+            renderingAttachment.loadOp = prevAccessPassIndex > -1 ? LoadOp::LOAD : LoadOp::CLEAR;
+            renderingAttachment.storeOp = nextAccessPassIndex > -1 ? StoreOp::STORE : StoreOp::NONE;
+            renderingAttachment.clearColour = pass->_depthAttachment.clearColor;
+            pass->_renderingDepthAttachment = renderingAttachment;
         }
     }
 }

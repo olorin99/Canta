@@ -19,6 +19,12 @@ FetchContent_Declare(
 )
 
 FetchContent_Declare(
+    imgui
+    GIT_REPOSITORY  https://github.com/ocornut/imgui
+    GIT_TAG         763100b38580dc661e190452b35bf64efd01147e
+)
+
+FetchContent_Declare(
     spdlog
     GIT_REPOSITORY  https://github.com/gabime/spdlog
     GIT_TAG         1ef8d3ce348daf5d580e27fc68e91628ce42c1f4
@@ -79,4 +85,9 @@ set(SHADERC_ENABLE_WERROR_COMPILE OFF CACHE BOOL "" FORCE)
 set(SPIRV_CROSS_EXCEPTIONS_TO_ASSERTIONS ON CACHE BOOL "" FORCE)
 
 
-FetchContent_MakeAvailable(Ende volk vma spdlog tsl_map spirv_cross spirv-headers spirv-tools glslang shaderc)
+FetchContent_MakeAvailable(Ende volk vma imgui spdlog tsl_map spirv_cross spirv-headers spirv-tools glslang shaderc)
+
+set(IMGUI_PATH ${imgui_SOURCE_DIR})
+set(IMGUI_SOURCES ${IMGUI_PATH}/imgui.cpp ${IMGUI_PATH}/imgui_demo.cpp ${IMGUI_PATH}/imgui_tables.cpp ${IMGUI_PATH}/imgui_widgets.cpp ${IMGUI_PATH}/imgui_draw.cpp ${IMGUI_PATH}/backends/imgui_impl_vulkan.cpp ${IMGUI_PATH}/backends/imgui_impl_sdl2.cpp)
+add_library(imgui ${IMGUI_SOURCES})
+target_include_directories(imgui PUBLIC ${imgui_SOURCE_DIR})

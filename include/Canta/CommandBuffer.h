@@ -24,8 +24,10 @@ namespace canta {
     using SamplerHandle = Handle<Sampler, ResourceList<Sampler>>;
 
     struct Attachment {
-        VkImageView imageView = VK_NULL_HANDLE;
+        ImageHandle image = {};
         ImageLayout imageLayout = ImageLayout::UNDEFINED;
+        LoadOp loadOp = LoadOp::NONE;
+        StoreOp storeOp = StoreOp::NONE;
         std::array<f32, 4> clearColour = { 0, 0, 0, 1 };
     };
 
@@ -98,7 +100,7 @@ namespace canta {
             pushConstants(stage, std::span<const u8>(reinterpret_cast<const u8*>(&data), sizeof(T)), offset);
         }
 
-        void draw(u32 count, u32 instanceCount = 1, u32 first = 0, u32 firstInstance = 0, bool indexed = false);
+        void draw(u32 count, u32 instanceCount = 1, u32 firstVertex = 0, u32 firstIndex = 0, u32 firstInstance = 0, bool indexed = false);
         void drawIndirect(BufferHandle commands, u32 offset, u32 drawCount, bool indexed = false, u32 stride = 0);
         void drawIndirectCount(BufferHandle commands, u32 offset, BufferHandle countBuffer, u32 countOffset, bool indexed = false, u32 stride = 0);
 
@@ -127,6 +129,7 @@ namespace canta {
         void blit(BlitInfo info);
         void clearImage(ImageHandle handle, ImageLayout layout = ImageLayout::GENERAL, const std::array<f32, 4>& clearColour = { 0, 0, 0, 1 });
         void clearBuffer(BufferHandle handle, u32 clearValue = 0, u32 offset = 0, u32 size = 0);
+        void copyBufferToImage(BufferHandle buffer, ImageHandle image, ImageLayout dstLayout);
 
         void barrier(ImageBarrier barrier);
         void barrier(BufferBarrier barrier);
