@@ -131,6 +131,7 @@ namespace canta {
         std::function<void(CommandBuffer&, RenderGraph&)> _execute = {};
 
         struct ResourceAccess {
+            u32 id = 0;
             u32 index = 0;
             Access access = Access::NONE;
             PipelineStage stage = PipelineStage::NONE;
@@ -201,7 +202,8 @@ namespace canta {
 
         Device* _device = nullptr;
 
-        i32 _backbuffer = -1;
+        i32 _backbufferId = -1;
+        i32 _backbufferIndex = -1;
 
         std::vector<RenderPass> _passes = {};
         std::vector<RenderPass*> _orderedPasses = {};

@@ -132,6 +132,7 @@ auto canta::RenderPass::writes(canta::ImageIndex index, canta::Access access, ca
     auto resource = _graph->_resources[index.index].get();
     if (resource) {
         _outputs.push_back({
+            .id = index.id,
             .index = index.index,
             .access = access,
             .stage = stage,
@@ -145,6 +146,7 @@ auto canta::RenderPass::reads(canta::ImageIndex index, canta::Access access, can
     auto resource = _graph->_resources[index.index].get();
     if (resource) {
         _inputs.push_back({
+            .id = index.id,
             .index = index.index,
             .access = access,
             .stage = stage,
@@ -158,6 +160,7 @@ auto canta::RenderPass::writes(canta::BufferIndex index, canta::Access access, c
     auto resource = _graph->_resources[index.index].get();
     if (resource) {
         _outputs.push_back({
+            .id = index.id,
             .index = index.index,
             .access = access,
             .stage = stage
@@ -171,6 +174,7 @@ canta::RenderPass::reads(canta::BufferIndex index, canta::Access access, canta::
     auto resource = _graph->_resources[index.index].get();
     if (resource) {
         _inputs.push_back({
+            .id = index.id,
             .index = index.index,
             .access = access,
             .stage = stage
@@ -330,11 +334,13 @@ auto canta::RenderGraph::getBuffer(canta::BufferIndex index) -> BufferHandle {
 }
 
 void canta::RenderGraph::setBackbuffer(canta::ImageIndex index) {
-    _backbuffer = index.index;
+    _backbufferId = index.id;
+    _backbufferIndex = index.index;
 }
 
 void canta::RenderGraph::setBackbuffer(canta::BufferIndex index) {
-    _backbuffer = index.index;
+    _backbufferId = index.id;
+    _backbufferIndex = index.index;
 }
 
 void canta::RenderGraph::reset() {
@@ -345,11 +351,11 @@ void canta::RenderGraph::reset() {
 auto canta::RenderGraph::compile() -> std::expected<bool, RenderGraphError> {
     _orderedPasses.clear();
 
-    std::vector<std::vector<u32>> outputs(_resources.size());
+    std::vector<std::vector<u32>> outputs(_resourceId);
     for (u32 i = 0; i < _passes.size(); i++) {
         auto& pass = _passes[i];
         for (auto& output : pass._outputs)
-            outputs[output.index].push_back(i);
+            outputs[output.id].push_back(i);
     }
 
     std::vector<bool> visited(_passes.size(), false);
@@ -360,7 +366,7 @@ auto canta::RenderGraph::compile() -> std::expected<bool, RenderGraphError> {
         onStack[index] = true;
         auto& pass = _passes[index];
         for (auto& input : pass._inputs) {
-            for (auto& output : outputs[input.index]) {
+            for (auto& output : outputs[input.id]) {
                 if (visited[output] && onStack[output])
                     return false;
                 if (!visited[output]) {
@@ -374,7 +380,7 @@ auto canta::RenderGraph::compile() -> std::expected<bool, RenderGraphError> {
         return true;
     };
 
-    for (auto& pass : outputs[_backbuffer]) {
+    for (auto& pass : outputs[_backbufferId]) {
         if (!dfs(pass))
             return std::unexpected(RenderGraphError::CYCLICAL_GRAPH);
     }
@@ -436,8 +442,10 @@ auto canta::RenderGraph::execute(canta::CommandBuffer& cmd) -> std::expected<boo
                     .imageLayout = attachment.layout,
                     .clearColour = attachment.clearColor
                 });
-                if (width < 0 || height < 0)
-                    info.size = { attachmentImage->width(), attachmentImage->height() };
+                if (width < 0 || height < 0) {
+                    width = attachmentImage->width();
+                    height = attachmentImage->height();
+                }
             }
             info.colourAttachments = attachments;
             if (pass->_depthAttachment.index >= 0) {
@@ -446,8 +454,10 @@ auto canta::RenderGraph::execute(canta::CommandBuffer& cmd) -> std::expected<boo
                     .imageView = depthAttachmentImage->defaultView().view(),
                     .imageLayout = pass->_depthAttachment.layout
                 };
-                if (width < 0 || height < 0)
-                    info.size = { depthAttachmentImage->width(), depthAttachmentImage->height() };
+                if (width < 0 || height < 0) {
+                    width = depthAttachmentImage->width();
+                    height = depthAttachmentImage->height();
+                }
             }
 
             info.size = { static_cast<u32>(width), static_cast<u32>(height) };
@@ -556,7 +566,7 @@ void canta::RenderGraph::buildResources() {
         if (resource->type == ResourceType::IMAGE) {
             auto imageResource = dynamic_cast<ImageResource*>(resource.get());
             if (imageResource->matchesBackbuffer) {
-                auto backbufferImage = getImage({ .index = static_cast<u32>(_backbuffer) });
+                auto backbufferImage = getImage({ .index = static_cast<u32>(_backbufferIndex) });
                 imageResource->width = backbufferImage->width();
                 imageResource->height = backbufferImage->height();
                 imageResource->depth = 1;
