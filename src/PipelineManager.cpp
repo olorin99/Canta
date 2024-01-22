@@ -80,6 +80,10 @@ auto canta::PipelineManager::create(canta::PipelineManager::CreateInfo info) -> 
     PipelineManager manager = {};
     manager._device = info.device;
     manager._rootPath = info.rootPath;
+    const char* cantaFile =
+#include <Canta/canta.glsl>
+    ;
+    manager.addVirtualFile("canta.glsl", cantaFile);
     return manager;
 }
 

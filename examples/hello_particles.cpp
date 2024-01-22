@@ -136,10 +136,6 @@ void main() {
     auto pipelineManager = canta::PipelineManager::create({
         .device = device.get()
     });
-    const char* cantaFile =
-        #include <Canta/canta.glsl>
-    ;
-    pipelineManager.addVirtualFile("canta.glsl", cantaFile);
 
     auto pipeline = pipelineManager.getPipeline({
         .compute = {
