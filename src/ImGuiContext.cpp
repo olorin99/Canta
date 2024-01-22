@@ -1,6 +1,8 @@
 #include "Canta/ImGuiContext.h"
 #include <Canta/Device.h>
 #include <Canta/util.h>
+#include <Canta/SDLWindow.h>
+#include <backends/imgui_impl_sdl2.h>
 
 const char* vertexGLSL = R"(
 #version 450 core
@@ -63,6 +65,17 @@ auto canta::ImGuiContext::create(canta::ImGuiContext::CreateInfo info) -> ImGuiC
     context._device = info.device;
     context._sampler = info.device->createSampler({});
 
+    IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
+    if (info.window)
+        ImGui_ImplSDL2_InitForVulkan(info.window->window());
+
+    info.device->immediate([&](auto& cmd) {
+        context.createFontsTexture(cmd);
+    });
+
+    context._window = info.window;
+
     return context;
 }
 
@@ -76,11 +89,9 @@ auto canta::ImGuiContext::operator=(canta::ImGuiContext &&rhs) noexcept -> ImGui
 }
 
 void canta::ImGuiContext::beginFrame() {
-
-}
-
-void canta::ImGuiContext::endFrame() {
-
+    if (_window)
+        ImGui_ImplSDL2_NewFrame(_window->window());
+    ImGui::NewFrame();
 }
 
 void canta::ImGuiContext::render(ImDrawData *drawData, canta::CommandBuffer &commandBuffer, Format format) {
@@ -223,6 +234,11 @@ bool canta::ImGuiContext::createFontsTexture(canta::CommandBuffer &commandBuffer
     io.Fonts->SetTexID((ImTextureID)(u64)_fontImage.index());
 
     return true;
+}
+
+void canta::ImGuiContext::processEvent(void *event) {
+    if (_window)
+        ImGui_ImplSDL2_ProcessEvent(static_cast<SDL_Event*>(event));
 }
 
 void canta::ImGuiContext::setupRenderState(ImDrawData *drawData, canta::CommandBuffer &commandBuffer, i32 width, i32 height, Format format) {

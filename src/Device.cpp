@@ -448,7 +448,10 @@ auto canta::Device::create(canta::Device::CreateInfo info) noexcept -> std::expe
         .initialValue = 0,
         .name = "frameTimelineSemaphore"
     }).value();
-
+    device->_immediateTimeline = device->createSemaphore({
+        .initialValue = 0,
+        .name = "immediateTimelineSemaphore"
+    }).value();
 
     VkDescriptorPoolSize poolSizes[] = {
             { VK_DESCRIPTOR_TYPE_SAMPLER, device->limits().maxBindlessSamplers },
@@ -537,10 +540,15 @@ auto canta::Device::create(canta::Device::CreateInfo info) noexcept -> std::expe
     }
 #endif
 
+    device->_immediatePool = device->createCommandPool({
+        .queueType = QueueType::GRAPHICS
+    }).value();
+
     return device;
 }
 
 canta::Device::~Device() {
+    _immediateTimeline.signal(std::numeric_limits<u64>::max());
     _frameTimeline.signal(std::numeric_limits<u64>::max());
     vkDeviceWaitIdle(_logicalDevice);
 
@@ -557,6 +565,9 @@ canta::Device::~Device() {
     vkDestroyDebugUtilsMessengerEXT(_instance, _debugMessenger, nullptr);
 #endif
 
+    _immediatePool = {};
+
+    _immediateTimeline = {};
     _frameTimeline = {};
 
     for (auto& queryPool : _timestampPools)

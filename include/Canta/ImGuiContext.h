@@ -7,12 +7,14 @@
 namespace canta {
 
     class Device;
+    class SDLWindow;
 
     class ImGuiContext {
     public:
 
         struct CreateInfo {
             Device* device = nullptr;
+            SDLWindow* window = nullptr;
         };
         static auto create(CreateInfo info) -> ImGuiContext;
 
@@ -20,11 +22,12 @@ namespace canta {
         auto operator=(ImGuiContext&& rhs) noexcept -> ImGuiContext&;
 
         void beginFrame();
-        void endFrame();
 
         void render(ImDrawData* drawData, CommandBuffer& commandBuffer, Format format);
 
         bool createFontsTexture(CommandBuffer& commandBuffer);
+
+        void processEvent(void* event);
 
     private:
 
@@ -45,6 +48,8 @@ namespace canta {
 
         ImageHandle _fontImage = {};
         BufferHandle _uploadBuffer = {};
+
+        SDLWindow* _window = nullptr;
 
     };
 

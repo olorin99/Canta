@@ -134,6 +134,24 @@ namespace canta {
         void beginFrame();
         void endFrame();
 
+        template <typename Func>
+        void immediate(Func func, QueueType queueType = QueueType::GRAPHICS) {
+            auto& cmd = _immediatePool.getBuffer();
+            cmd.begin();
+            func(cmd);
+            cmd.end();
+            auto wait = std::to_array({
+                _immediateTimeline.getPair()
+            });
+            _immediateTimeline.increment();
+            auto signal = std::to_array({
+                _immediateTimeline.getPair()
+            });
+            cmd.submit(wait, signal).and_then([&](auto result) {
+                return _immediateTimeline.wait(_immediateTimeline.value());
+            });
+        }
+
         auto frameSemaphore() -> Semaphore* { return &_frameTimeline; }
         auto frameValue() const -> u64 { return _frameTimeline.value(); }
         auto framePrevValue() const -> u64 { return std::max(0l, static_cast<i64>(_frameTimeline.value()) - 1); }
@@ -221,6 +239,8 @@ namespace canta {
 
         VmaAllocator _allocator = VK_NULL_HANDLE;
 
+        CommandPool _immediatePool = {};
+
         std::vector<VkQueryPool> _timestampPools = {};
         u32 _lastPoolQueryCount = 0;
         struct FreeTimer {
@@ -235,6 +255,7 @@ namespace canta {
         u32 _marker = 0;
 
         Semaphore _frameTimeline = {};
+        Semaphore _immediateTimeline = {};
 
         VkDescriptorPool _bindlessPool = VK_NULL_HANDLE;
         VkDescriptorSetLayout _bindlessLayout = VK_NULL_HANDLE;

@@ -6,7 +6,6 @@
 #include <Canta/PipelineManager.h>
 #include <Canta/RenderGraph.h>
 #include <imgui.h>
-#include <backends/imgui_impl_sdl2.h>
 #include <Canta/ImGuiContext.h>
 
 int main() {
@@ -28,33 +27,10 @@ int main() {
         }).value();
     }
 
-    IMGUI_CHECKVERSION();
-    ImGui::CreateContext();
-    ImGui_ImplSDL2_InitForVulkan(window.window());
-
     auto imguiContext = canta::ImGuiContext::create({
-        .device = device.get()
+        .device = device.get(),
+        .window = &window
     });
-
-    auto immediatePool = device->createCommandPool({
-        .queueType = canta::QueueType::GRAPHICS
-    });
-    auto& immediateBuffer = immediatePool->getBuffer();
-    immediateBuffer.begin();
-    imguiContext.createFontsTexture(immediateBuffer);
-    immediateBuffer.end();
-
-    {
-        device->beginFrame();
-        auto waits = std::to_array({
-            canta::Semaphore::Pair{ device->frameSemaphore(), device->framePrevValue() }
-        });
-        auto signals = std::to_array({
-            device->frameSemaphore()->getPair()
-        });
-        immediateBuffer.submit(waits, signals);
-        device->endFrame();
-    }
 
 
     std::string particleDrawComp = R"(
@@ -188,21 +164,16 @@ void main() {
                     running = false;
                     break;
             }
-            ImGui_ImplSDL2_ProcessEvent(&event);
+            imguiContext.processEvent(&event);
         }
         device->beginFrame();
         device->gc();
         pipelineManager.reloadAll();
 
         imguiContext.beginFrame();
-        ImGui_ImplSDL2_NewFrame(window.window());
-        ImGui::NewFrame();
-
         ImGui::ShowDemoWindow();
-
         ImGui::Render();
 
-        imguiContext.endFrame();
 
 
         auto swapImage = swapchain->acquire().value();
