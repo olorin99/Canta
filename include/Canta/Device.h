@@ -19,6 +19,7 @@
 #include <Canta/Buffer.h>
 #include <Canta/Sampler.h>
 #include <Canta/Timer.h>
+#include <Canta/PipelineStatistics.h>
 #include <Canta/Queue.h>
 
 #define VMA_STATIC_VULKAN_FUNCTIONS 0
@@ -215,6 +216,11 @@ namespace canta {
         auto createTimer() -> Timer;
         void destroyTimer(u32 poolIndex, u32 queryIndex);
 
+        auto pipelineStatisticsPools() -> std::span<VkQueryPool> { return _pipelineStatisticsPools; }
+
+        auto createPipelineStatistics() -> PipelineStatistics;
+        void destroyPipelineStatistics(u32 poolIndex, u32 queryIndex);
+
         struct ResourceStats {
             u32 shaderCount = 0;
             u32 shaderAllocated = 0;
@@ -262,6 +268,14 @@ namespace canta {
             u32 queryIndex = 0;
         };
         std::vector<FreeTimer> _freeTimers = {};
+
+        std::vector<VkQueryPool> _pipelineStatisticsPools = {};
+        u32 _lastStatPoolQueryCount = 0;
+        struct FreeStat {
+            u32 poolIndex = 0;
+            u32 queryIndex = 0;
+        };
+        std::vector<FreeStat> _freePipelineStats = {};
 
         std::array<BufferHandle, FRAMES_IN_FLIGHT> _markerBuffers = {};
         std::vector<std::string> _markerCommands[FRAMES_IN_FLIGHT] = {};

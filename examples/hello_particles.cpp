@@ -150,6 +150,9 @@ void main() {
     for (auto& timer : timers)
         timer = device->createTimer();
 
+    canta::PipelineStatistics statistics[canta::FRAMES_IN_FLIGHT] = {};
+    for (auto& stats : statistics)
+        stats = device->createPipelineStatistics();
 
     auto renderGraph = canta::RenderGraph::create({
         .device = device.get()
@@ -177,6 +180,19 @@ void main() {
         if (ImGui::Begin("Stats")) {
             auto frameTime = timers[flyingIndex].result().value();
             ImGui::Text("Frame Time: %f ms", frameTime / 1000000.f);
+
+            auto pipelineStats = statistics[flyingIndex].result().value();
+            ImGui::Text("Input Assembly Vertices: %d", pipelineStats.inputAssemblyVertices);
+            ImGui::Text("Input Assembly Primitives: %d", pipelineStats.inputAssemblyPrimitives);
+            ImGui::Text("Vertex Shader Invocations: %d", pipelineStats.vertexShaderInvocations);
+            ImGui::Text("Geometry Shader Invocations: %d", pipelineStats.geometryShaderInvocations);
+            ImGui::Text("Geometry Shader Primitives: %d", pipelineStats.geometryShaderPrimitives);
+            ImGui::Text("Clipping Invocations: %d", pipelineStats.clippingInvocations);
+            ImGui::Text("Clipping Primitives: %d", pipelineStats.clippingPrimitives);
+            ImGui::Text("Fragment Shader Invocations: %d", pipelineStats.fragmentShaderInvocations);
+            ImGui::Text("Tessellation Control Shader Patches: %d", pipelineStats.tessellationControlShaderPatches);
+            ImGui::Text("Tessellation Evaluation Shader Invocations: %d", pipelineStats.tessellationEvaluationShaderInvocations);
+            ImGui::Text("Compute Shader Invocations: %d", pipelineStats.computeShaderInvocations);
 
             auto resourceStats = device->resourceStats();
             ImGui::Text("Shader Count %d", resourceStats.shaderCount);
@@ -212,6 +228,7 @@ void main() {
 
         commandBuffer.begin();
         timers[flyingIndex].begin(commandBuffer);
+        statistics[flyingIndex].begin(commandBuffer);
 
         renderGraph.reset();
 
@@ -292,6 +309,7 @@ void main() {
             .dstLayout = canta::ImageLayout::PRESENT
         });
 
+        statistics[flyingIndex].end(commandBuffer);
         timers[flyingIndex].end(commandBuffer);
         commandBuffer.end();
 

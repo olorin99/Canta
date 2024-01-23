@@ -570,6 +570,9 @@ canta::Device::~Device() {
     _immediateTimeline = {};
     _frameTimeline = {};
 
+    for (auto& queryPool : _pipelineStatisticsPools)
+        vkDestroyQueryPool(_logicalDevice, queryPool, nullptr);
+
     for (auto& queryPool : _timestampPools)
         vkDestroyQueryPool(_logicalDevice, queryPool, nullptr);
 
@@ -1399,6 +1402,62 @@ auto canta::Device::createTimer() -> Timer {
 
 void canta::Device::destroyTimer(u32 poolIndex, u32 queryIndex) {
     _freeTimers.push_back({
+        .poolIndex = poolIndex,
+        .queryIndex = queryIndex
+    });
+}
+
+auto canta::Device::createPipelineStatistics() -> PipelineStatistics {
+    constexpr const u32 poolQueryCount = 10;
+
+    u32 poolIndex = 0;
+    u32 queryIndex = 0;
+    if (!_freePipelineStats.empty()) {
+        auto freeSlot = _freePipelineStats.back();
+        _freePipelineStats.pop_back();
+        poolIndex = freeSlot.poolIndex;
+        queryIndex = freeSlot.queryIndex;
+    } else if (_lastStatPoolQueryCount < poolQueryCount && !_pipelineStatisticsPools.empty()) {
+        poolIndex = _pipelineStatisticsPools.size() - 1;
+        queryIndex = _lastStatPoolQueryCount++;
+    } else {
+        _lastStatPoolQueryCount = 0;
+        VkQueryPoolCreateInfo createInfo = {};
+        createInfo.sType = VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO;
+        createInfo.queryType = VK_QUERY_TYPE_PIPELINE_STATISTICS;
+        createInfo.queryCount = poolQueryCount * 11;
+        createInfo.pipelineStatistics =
+                VK_QUERY_PIPELINE_STATISTIC_INPUT_ASSEMBLY_VERTICES_BIT |
+                VK_QUERY_PIPELINE_STATISTIC_INPUT_ASSEMBLY_PRIMITIVES_BIT |
+                VK_QUERY_PIPELINE_STATISTIC_VERTEX_SHADER_INVOCATIONS_BIT |
+                VK_QUERY_PIPELINE_STATISTIC_GEOMETRY_SHADER_INVOCATIONS_BIT |
+                VK_QUERY_PIPELINE_STATISTIC_GEOMETRY_SHADER_PRIMITIVES_BIT |
+                VK_QUERY_PIPELINE_STATISTIC_CLIPPING_INVOCATIONS_BIT |
+                VK_QUERY_PIPELINE_STATISTIC_CLIPPING_PRIMITIVES_BIT |
+                VK_QUERY_PIPELINE_STATISTIC_FRAGMENT_SHADER_INVOCATIONS_BIT |
+                VK_QUERY_PIPELINE_STATISTIC_TESSELLATION_CONTROL_SHADER_PATCHES_BIT |
+                VK_QUERY_PIPELINE_STATISTIC_TESSELLATION_EVALUATION_SHADER_INVOCATIONS_BIT |
+                VK_QUERY_PIPELINE_STATISTIC_COMPUTE_SHADER_INVOCATIONS_BIT;
+        VkQueryPool pool;
+        VK_TRY(vkCreateQueryPool(logicalDevice(), &createInfo, nullptr, &pool));
+        vkResetQueryPool(logicalDevice(), pool, 0, createInfo.queryCount);
+        poolIndex = _pipelineStatisticsPools.size();
+        queryIndex = _lastStatPoolQueryCount++;
+        _pipelineStatisticsPools.push_back(pool);
+    }
+
+    PipelineStatistics stats = {};
+
+    stats._device = this;
+    stats._queryPoolIndex = poolIndex;
+    stats._index = queryIndex;
+    stats._queryCount = 11;
+
+    return stats;
+}
+
+void canta::Device::destroyPipelineStatistics(u32 poolIndex, u32 queryIndex) {
+    _freePipelineStats.push_back({
         .poolIndex = poolIndex,
         .queryIndex = queryIndex
     });
