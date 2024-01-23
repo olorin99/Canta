@@ -140,6 +140,13 @@ namespace canta {
 
         void writeMarker(PipelineStage stage, std::string_view command);
 
+        struct Stats {
+            u32 drawCalls = 0;
+            u32 dispatchCalls = 0;
+            u32 barriers = 0;
+        };
+        auto statistics() const -> Stats { return _stats; }
+
     private:
         friend CommandPool;
 
@@ -150,6 +157,8 @@ namespace canta {
         QueueType _queueType = QueueType::NONE;
 
         PipelineHandle _currentPipeline = {};
+
+        Stats _stats = {};
 
     };
 
