@@ -189,15 +189,49 @@ auto canta::RenderGraph::create(canta::RenderGraph::CreateInfo info) -> RenderGr
     RenderGraph graph = {};
 
     graph._device = info.device;
+    graph._name = info.name;
+    for (auto& pool : graph._commandPools) {
+        pool = info.device->createCommandPool({
+            .queueType = QueueType::GRAPHICS
+        }).value();
+    }
+    graph._timingEnabled = info.enableTiming;
+    graph._individualTiming = info.individualTiming;
+    graph._pipelineStatisticsEnabled = info.enablePipelineStatistics;
+    graph._individualPipelineStatistics = info.individualPipelineStatistics;
+
+    if (info.enableTiming && !info.individualTiming) {
+        for (auto& frameTimers : graph._timers) {
+            frameTimers.emplace_back(std::make_pair(info.name, info.device->createTimer()));
+        }
+    }
+    if (info.enablePipelineStatistics && !info.individualPipelineStatistics) {
+        for (auto& framePipelineStats : graph._pipelineStats) {
+            framePipelineStats.emplace_back(std::make_pair(info.name, info.device->createPipelineStatistics()));
+        }
+    }
 
     return graph;
 }
 
 auto canta::RenderGraph::addPass(std::string_view name, RenderPass::Type type) -> RenderPass & {
-    _passes.push_back({});
+    u32 index = _passes.size();
+    _passes.emplace_back();
     _passes.back()._graph = this;
     _passes.back()._name = name;
     _passes.back()._type = type;
+    if (_timingEnabled && _individualTiming) {
+        if (_timers[_device->flyingIndex()].size() <= index) {
+            _timers[_device->flyingIndex()].emplace_back(std::make_pair(name, _device->createTimer()));
+        } else
+            _timers[_device->flyingIndex()][index].first = name;
+    }
+    if (_pipelineStatisticsEnabled && _individualPipelineStatistics) {
+        if (_pipelineStats[_device->flyingIndex()].size() <= index) {
+            _pipelineStats[_device->flyingIndex()].emplace_back(std::make_pair(name, _device->createPipelineStatistics()));
+        } else
+            _pipelineStats[_device->flyingIndex()][index].first = name;
+    }
     return _passes.back();
 }
 
@@ -392,7 +426,19 @@ auto canta::RenderGraph::compile() -> std::expected<bool, RenderGraphError> {
     return true;
 }
 
-auto canta::RenderGraph::execute(canta::CommandBuffer& cmd) -> std::expected<bool, RenderGraphError> {
+auto canta::RenderGraph::execute(std::span<Semaphore::Pair> waits, std::span<Semaphore::Pair> signals, bool backbufferIsSwapchain) -> std::expected<bool, RenderGraphError> {
+    _commandPools[_device->flyingIndex()].reset();
+    auto& cmd = _commandPools[_device->flyingIndex()].getBuffer();
+    cmd.begin();
+    if (_timingEnabled && !_individualTiming) {
+        _timers[_device->flyingIndex()].front().first = _name;
+        _timers[_device->flyingIndex()].front().second.begin(cmd);
+    }
+    if (_pipelineStatisticsEnabled && !_individualPipelineStatistics) {
+        _pipelineStats[_device->flyingIndex()].front().first = _name;
+        _pipelineStats[_device->flyingIndex()].front().second.begin(cmd);
+    }
+
     for (u32 i = 0; i < _orderedPasses.size(); i++) {
         auto& pass = _orderedPasses[i];
 
@@ -430,6 +476,11 @@ auto canta::RenderGraph::execute(canta::CommandBuffer& cmd) -> std::expected<boo
         for (u32 barrier = 0; barrier < bufferBarrierCount; barrier++)
             cmd.barrier(bufferBarriers[barrier]);
 
+        if (_timingEnabled && _individualTiming)
+            _timers[_device->flyingIndex()][i].second.begin(cmd);
+        if (_pipelineStatisticsEnabled && _individualPipelineStatistics)
+            _pipelineStats[_device->flyingIndex()][i].second.begin(cmd);
+
         if (pass->_type == RenderPass::Type::GRAPHICS) {
             RenderingInfo info = {};
             i32 width = pass->_width;
@@ -457,7 +508,30 @@ auto canta::RenderGraph::execute(canta::CommandBuffer& cmd) -> std::expected<boo
         if (pass->_type == RenderPass::Type::GRAPHICS) {
             cmd.endRendering();
         }
+        if (_pipelineStatisticsEnabled && _individualPipelineStatistics)
+            _pipelineStats[_device->flyingIndex()][i].second.end(cmd);
+        if (_timingEnabled && _individualTiming)
+            _timers[_device->flyingIndex()][i].second.end(cmd);
     }
+
+    if (backbufferIsSwapchain) {
+        cmd.barrier({
+            .image = getImage({ .index = static_cast<u32>(_backbufferIndex) }),
+            .srcStage = canta::PipelineStage::COLOUR_OUTPUT,
+            .dstStage = canta::PipelineStage::BOTTOM,
+            .srcAccess = canta::Access::COLOUR_WRITE | canta::Access::COLOUR_READ,
+            .dstAccess = canta::Access::MEMORY_WRITE | canta::Access::MEMORY_READ,
+            .srcLayout = canta::ImageLayout::COLOUR_ATTACHMENT,
+            .dstLayout = canta::ImageLayout::PRESENT
+        });
+    }
+
+    if (_pipelineStatisticsEnabled && !_individualPipelineStatistics)
+        _pipelineStats[_device->flyingIndex()].front().second.end(cmd);
+    if (_timingEnabled && !_individualTiming)
+        _timers[_device->flyingIndex()].front().second.end(cmd);
+    cmd.end();
+    cmd.submit(waits, signals);
 
     return true;
 }

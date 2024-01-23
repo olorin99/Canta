@@ -21,12 +21,6 @@ int main() {
     auto swapchain = device->createSwapchain({
         .window = &window
     });
-    std::array<canta::CommandPool, canta::FRAMES_IN_FLIGHT> commandPools = {};
-    for (auto& pool : commandPools) {
-        pool = device->createCommandPool({
-            .queueType = canta::QueueType::GRAPHICS
-        }).value();
-    }
 
     auto imguiContext = canta::ImGuiContext::create({
         .device = device.get(),
@@ -153,16 +147,9 @@ void main() {
     uploadBuffer.flushStagedData();
     uploadBuffer.wait();
 
-    canta::Timer timers[canta::FRAMES_IN_FLIGHT] = {};
-    for (auto& timer : timers)
-        timer = device->createTimer();
-
-    canta::PipelineStatistics statistics[canta::FRAMES_IN_FLIGHT] = {};
-    for (auto& stats : statistics)
-        stats = device->createPipelineStatistics();
-
     auto renderGraph = canta::RenderGraph::create({
-        .device = device.get()
+        .device = device.get(),
+        .name = "Renderer"
     });
 
     bool running = true;
@@ -177,7 +164,6 @@ void main() {
             imguiContext.processEvent(&event);
         }
         device->beginFrame();
-        auto flyingIndex = device->flyingIndex();
         device->gc();
         pipelineManager.reloadAll();
         uploadBuffer.clearSubmitted();
@@ -186,21 +172,42 @@ void main() {
         ImGui::ShowDemoWindow();
 
         if (ImGui::Begin("Stats")) {
-            auto frameTime = timers[flyingIndex].result().value();
-            ImGui::Text("Frame Time: %f ms", frameTime / 1000000.f);
 
-            auto pipelineStats = statistics[flyingIndex].result().value();
-            ImGui::Text("Input Assembly Vertices: %d", pipelineStats.inputAssemblyVertices);
-            ImGui::Text("Input Assembly Primitives: %d", pipelineStats.inputAssemblyPrimitives);
-            ImGui::Text("Vertex Shader Invocations: %d", pipelineStats.vertexShaderInvocations);
-            ImGui::Text("Geometry Shader Invocations: %d", pipelineStats.geometryShaderInvocations);
-            ImGui::Text("Geometry Shader Primitives: %d", pipelineStats.geometryShaderPrimitives);
-            ImGui::Text("Clipping Invocations: %d", pipelineStats.clippingInvocations);
-            ImGui::Text("Clipping Primitives: %d", pipelineStats.clippingPrimitives);
-            ImGui::Text("Fragment Shader Invocations: %d", pipelineStats.fragmentShaderInvocations);
-            ImGui::Text("Tessellation Control Shader Patches: %d", pipelineStats.tessellationControlShaderPatches);
-            ImGui::Text("Tessellation Evaluation Shader Invocations: %d", pipelineStats.tessellationEvaluationShaderInvocations);
-            ImGui::Text("Compute Shader Invocations: %d", pipelineStats.computeShaderInvocations);
+            auto timingEnabled = renderGraph.timingEnabled();
+            if (ImGui::Checkbox("RenderGraph Timing", &timingEnabled))
+                renderGraph.setTimingEnabled(timingEnabled);
+            auto individualTiming = renderGraph.individualTiming();
+            if (ImGui::Checkbox("RenderGraph Per Pass Timing", &individualTiming))
+                renderGraph.setIndividualTiming(individualTiming);
+            auto pipelineStatsEnabled = renderGraph.pipelineStatisticsEnabled();
+            if (ImGui::Checkbox("RenderGraph PiplelineStats", &pipelineStatsEnabled))
+                renderGraph.setPipelineStatisticsEnabled(pipelineStatsEnabled);
+            auto individualPipelineStatistics = renderGraph.individualPipelineStatistics();
+            if (ImGui::Checkbox("RenderGraph Per Pass PiplelineStats", &individualPipelineStatistics))
+                renderGraph.setIndividualPipelineStatistics(individualPipelineStatistics);
+
+            auto timers = renderGraph.timers();
+            for (auto& timer : timers) {
+                ImGui::Text("%s: %f ms", timer.first.data(), timer.second.result().value() / 1000000.f);
+            }
+            auto pipelineStatistics = renderGraph.pipelineStatistics();
+            for (auto& pipelineStats : pipelineStatistics) {
+                if (ImGui::TreeNode(pipelineStats.first.c_str())) {
+                    auto stats = pipelineStats.second.result().value();
+                    ImGui::Text("Input Assembly Vertices: %d", stats.inputAssemblyVertices);
+                    ImGui::Text("Input Assembly Primitives: %d", stats.inputAssemblyPrimitives);
+                    ImGui::Text("Vertex Shader Invocations: %d", stats.vertexShaderInvocations);
+                    ImGui::Text("Geometry Shader Invocations: %d", stats.geometryShaderInvocations);
+                    ImGui::Text("Geometry Shader Primitives: %d", stats.geometryShaderPrimitives);
+                    ImGui::Text("Clipping Invocations: %d", stats.clippingInvocations);
+                    ImGui::Text("Clipping Primitives: %d", stats.clippingPrimitives);
+                    ImGui::Text("Fragment Shader Invocations: %d", stats.fragmentShaderInvocations);
+                    ImGui::Text("Tessellation Control Shader Patches: %d", stats.tessellationControlShaderPatches);
+                    ImGui::Text("Tessellation Evaluation Shader Invocations: %d", stats.tessellationEvaluationShaderInvocations);
+                    ImGui::Text("Compute Shader Invocations: %d", stats.computeShaderInvocations);
+                    ImGui::TreePop();
+                }
+            }
 
             auto resourceStats = device->resourceStats();
             ImGui::Text("Shader Count %d", resourceStats.shaderCount);
@@ -239,23 +246,6 @@ void main() {
 
 
         auto swapImage = swapchain->acquire().value();
-
-        auto waits = std::to_array({
-            { device->frameSemaphore(), device->framePrevValue() },
-            swapchain->acquireSemaphore()->getPair(),
-            uploadBuffer.timeline().getPair()
-        });
-        auto signals = std::to_array({
-            device->frameSemaphore()->getPair(),
-            swapchain->presentSemaphore()->getPair()
-        });
-
-        commandPools[flyingIndex].reset();
-        auto& commandBuffer = commandPools[flyingIndex].getBuffer();
-
-        commandBuffer.begin();
-        timers[flyingIndex].begin(commandBuffer);
-        statistics[flyingIndex].begin(commandBuffer);
 
         renderGraph.reset();
 
@@ -324,23 +314,17 @@ void main() {
 
         renderGraph.setBackbuffer(uiSwapchainIndex);
         renderGraph.compile();
-        renderGraph.execute(commandBuffer);
 
-        commandBuffer.barrier({
-            .image = swapImage,
-            .srcStage = canta::PipelineStage::COLOUR_OUTPUT,
-            .dstStage = canta::PipelineStage::BOTTOM,
-            .srcAccess = canta::Access::COLOUR_WRITE | canta::Access::COLOUR_READ,
-            .dstAccess = canta::Access::MEMORY_WRITE | canta::Access::MEMORY_READ,
-            .srcLayout = canta::ImageLayout::COLOUR_ATTACHMENT,
-            .dstLayout = canta::ImageLayout::PRESENT
+        auto waits = std::to_array({
+            { device->frameSemaphore(), device->framePrevValue() },
+            swapchain->acquireSemaphore()->getPair(),
+            uploadBuffer.timeline().getPair()
         });
-
-        statistics[flyingIndex].end(commandBuffer);
-        timers[flyingIndex].end(commandBuffer);
-        commandBuffer.end();
-
-        commandBuffer.submit(waits, signals);
+        auto signals = std::to_array({
+            device->frameSemaphore()->getPair(),
+            swapchain->presentSemaphore()->getPair()
+        });
+        renderGraph.execute(waits, signals, true);
 
         swapchain->present();
 

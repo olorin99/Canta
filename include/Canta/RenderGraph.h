@@ -173,6 +173,11 @@ namespace canta {
 
         struct CreateInfo {
             Device* device = nullptr;
+            bool enableTiming = true;
+            bool individualTiming = true;
+            bool enablePipelineStatistics = true;
+            bool individualPipelineStatistics = false;
+            std::string_view name = {};
         };
 
         static auto create(CreateInfo info) -> RenderGraph;
@@ -195,7 +200,34 @@ namespace canta {
 
         void reset();
         auto compile() -> std::expected<bool, RenderGraphError>;
-        auto execute(CommandBuffer& cmd) -> std::expected<bool, RenderGraphError>;
+        auto execute(std::span<Semaphore::Pair> waits, std::span<Semaphore::Pair> signals, bool backbufferIsSwapchain = false) -> std::expected<bool, RenderGraphError>;
+
+        auto timers() -> std::span<std::pair<std::string, Timer>> {
+            auto count = _orderedPasses.size();
+            if (!_timingEnabled) count = 0;
+            if (_timingEnabled && !_individualTiming) count = 1;
+            count = std::min(_timers[_device->flyingIndex()].size(), count);
+            return std::span(_timers[_device->flyingIndex()].data(), count);
+        }
+        auto pipelineStatistics() -> std::span<std::pair<std::string, PipelineStatistics>> {
+            auto count = _orderedPasses.size();
+            if (!_pipelineStatisticsEnabled) count = 0;
+            if (_pipelineStatisticsEnabled && !_individualPipelineStatistics) count = 1;
+            count = std::min(_pipelineStats[_device->flyingIndex()].size(), count);
+            return std::span(_pipelineStats[_device->flyingIndex()].data(), count);
+        }
+
+        auto timingEnabled() const -> bool { return _timingEnabled; }
+        auto pipelineStatisticsEnabled() const -> bool { return _pipelineStatisticsEnabled; }
+
+        auto individualTiming() const -> bool { return _individualTiming; }
+        auto individualPipelineStatistics() const -> bool { return _individualPipelineStatistics; }
+
+        void setTimingEnabled(bool enabled) { _timingEnabled = enabled; }
+        void setPipelineStatisticsEnabled(bool enabled) { _pipelineStatisticsEnabled = enabled; }
+
+        void setIndividualTiming(bool individual) { _individualTiming = individual; }
+        void setIndividualPipelineStatistics(bool individual) { _individualPipelineStatistics = individual; }
 
     private:
         friend RenderPass;
@@ -205,12 +237,20 @@ namespace canta {
         void buildRenderAttachments();
 
         Device* _device = nullptr;
+        std::string _name = {};
 
         i32 _backbufferId = -1;
         i32 _backbufferIndex = -1;
 
         std::vector<RenderPass> _passes = {};
         std::vector<RenderPass*> _orderedPasses = {};
+
+        bool _timingEnabled = true;
+        bool _individualTiming = true;
+        std::array<std::vector<std::pair<std::string, Timer>>, FRAMES_IN_FLIGHT> _timers = {};
+        bool _pipelineStatisticsEnabled = true;
+        bool _individualPipelineStatistics = true;
+        std::array<std::vector<std::pair<std::string, PipelineStatistics>>, FRAMES_IN_FLIGHT> _pipelineStats = {};
 
         tsl::robin_map<const char*, u32> _nameToIndex;
 
@@ -219,6 +259,8 @@ namespace canta {
 
         std::vector<ImageHandle> _images = {};
         std::vector<BufferHandle> _buffers = {};
+
+        std::array<CommandPool, FRAMES_IN_FLIGHT> _commandPools = {};
 
     };
 
