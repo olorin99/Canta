@@ -402,6 +402,16 @@ namespace canta {
         VK_FORMAT_A4B4G4R4_UNORM_PACK16_EXT
     };
 
+    constexpr u32 formatSize(Format format) {
+        switch (format) {
+            case Format::RGBA8_UNORM:
+                return 4;
+            case Format::RGBA32_SFLOAT:
+                return 4 * 4;
+        }
+        return 0;
+    }
+
     enum class ImageLayout {
         UNDEFINED = VK_IMAGE_LAYOUT_UNDEFINED,
         GENERAL = VK_IMAGE_LAYOUT_GENERAL,

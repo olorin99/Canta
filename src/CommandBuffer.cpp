@@ -348,14 +348,32 @@ void canta::CommandBuffer::clearBuffer(canta::BufferHandle handle, u32 clearValu
     vkCmdFillBuffer(_buffer, handle->buffer(), offset, size == 0 ? handle->size() - offset : size, clearValue);
 }
 
-void canta::CommandBuffer::copyBufferToImage(canta::BufferHandle buffer, canta::ImageHandle image, ImageLayout dstLayout) {
-    VkBufferImageCopy region = {};
-    region.imageSubresource.aspectMask = aspectMask(image->format());
-    region.imageSubresource.layerCount = 1;
-    region.imageExtent.width = image->width();
-    region.imageExtent.height = image->height();
-    region.imageExtent.depth = 1;
-    vkCmdCopyBufferToImage(_buffer, buffer->buffer(), image->image(), static_cast<VkImageLayout>(dstLayout), 1, &region);
+void canta::CommandBuffer::copyBufferToImage(BufferImageCopyInfo info) {
+    VkBufferImageCopy imageCopy{};
+    imageCopy.bufferOffset = info.srcOffset;
+    imageCopy.bufferRowLength = 0;
+    imageCopy.bufferImageHeight = 0;
+
+    imageCopy.imageSubresource.aspectMask = aspectMask(info.dst->format());
+    imageCopy.imageSubresource.mipLevel = info.dstMipLevel;
+    imageCopy.imageSubresource.baseArrayLayer = info.dstLayer;
+    imageCopy.imageSubresource.layerCount = info.dstLayerCount;
+    imageCopy.imageExtent.width = info.dstDimensions.x() == 0 ? info.dst->width() : info.dstDimensions.x();
+    imageCopy.imageExtent.height = info.dstDimensions.y() == 0 ? info.dst->height() : info.dstDimensions.y();
+    imageCopy.imageExtent.depth = info.dstDimensions.z() == 0 ? info.dst->depth() : info.dstDimensions.z();
+    imageCopy.imageOffset.x = info.dstOffsets.x();
+    imageCopy.imageOffset.y = info.dstOffsets.y();
+    imageCopy.imageOffset.z = info.dstOffsets.z();
+
+    vkCmdCopyBufferToImage(_buffer, info.src->buffer(), info.dst->image(), static_cast<VkImageLayout>(info.dstLayout), 1, &imageCopy);
+}
+
+void canta::CommandBuffer::copyBuffer(canta::CommandBuffer::BufferCopyInfo info) {
+    VkBufferCopy copy = {};
+    copy.srcOffset = info.srcOffset;
+    copy.dstOffset = info.dstOffset;
+    copy.size = info.size;
+    vkCmdCopyBuffer(_buffer, info.src->buffer(), info.dst->buffer(), 1, &copy);
 }
 
 void canta::CommandBuffer::barrier(ImageBarrier barrier) {

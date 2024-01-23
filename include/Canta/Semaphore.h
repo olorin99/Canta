@@ -31,6 +31,8 @@ namespace canta {
 
         auto value() const -> u64 { return _value; }
 
+        auto gpuValue() const -> u64;
+
         auto increment() -> u64 { return ++_value; }
 
         auto wait(u64 value, u64 timeout = 1000000000) -> std::expected<bool, Error>;
@@ -38,10 +40,10 @@ namespace canta {
         auto signal(u64 value) -> std::expected<bool, Error>;
 
         struct Pair {
-            Semaphore* semaphore = nullptr;
+            Semaphore const* semaphore = nullptr;
             u64 value = 0;
         };
-        auto getPair() -> Pair { return { this, value() }; }
+        auto getPair() const -> Pair { return { this, value() }; }
 
     private:
         friend Device;

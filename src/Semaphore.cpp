@@ -21,6 +21,12 @@ auto canta::Semaphore::operator=(canta::Semaphore &&rhs) noexcept -> Semaphore &
     return *this;
 }
 
+auto canta::Semaphore::gpuValue() const -> u64 {
+    u64 value = 0;
+    vkGetSemaphoreCounterValue(_device->logicalDevice(), _semaphore, &value);
+    return value;
+}
+
 auto canta::Semaphore::wait(u64 value, u64 timeout) -> std::expected<bool, Error> {
     VkSemaphoreWaitInfo waitInfo = {};
     waitInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_WAIT_INFO;

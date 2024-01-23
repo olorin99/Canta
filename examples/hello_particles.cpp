@@ -7,6 +7,7 @@
 #include <Canta/RenderGraph.h>
 #include <imgui.h>
 #include <Canta/ImGuiContext.h>
+#include <Canta/UploadBuffer.h>
 
 int main() {
 
@@ -144,7 +145,13 @@ void main() {
         };
     }
 
-    buffer->data(particles);
+    auto uploadBuffer = canta::UploadBuffer::create({
+        .device = device.get(),
+        .size = 1 << 16
+    });
+    uploadBuffer.upload(buffer, particles);
+    uploadBuffer.flushStagedData();
+    uploadBuffer.wait();
 
     canta::Timer timers[canta::FRAMES_IN_FLIGHT] = {};
     for (auto& timer : timers)
@@ -173,6 +180,7 @@ void main() {
         auto flyingIndex = device->flyingIndex();
         device->gc();
         pipelineManager.reloadAll();
+        uploadBuffer.clearSubmitted();
 
         imguiContext.beginFrame();
         ImGui::ShowDemoWindow();
@@ -208,6 +216,24 @@ void main() {
         }
         ImGui::End();
 
+        if (ImGui::Begin("Particles")) {
+            if (ImGui::Button("Randomise")) {
+                particles = {};
+                for (u32 i = 0; i < numParticles; i++) {
+                    particles[i] = {
+                        .position = { xDist(re), yDist(re) },
+                        .velocity = { velDist(re), velDist(re) },
+                        .colour = { colourDist(re), colourDist(re), colourDist(re) },
+                        .radius = static_cast<i32>(velDist(re))
+                    };
+                }
+
+                uploadBuffer.upload(buffer, particles);
+                uploadBuffer.flushStagedData();
+            }
+        }
+        ImGui::End();
+
         ImGui::Render();
 
 
@@ -216,7 +242,8 @@ void main() {
 
         auto waits = std::to_array({
             { device->frameSemaphore(), device->framePrevValue() },
-            swapchain->acquireSemaphore()->getPair()
+            swapchain->acquireSemaphore()->getPair(),
+            uploadBuffer.timeline().getPair()
         });
         auto signals = std::to_array({
             device->frameSemaphore()->getPair(),

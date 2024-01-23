@@ -49,7 +49,7 @@ namespace canta {
             Mapped(Mapped&& rhs) noexcept;
             auto operator=(Mapped&& rhs) noexcept -> Mapped&;
 
-            auto address() -> void* { return _address; }
+            auto address() const -> void* { return _address; }
 
         private:
             friend Buffer;
@@ -61,6 +61,8 @@ namespace canta {
         };
 
         auto map(u32 offset = 0, u32 size = 0) -> Mapped;
+
+        auto mapped() const -> const Mapped& { return _mapped; }
 
         auto data(std::span<const u8> data, u32 offset = 0) -> u32;
 

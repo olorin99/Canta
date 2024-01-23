@@ -49,6 +49,8 @@ add_library(Canta
         include/Canta/ImGuiContext.h
         src/PipelineStatistics.cpp
         include/Canta/PipelineStatistics.h
+        src/UploadBuffer.cpp
+        include/Canta/UploadBuffer.h
 )
 
 add_subdirectory(third_party)
