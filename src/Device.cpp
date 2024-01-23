@@ -333,7 +333,7 @@ auto canta::Device::create(canta::Device::CreateInfo info) noexcept -> std::expe
     if (info.enableMeshShading)
         appendFeatureChain(&deviceFeatures2, &meshShaderFeatures);
     meshShaderFeatures.meshShader = true;
-    meshShaderFeatures.taskShader = true;
+    meshShaderFeatures.taskShader = info.enableTaskShading;
     meshShaderFeatures.multiviewMeshShader = true;
 
 

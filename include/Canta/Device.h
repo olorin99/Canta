@@ -117,6 +117,7 @@ namespace canta {
             u32 applicationVersion = 0;
             std::function<u32(const Properties&)> selector = {};
             bool enableMeshShading = true;
+            bool enableTaskShading = false;
             bool enableAsyncComputeQueue = true;
             bool enableAsyncTransferQueue = true;
             std::span<const char* const> instanceExtensions = {};
