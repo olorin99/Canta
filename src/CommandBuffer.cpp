@@ -230,16 +230,17 @@ void canta::CommandBuffer::drawIndirect(canta::BufferHandle commands, u32 offset
 void canta::CommandBuffer::drawIndirectCount(canta::BufferHandle commands, u32 offset, canta::BufferHandle countBuffer, u32 countOffset, bool indexed, u32 stride) {
     assert(_currentPipeline);
     assert(_currentPipeline->mode() == PipelineMode::GRAPHICS);
-    u32 maxDrawCount = (commands->size() - offset) / stride;
     if (indexed) {
         if (stride == 0)
             stride = sizeof(VkDrawIndexedIndirectCommand);
+        u32 maxDrawCount = (commands->size() - offset) / stride;
         vkCmdDrawIndexedIndirectCount(_buffer, commands->buffer(), offset, countBuffer->buffer(), countOffset, maxDrawCount, stride);
         writeMarker(PipelineStage::VERTEX_SHADER, std::format("drawIndexedIndirectCount({}, {}, {}, {}, {}, {}) - VERTEX", commands.index(), offset, countBuffer.index(), countOffset, maxDrawCount, stride));
         writeMarker(PipelineStage::FRAGMENT_SHADER, std::format("drawIndexedIndirectCount({}, {}, {}, {}, {}, {}) - FRAGMENT", commands.index(), offset, countBuffer.index(), countOffset, maxDrawCount, stride));
     } else {
         if (stride == 0)
             stride = sizeof(VkDrawIndirectCommand);
+        u32 maxDrawCount = (commands->size() - offset) / stride;
         vkCmdDrawIndirectCount(_buffer, commands->buffer(), offset, countBuffer->buffer(), countOffset, maxDrawCount, stride);
         writeMarker(PipelineStage::VERTEX_SHADER, std::format("drawIndirectCount({}, {}, {}, {}, {}, {}) - VERTEX", commands.index(), offset, countBuffer.index(), countOffset, maxDrawCount, stride));
         writeMarker(PipelineStage::FRAGMENT_SHADER, std::format("drawIndirectCount({}, {}, {}, {}, {}, {}) - FRAGMENT", commands.index(), offset, countBuffer.index(), countOffset, maxDrawCount, stride));
