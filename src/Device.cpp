@@ -633,8 +633,9 @@ void canta::Device::beginFrame() {
 #endif
 }
 
-void canta::Device::endFrame() {
-
+auto canta::Device::endFrame() -> f64 {
+    _lastFrameDuration = _frameClock.reset();
+    return std::chrono::duration_cast<std::chrono::nanoseconds>(_lastFrameDuration).count() / 1000000.f;
 }
 
 auto canta::Device::isExtensionEnabled(std::string_view extensionName) -> bool {

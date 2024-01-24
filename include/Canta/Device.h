@@ -21,6 +21,7 @@
 #include <Canta/Timer.h>
 #include <Canta/PipelineStatistics.h>
 #include <Canta/Queue.h>
+#include <Ende/time/StopWatch.h>
 
 #define VMA_STATIC_VULKAN_FUNCTIONS 0
 #define VMA_DYNAMIC_VULKAN_FUNCTIONS 0
@@ -134,7 +135,7 @@ namespace canta {
         void gc();
 
         void beginFrame();
-        void endFrame();
+        auto endFrame() -> f64;
 
         template <typename Func>
         void immediate(Func func, QueueType queueType = QueueType::GRAPHICS) {
@@ -259,6 +260,9 @@ namespace canta {
         Queue _transferQueue = {};
 
         VmaAllocator _allocator = VK_NULL_HANDLE;
+
+        ende::time::StopWatch _frameClock = {};
+        std::chrono::high_resolution_clock::duration _lastFrameDuration = {};
 
         CommandPool _immediatePool = {};
 

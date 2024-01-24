@@ -152,6 +152,7 @@ void main() {
         .name = "Renderer"
     });
 
+    f64 dt = 1.f / 60;
     bool running = true;
     SDL_Event event;
     while (running) {
@@ -172,6 +173,8 @@ void main() {
         ImGui::ShowDemoWindow();
 
         if (ImGui::Begin("Stats")) {
+
+            ImGui::Text("Delta Time: %f", dt);
 
             auto timingEnabled = renderGraph.timingEnabled();
             if (ImGui::Checkbox("RenderGraph Timing", &timingEnabled))
@@ -266,7 +269,7 @@ void main() {
 
         auto& particlesMovePass = renderGraph.addPass("particles_move");
         particlesMovePass.addStorageBufferWrite(particleBufferIndex, canta::PipelineStage::COMPUTE_SHADER);
-        particlesMovePass.setExecuteFunction([pipeline, particleBufferIndex, numParticles](canta::CommandBuffer& cmd, canta::RenderGraph& graph) {
+        particlesMovePass.setExecuteFunction([pipeline, particleBufferIndex, numParticles, dt](canta::CommandBuffer& cmd, canta::RenderGraph& graph) {
             auto buffer = graph.getBuffer(particleBufferIndex);
             cmd.bindPipeline(pipeline);
             struct Push {
@@ -277,7 +280,7 @@ void main() {
             cmd.pushConstants(canta::ShaderStage::COMPUTE, Push {
                     .address = buffer->address(),
                     .maxParticles = numParticles,
-                    .dt = 1.f / 60
+                    .dt = static_cast<f32>(dt)
             });
             cmd.dispatchThreads(numParticles);
         });
@@ -328,7 +331,7 @@ void main() {
 
         swapchain->present();
 
-        device->endFrame();
+        dt = device->endFrame();
     }
 
     device->waitIdle();
