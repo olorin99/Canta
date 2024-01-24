@@ -16,6 +16,8 @@ namespace canta {
 
         static auto create(CreateInfo info) -> UploadBuffer;
 
+        UploadBuffer() = default;
+
         ~UploadBuffer();
         UploadBuffer(UploadBuffer&& rhs) noexcept;
         auto operator=(UploadBuffer&& rhs) noexcept -> UploadBuffer&;
@@ -59,8 +61,6 @@ namespace canta {
         auto clearSubmitted() -> u32;
 
     private:
-
-        UploadBuffer() = default;
 
         Device* _device = nullptr;
         CommandPool _commandPool = {};

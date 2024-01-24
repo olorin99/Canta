@@ -182,6 +182,8 @@ namespace canta {
 
         static auto create(CreateInfo info) -> RenderGraph;
 
+        RenderGraph() = default;
+
         auto addPass(std::string_view name, RenderPass::Type type = RenderPass::Type::COMPUTE) -> RenderPass&;
         auto addClearPass(std::string_view name, ImageIndex index) -> RenderPass&;
         auto addBlitPass(std::string_view name, ImageIndex src, ImageIndex dst) -> RenderPass&;

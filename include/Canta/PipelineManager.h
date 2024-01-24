@@ -40,6 +40,8 @@ namespace canta {
 
         static auto create(CreateInfo info) -> PipelineManager;
 
+        PipelineManager() = default;
+
         auto getShader(ShaderDescription info) -> ShaderHandle;
         auto getPipeline(Pipeline::CreateInfo info) -> PipelineHandle;
 
@@ -51,8 +53,6 @@ namespace canta {
         void addVirtualFile(const std::filesystem::path& path, const std::string& contents);
 
     private:
-
-        PipelineManager() = default;
 
         auto reload(ShaderDescription description) -> ShaderHandle;
         auto reload(Pipeline::CreateInfo info) -> PipelineHandle;
