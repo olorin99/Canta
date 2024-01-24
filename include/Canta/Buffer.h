@@ -66,6 +66,11 @@ namespace canta {
 
         auto data(std::span<const u8> data, u32 offset = 0) -> u32;
 
+        template <typename T>
+        auto data(const T& data, u32 offset = 0) -> u32 {
+            return data(std::span<const u8>(reinterpret_cast<const u8*>(&data), sizeof(T)), offset);
+        }
+
         template <std::ranges::range Range>
         auto data(const Range& range, u32 offset = 0) -> u32 {
             return data(std::span<const u8>(reinterpret_cast<const u8*>(std::ranges::data(range)), std::ranges::size(range) * sizeof(std::ranges::range_value_t<Range>)), offset);
