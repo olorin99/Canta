@@ -86,7 +86,7 @@ namespace canta {
         void addColourWrite(ImageIndex index, const std::array<f32, 4>& clearColor = { 0, 0, 0, 1 });
         void addColourRead(ImageIndex index);
 
-        void addDepthWrite(ImageIndex index, const std::array<f32, 4>& clearColor = { 0, 0, 0, 1 });
+        void addDepthWrite(ImageIndex index, const std::array<f32, 4>& clearColor = { 1, 0, 0, 0 });
         void addDepthRead(ImageIndex index);
 
         void addStorageImageWrite(ImageIndex index, PipelineStage stage);
