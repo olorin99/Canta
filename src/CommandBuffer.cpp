@@ -107,6 +107,12 @@ void canta::CommandBuffer::beginRendering(RenderingInfo info) {
     }
     renderingInfo.colorAttachmentCount = colourAttachments.size();
     renderingInfo.pColorAttachments = colourAttachments.data();
+    VkClearValue depthClearValue = {
+            info.depthAttachment.clearColour[0],
+            info.depthAttachment.clearColour[1],
+            info.depthAttachment.clearColour[2],
+            info.depthAttachment.clearColour[3],
+    };
     VkRenderingAttachmentInfo depthAttachment = {
             .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
             .imageLayout = static_cast<VkImageLayout>(info.depthAttachment.imageLayout),
@@ -115,7 +121,7 @@ void canta::CommandBuffer::beginRendering(RenderingInfo info) {
             .resolveImageLayout = VK_IMAGE_LAYOUT_UNDEFINED,
             .loadOp = static_cast<VkAttachmentLoadOp>(info.depthAttachment.loadOp),
             .storeOp = static_cast<VkAttachmentStoreOp>(info.depthAttachment.storeOp),
-            .clearValue = { 0, 0, 0, 1 }
+            .clearValue = depthClearValue
     };
     if (info.depthAttachment.image) {
         depthAttachment.imageView = info.depthAttachment.image->defaultView().view();

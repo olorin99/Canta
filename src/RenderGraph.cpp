@@ -22,13 +22,14 @@ void canta::RenderPass::addColourRead(canta::ImageIndex index) {
     }
 }
 
-void canta::RenderPass::addDepthWrite(canta::ImageIndex index) {
+void canta::RenderPass::addDepthWrite(canta::ImageIndex index, const std::array<f32, 4>& clearColor) {
     if (auto resource = writes(index, Access::DEPTH_STENCIL_WRITE | Access::DEPTH_STENCIL_READ,
                                PipelineStage::EARLY_FRAGMENT_TEST | PipelineStage::LATE_FRAGMENT_TEST | PipelineStage::FRAGMENT_SHADER,
                                ImageLayout::DEPTH_STENCIL_ATTACHMENT)) {
         _depthAttachment = {
             .index = static_cast<i32>(index.index),
-            .layout = ImageLayout::DEPTH_STENCIL_ATTACHMENT
+            .layout = ImageLayout::DEPTH_STENCIL_ATTACHMENT,
+            .clearColor = clearColor
         };
         dynamic_cast<ImageResource*>(resource)->usage |= ImageUsage::DEPTH_STENCIL_ATTACHMENT;
     }
