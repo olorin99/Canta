@@ -926,7 +926,7 @@ auto canta::Device::createPipeline(Pipeline::CreateInfo info, PipelineHandle old
 
         renderingCreateInfo.colorAttachmentCount = info.colourFormats.size();
         static_assert(sizeof(VkFormat) == sizeof(Format));
-        renderingCreateInfo.pColorAttachmentFormats = reinterpret_cast<VkFormat*>(info.colourFormats.data());
+        renderingCreateInfo.pColorAttachmentFormats = reinterpret_cast<const VkFormat*>(info.colourFormats.data());
         if (info.depthFormat != Format::UNDEFINED)
             renderingCreateInfo.depthAttachmentFormat = static_cast<VkFormat>(info.depthFormat);
 
