@@ -393,7 +393,7 @@ void canta::CommandBuffer::barrier(ImageBarrier barrier) {
     imageBarrier.subresourceRange.baseArrayLayer = 0;
     imageBarrier.subresourceRange.levelCount = 1;
     imageBarrier.subresourceRange.baseMipLevel = 0;
-    imageBarrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    imageBarrier.subresourceRange.aspectMask = aspectMask(barrier.image->format());
 
     VkDependencyInfo info = {};
     info.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
