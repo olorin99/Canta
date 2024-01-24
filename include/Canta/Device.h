@@ -169,6 +169,8 @@ namespace canta {
         auto limits() const -> const Limits& { return _properties.limits; }
         // avoid - loops all supported extensions
         auto isExtensionEnabled(std::string_view extensionName) -> bool;
+        auto meshShadersEnabled() const -> bool { return _meshShadersEnabled; }
+        auto taskShadersEnabled() const -> bool { return _taskShadersEnabled; }
 
         auto bindlessSet() const -> VkDescriptorSet { return _bindlessSet; }
 
@@ -254,6 +256,9 @@ namespace canta {
 
         Properties _properties = {};
         std::vector<std::string> _enabledExtensions = {};
+
+        bool _meshShadersEnabled = false;
+        bool _taskShadersEnabled = false;
 
         Queue _graphicsQueue = {};
         Queue _computeQueue = {};

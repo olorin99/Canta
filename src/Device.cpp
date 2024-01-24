@@ -336,6 +336,9 @@ auto canta::Device::create(canta::Device::CreateInfo info) noexcept -> std::expe
     meshShaderFeatures.taskShader = info.enableTaskShading;
     meshShaderFeatures.multiviewMeshShader = true;
 
+    device->_meshShadersEnabled = info.enableMeshShading;
+    device->_taskShadersEnabled = info.enableMeshShading && info.enableTaskShading;
+
 
     VkDeviceCreateInfo deviceCreateInfo = {};
     deviceCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
