@@ -413,6 +413,7 @@ auto canta::PipelineManager::compileGLSL(std::string_view glsl, canta::ShaderSta
     options.SetTargetSpirv(shaderc_spirv_version_1_6);
 
     auto finder = new FileFinder(_virtualFiles);
+    finder->addSearchPath(_rootPath);
     options.SetIncluder(std::make_unique<FileIncluder>(finder));
 
     for (auto& macro : macros)
