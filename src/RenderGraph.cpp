@@ -128,6 +128,13 @@ void canta::RenderPass::addTransferRead(canta::BufferIndex index) {
     }
 }
 
+void canta::RenderPass::addIndirectRead(canta::BufferIndex index) {
+    if (auto resource = reads(index, Access::INDIRECT,
+                              PipelineStage::DRAW_INDIRECT)) {
+        dynamic_cast<BufferResource*>(resource)->usage |= BufferUsage::INDIRECT;
+    }
+}
+
 
 auto canta::RenderPass::writes(canta::ImageIndex index, canta::Access access, canta::PipelineStage stage, canta::ImageLayout layout) -> Resource * {
     auto resource = _graph->_resources[index.index].get();

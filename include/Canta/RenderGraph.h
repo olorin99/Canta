@@ -105,6 +105,8 @@ namespace canta {
         void addTransferWrite(BufferIndex index);
         void addTransferRead(BufferIndex index);
 
+        void addIndirectRead(BufferIndex index);
+
         void setExecuteFunction(std::function<void(CommandBuffer&, RenderGraph&)> execute) {
             _execute = execute;
         }
