@@ -781,9 +781,6 @@ auto canta::Device::createPipeline(Pipeline::CreateInfo info, PipelineHandle old
         shaderStages.push_back(stageCreateInfo);
     };
 
-    if (shaderStages.empty()) //TODO: log
-        return {};
-
     PipelineMode mode = PipelineMode::GRAPHICS;
 
     if (info.vertex.module)
@@ -816,6 +813,9 @@ auto canta::Device::createPipeline(Pipeline::CreateInfo info, PipelineHandle old
         attachShader(info.task);
     if (info.mesh.module)
         attachShader(info.mesh);
+
+    if (shaderStages.empty()) //TODO: log
+        return {};
 
     std::vector<VkDescriptorSetLayout> setLayouts = {};
     setLayouts.push_back(_bindlessLayout);
