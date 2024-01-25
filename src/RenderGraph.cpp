@@ -449,6 +449,7 @@ auto canta::RenderGraph::execute(std::span<Semaphore::Pair> waits, std::span<Sem
 
     for (u32 i = 0; i < _orderedPasses.size(); i++) {
         auto& pass = _orderedPasses[i];
+        cmd.pushDebugLabel(pass->_name);
 
         u32 imageBarrierCount = 0;
         ImageBarrier imageBarriers[pass->_barriers.size()];
@@ -520,6 +521,7 @@ auto canta::RenderGraph::execute(std::span<Semaphore::Pair> waits, std::span<Sem
             _pipelineStats[_device->flyingIndex()][i].second.end(cmd);
         if (_timingEnabled && _individualTiming)
             _timers[_device->flyingIndex()][i].second.end(cmd);
+        cmd.popDebugLabel();
     }
 
     if (backbufferIsSwapchain) {
