@@ -209,6 +209,11 @@ auto canta::PipelineManager::createShader(canta::ShaderDescription info, ShaderH
     ShaderModule::CreateInfo createInfo = {};
     createInfo.spirv = info.spirv;
     createInfo.stage = info.stage;
+    if (!_device->meshShadersEnabled() && info.stage == ShaderStage::MESH) //TODO: log
+        return {};
+    if (!_device->taskShadersEnabled() && info.stage == ShaderStage::TASK)
+        return {};
+
     std::vector<u32> spirv = {};
     if (!info.path.empty()) {
         auto shaderFile = ende::fs::File::open(_rootPath / info.path);

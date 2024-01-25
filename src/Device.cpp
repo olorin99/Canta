@@ -781,6 +781,9 @@ auto canta::Device::createPipeline(Pipeline::CreateInfo info, PipelineHandle old
         shaderStages.push_back(stageCreateInfo);
     };
 
+    if (shaderStages.empty()) //TODO: log
+        return {};
+
     PipelineMode mode = PipelineMode::GRAPHICS;
 
     if (info.vertex.module)
