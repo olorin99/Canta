@@ -236,6 +236,8 @@ namespace canta {
             u32 bufferAllocated = 0;
             u32 samplerCount = 0;
             u32 samplerAllocated = 0;
+            u32 timestampQueryPools = 0;
+            u32 pipelineStatsPools = 0;
         };
         auto resourceStats() const -> ResourceStats;
 

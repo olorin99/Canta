@@ -233,6 +233,15 @@ namespace canta {
         void setIndividualTiming(bool individual) { _individualTiming = individual; }
         void setIndividualPipelineStatistics(bool individual) { _individualPipelineStatistics = individual; }
 
+        struct Statistics {
+            u32 passes = 0;
+            u32 resources = 0;
+            u32 images = 0;
+            u32 buffers = 0;
+            u32 commandBuffers = 0;
+        };
+        auto statistics() const -> Statistics;
+
     private:
         friend RenderPass;
 

@@ -1010,8 +1010,10 @@ auto canta::Device::createPipeline(Pipeline::CreateInfo info, PipelineHandle old
         dynamicStateCreateInfo.dynamicStateCount = 2;
         dynamicStateCreateInfo.pDynamicStates = dynamicStates;
 
-        createInfo.pVertexInputState = &vertexInputState;
-        createInfo.pInputAssemblyState = &inputAssemblyState;
+        if (!info.mesh.module) {
+            createInfo.pVertexInputState = &vertexInputState;
+            createInfo.pInputAssemblyState = &inputAssemblyState;
+        }
         createInfo.pNext = &renderingCreateInfo;
         createInfo.renderPass = VK_NULL_HANDLE;
         createInfo.pRasterizationState = &rasterisationState;
@@ -1482,5 +1484,7 @@ auto canta::Device::resourceStats() const -> ResourceStats {
         .bufferAllocated = _bufferList.allocated(),
         .samplerCount = _samplerList.used(),
         .samplerAllocated = _samplerList.allocated(),
+        .timestampQueryPools = static_cast<u32>(_timestampPools.size()),
+        .pipelineStatsPools = static_cast<u32>(_pipelineStatisticsPools.size())
     };
 }

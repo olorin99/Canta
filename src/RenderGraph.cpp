@@ -758,3 +758,13 @@ void canta::RenderGraph::buildRenderAttachments() {
         }
     }
 }
+
+auto canta::RenderGraph::statistics() const -> Statistics {
+    return {
+        .passes = static_cast<u32>(_orderedPasses.size()),
+        .resources = static_cast<u32>(_resources.size()),
+        .images = static_cast<u32>(_images.size()),
+        .buffers = static_cast<u32>(_buffers.size()),
+        .commandBuffers = _commandPools[_device->flyingIndex()].bufferCount()
+    };
+}

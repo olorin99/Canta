@@ -223,6 +223,15 @@ void main() {
             ImGui::Text("Buffer Allocated %d", resourceStats.bufferAllocated);
             ImGui::Text("Sampler Count %d", resourceStats.samplerCount);
             ImGui::Text("Sampler Allocated %d", resourceStats.shaderAllocated);
+            ImGui::Text("Timestamp Query Pools %d", resourceStats.timestampQueryPools);
+            ImGui::Text("PipelineStats Pools %d", resourceStats.pipelineStatsPools);
+
+            auto renderGraphStats = renderGraph.statistics();
+            ImGui::Text("Passes: %d", renderGraphStats.passes);
+            ImGui::Text("Resource: %d", renderGraphStats.resources);
+            ImGui::Text("Image: %d", renderGraphStats.images);
+            ImGui::Text("Buffers: %d", renderGraphStats.buffers);
+            ImGui::Text("Command Buffers: %d", renderGraphStats.commandBuffers);
         }
         ImGui::End();
 
