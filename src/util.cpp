@@ -9,6 +9,10 @@
 class FileFinder {
 public:
 
+    ~FileFinder() {
+        std::printf("Destroy");
+    }
+
     void addSearchPath(const std::string& path) {
         search_path.push_back(path);
     }
@@ -59,13 +63,13 @@ struct FileInfo {
 class FileIncluder : public shaderc::CompileOptions::IncluderInterface {
 public:
 
-    explicit FileIncluder(const FileFinder* file_finder) : file_finder(*file_finder) {}
+    explicit FileIncluder(const FileFinder* file_finder) : file_finder(file_finder) {}
 
     ~FileIncluder() override = default;
 
     shaderc_include_result* GetInclude(const char* requested_source, shaderc_include_type type, const char* requesting_source, size_t include_depth) override {
-        std::string path = (type == shaderc_include_type_relative) ? file_finder.FindRelativeReadableFilepath(requesting_source, requested_source)
-                                                                   : file_finder.FindReadableFilepath(requested_source);
+        std::string path = (type == shaderc_include_type_relative) ? file_finder->FindRelativeReadableFilepath(requesting_source, requested_source)
+                                                                   : file_finder->FindReadableFilepath(requested_source);
 
         if (path.empty())
             return new shaderc_include_result{"", 0, "unable to open file", 15};
@@ -98,7 +102,7 @@ public:
 
 private:
 
-    const FileFinder& file_finder;
+    const FileFinder* file_finder;
     std::unordered_set<std::string> included_files;
 
 };
@@ -171,8 +175,8 @@ auto canta::util::compileGLSLToSpirv(std::string_view name, std::string_view gls
     options.SetTargetEnvironment(shaderc_target_env_vulkan, shaderc_env_version_vulkan_1_3);
     options.SetTargetSpirv(shaderc_spirv_version_1_6);
 
-    auto finder = new FileFinder();
-    options.SetIncluder(std::make_unique<FileIncluder>(finder));
+    FileFinder finder;
+    options.SetIncluder(std::make_unique<FileIncluder>(&finder));
 
     for (auto& macro : macros)
         options.AddMacroDefinition(macro.name, macro.value);

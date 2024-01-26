@@ -324,7 +324,8 @@ void main() {
             imguiContext.render(ImGui::GetDrawData(), cmd, swapchain->format());
         });
 
-        renderGraph.setBackbuffer(uiSwapchainIndex);
+//        renderGraph.setBackbuffer(uiSwapchainIndex);
+        renderGraph.setBackbuffer(swapchainIndex);
         renderGraph.compile();
 
         auto waits = std::to_array({

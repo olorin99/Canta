@@ -260,11 +260,23 @@ class FileFinder {
 public:
 
     FileFinder(std::vector<std::pair<std::string, std::string>>& virtualFileList)
-        : _virtualFileList(virtualFileList)
+        : _virtualFileList(&virtualFileList),
+        _searchPaths()
     {}
 
+    FileFinder(FileFinder&& rhs) noexcept {
+        std::swap(_virtualFileList, rhs._virtualFileList);
+        std::swap(_searchPaths, rhs._searchPaths);
+    }
+
+    auto operator=(FileFinder&& rhs) noexcept -> FileFinder& {
+        std::swap(_virtualFileList, rhs._virtualFileList);
+        std::swap(_searchPaths, rhs._searchPaths);
+        return *this;
+    }
+
     FileInfo* findReadableFilepath(const std::string& path) const {
-        for (auto& virtualFile : _virtualFileList) {
+        for (auto& virtualFile : *_virtualFileList) {
             if (virtualFile.first == path) {
                 return new FileInfo{
                     .path = virtualFile.first,
@@ -289,7 +301,7 @@ public:
     }
 
     FileInfo* findRelativeReadableFilepath(const std::string& requestingPath, const std::string& fileName) const {
-        for (auto& virtualFile : _virtualFileList) {
+        for (auto& virtualFile : *_virtualFileList) {
             if (virtualFile.first == fileName) {
                 return new FileInfo{
                         .path = virtualFile.first,
@@ -327,7 +339,7 @@ public:
 
 private:
 
-    std::vector<std::pair<std::string, std::string>>& _virtualFileList;
+    std::vector<std::pair<std::string, std::string>>* _virtualFileList;
     std::vector<std::string> _searchPaths;
 
 };
@@ -346,6 +358,7 @@ public:
         auto file = (type == shaderc_include_type_relative) ? _fileFinder->findRelativeReadableFilepath(requestingSource, requestedSource)
                                                             : _fileFinder->findReadableFilepath(requestedSource);
 
+        if (!file) return new shaderc_include_result{"", 0, "unable to open file", 15};
         auto result = new shaderc_include_result{file->path.data(), file->path.size(), file->contents.data(), file->contents.size(), file};
         return result;
     }
@@ -417,9 +430,9 @@ auto canta::PipelineManager::compileGLSL(std::string_view glsl, canta::ShaderSta
     options.SetTargetEnvironment(shaderc_target_env_vulkan, shaderc_env_version_vulkan_1_3);
     options.SetTargetSpirv(shaderc_spirv_version_1_6);
 
-    auto finder = new FileFinder(_virtualFiles);
-    finder->addSearchPath(_rootPath);
-    options.SetIncluder(std::make_unique<FileIncluder>(finder));
+    FileFinder finder(_virtualFiles);
+    finder.addSearchPath(_rootPath);
+    options.SetIncluder(std::make_unique<FileIncluder>(&finder));
 
     for (auto& macro : macros)
         options.AddMacroDefinition(macro.name, macro.value);
