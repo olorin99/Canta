@@ -301,11 +301,11 @@ namespace canta {
         VkDescriptorSetLayout _bindlessLayout = VK_NULL_HANDLE;
         VkDescriptorSet _bindlessSet = VK_NULL_HANDLE;
 
-        ResourceList<ShaderModule> _shaderList;
-        ResourceList<Pipeline> _pipelineList;
-        ResourceList<Image> _imageList;
-        ResourceList<Buffer> _bufferList;
-        ResourceList<Sampler> _samplerList;
+        ResourceList<ShaderModule> _shaderList = {};
+        ResourceList<Pipeline> _pipelineList = {};
+        ResourceList<Image> _imageList = {};
+        ResourceList<Buffer> _bufferList = {};
+        ResourceList<Sampler> _samplerList = {};
 
     };
 

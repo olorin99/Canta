@@ -63,7 +63,7 @@ namespace canta {
         PresentMode _presentMode = PresentMode::FIFO;
         VkExtent2D _extent = {};
         Format _format = Format::UNDEFINED;
-        u32 _index;
+        u32 _index = 0;
 
         std::vector<ImageHandle> _imageHandles = {};
         std::vector<VkImage> _images = {};
@@ -73,7 +73,7 @@ namespace canta {
             Semaphore present;
         };
         std::vector<SemaphorePair> _semaphores = {};
-        u32 _semaphoreIndex;
+        u32 _semaphoreIndex = 0;
 
         std::function<u32(Format)> _selector = {};
 

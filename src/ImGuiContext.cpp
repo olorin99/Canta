@@ -67,12 +67,13 @@ auto canta::ImGuiContext::create(canta::ImGuiContext::CreateInfo info) -> ImGuiC
 
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
-    if (info.window)
-        ImGui_ImplSDL2_InitForVulkan(info.window->window());
 
     info.device->immediate([&](auto& cmd) {
         context.createFontsTexture(cmd);
     });
+
+    if (info.window)
+        ImGui_ImplSDL2_InitForVulkan(info.window->window());
 
     context._window = info.window;
 
@@ -81,10 +82,26 @@ auto canta::ImGuiContext::create(canta::ImGuiContext::CreateInfo info) -> ImGuiC
 
 canta::ImGuiContext::ImGuiContext(canta::ImGuiContext &&rhs) noexcept {
     std::swap(_device, rhs._device);
+    std::swap(_pipeline, rhs._pipeline);
+    std::swap(_pipelineFormat, rhs._pipelineFormat);
+    std::swap(_vertexBuffer, rhs._vertexBuffer);
+    std::swap(_indexBuffer, rhs._indexBuffer);
+    std::swap(_sampler, rhs._sampler);
+    std::swap(_fontImage, rhs._fontImage);
+    std::swap(_uploadBuffer, rhs._uploadBuffer);
+    std::swap(_window, rhs._window);
 }
 
 auto canta::ImGuiContext::operator=(canta::ImGuiContext &&rhs) noexcept -> ImGuiContext & {
     std::swap(_device, rhs._device);
+    std::swap(_pipeline, rhs._pipeline);
+    std::swap(_pipelineFormat, rhs._pipelineFormat);
+    std::swap(_vertexBuffer, rhs._vertexBuffer);
+    std::swap(_indexBuffer, rhs._indexBuffer);
+    std::swap(_sampler, rhs._sampler);
+    std::swap(_fontImage, rhs._fontImage);
+    std::swap(_uploadBuffer, rhs._uploadBuffer);
+    std::swap(_window, rhs._window);
     return *this;
 }
 
@@ -95,6 +112,8 @@ void canta::ImGuiContext::beginFrame() {
 }
 
 void canta::ImGuiContext::render(ImDrawData *drawData, canta::CommandBuffer &commandBuffer, Format format) {
+    if (!drawData)
+        return;
     i32 width = drawData->DisplaySize.x * drawData->FramebufferScale.x;
     i32 height = drawData->DisplaySize.y * drawData->FramebufferScale.y;
     if (width <= 0 || height <= 0)

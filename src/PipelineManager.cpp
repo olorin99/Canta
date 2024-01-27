@@ -259,12 +259,12 @@ struct FileInfo {
 class FileFinder {
 public:
 
-    FileFinder(std::vector<std::pair<std::string, std::string>>& virtualFileList)
-        : _virtualFileList(&virtualFileList),
+    explicit FileFinder(std::vector<std::pair<std::string, std::string>>* virtualFileList)
+        : _virtualFileList(virtualFileList),
         _searchPaths()
     {}
 
-    FileFinder(FileFinder&& rhs) noexcept {
+    explicit FileFinder(FileFinder&& rhs) noexcept {
         std::swap(_virtualFileList, rhs._virtualFileList);
         std::swap(_searchPaths, rhs._searchPaths);
     }
@@ -276,20 +276,22 @@ public:
     }
 
     FileInfo* findReadableFilepath(const std::string& path) const {
-        for (auto& virtualFile : *_virtualFileList) {
-            if (virtualFile.first == path) {
-                return new FileInfo{
-                    .path = virtualFile.first,
-                    .contents = virtualFile.second,
-                    .isVirtual = true
-                };
+        if (_virtualFileList) {
+            for (auto& virtualFile : *_virtualFileList) {
+                if (virtualFile.first == path) {
+                    return new FileInfo{
+                        .path = virtualFile.first,
+                        .contents = virtualFile.second,
+                        .isVirtual = true
+                    };
+                }
             }
         }
 
         for (const auto& prefix : _searchPaths) {
             std::string prefixed_filename = prefix + ((prefix.empty() || prefix.back() == '/') ? "" : "/") + path;
-            auto file = ende::fs::File::open(prefixed_filename, ende::fs::in);
-            if (file) {
+            if (std::filesystem::exists(prefixed_filename)) {
+                auto file = ende::fs::File::open(prefixed_filename, ende::fs::in);
                 return new FileInfo{
                     .path = prefixed_filename,
                     .contents = file->read(),
@@ -301,13 +303,15 @@ public:
     }
 
     FileInfo* findRelativeReadableFilepath(const std::string& requestingPath, const std::string& fileName) const {
-        for (auto& virtualFile : *_virtualFileList) {
-            if (virtualFile.first == fileName) {
-                return new FileInfo{
+        if (_virtualFileList) {
+            for (auto& virtualFile : *_virtualFileList) {
+                if (virtualFile.first == fileName) {
+                    return new FileInfo{
                         .path = virtualFile.first,
                         .contents = virtualFile.second,
                         .isVirtual = true
-                };
+                    };
+                }
             }
         }
 
@@ -322,8 +326,8 @@ public:
 
         std::string relative_filename = dir_name + ((dir_name.empty() || dir_name.back() == '/') ? "" : "/") + fileName;
 
-        auto file = ende::fs::File::open(relative_filename, ende::fs::in);
-        if (file) {
+        if (std::filesystem::exists(relative_filename)) {
+            auto file = ende::fs::File::open(relative_filename, ende::fs::in);
             return new FileInfo{
                 .path = relative_filename,
                 .contents = file->read(),
@@ -430,7 +434,7 @@ auto canta::PipelineManager::compileGLSL(std::string_view glsl, canta::ShaderSta
     options.SetTargetEnvironment(shaderc_target_env_vulkan, shaderc_env_version_vulkan_1_3);
     options.SetTargetSpirv(shaderc_spirv_version_1_6);
 
-    FileFinder finder(_virtualFiles);
+    FileFinder finder(&_virtualFiles);
     finder.addSearchPath(_rootPath);
     options.SetIncluder(std::make_unique<FileIncluder>(&finder));
 

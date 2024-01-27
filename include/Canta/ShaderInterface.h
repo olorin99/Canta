@@ -106,9 +106,9 @@ namespace canta {
         std::array<Set, 5> _sets = {};
         u32 _setCount = 0;
 
-        std::vector<PushRange> _pushRanges;
-        std::vector<std::pair<ende::math::Vec<3, u32>, ShaderStage>> _localSizes;
-        ShaderStage _stages;
+        std::vector<PushRange> _pushRanges = {};
+        std::vector<std::pair<ende::math::Vec<3, u32>, ShaderStage>> _localSizes = {};
+        ShaderStage _stages = ShaderStage::NONE;
 
     };
 

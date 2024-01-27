@@ -39,8 +39,8 @@ namespace canta {
     private:
         friend Device;
 
-        Device* _device;
-        VkSampler _sampler;
+        Device* _device = nullptr;
+        VkSampler _sampler = VK_NULL_HANDLE;
 
     };
 

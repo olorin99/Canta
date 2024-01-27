@@ -102,9 +102,10 @@ void main() {
     auto colourFormat = swapchain->format();
 
     auto pipeline = device->createPipeline({
-                                                   .shaders = pipelineShaders,
-                                                   .colourFormats = {&colourFormat, 1},
-                                           });
+        .vertex = { .module = vertexShader },
+        .fragment = { .module = fragmentShader },
+        .colourFormats = {&colourFormat, 1},
+    });
 
     auto sampler = device->createSampler({});
 
@@ -170,8 +171,10 @@ void main() {
 
         auto attachments = std::to_array({
             canta::Attachment{
-                .imageView = swapImage->defaultView().view(),
-                .imageLayout = canta::ImageLayout::COLOUR_ATTACHMENT
+                .image = swapImage,
+                .imageLayout = canta::ImageLayout::COLOUR_ATTACHMENT,
+                .loadOp = canta::LoadOp::CLEAR,
+                .storeOp = canta::StoreOp::STORE
             }
         });
 

@@ -82,7 +82,7 @@ namespace canta {
     private:
         friend Device;
 
-        Device* _device;
+        Device* _device = nullptr;
         VkImage _image = VK_NULL_HANDLE;
         VmaAllocation _allocation = VK_NULL_HANDLE;
         u32 _width = 1;
