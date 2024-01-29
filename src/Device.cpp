@@ -1060,6 +1060,9 @@ auto canta::Device::createPipeline(Pipeline::CreateInfo info, PipelineHandle old
 }
 
 auto canta::Device::createImage(Image::CreateInfo info, ImageHandle oldHandle) -> ImageHandle {
+    if (oldHandle) {
+        info.name = oldHandle->name();
+    }
     VkImage image;
     VmaAllocation allocation;
     VkImageCreateInfo createInfo = {};
@@ -1178,6 +1181,13 @@ auto canta::Device::registerImage(Image::CreateInfo info, VkImage image, VkImage
 }
 
 auto canta::Device::createBuffer(Buffer::CreateInfo info, BufferHandle oldHandle) -> BufferHandle {
+    if (oldHandle) {
+        info.type = oldHandle->type();
+        info.persistentlyMapped = oldHandle->persitentlyMapped();
+        info.requiredFlags = oldHandle->_requiredFlags;
+        info.preferredFlags = oldHandle->_preferredFlags;
+        info.name = oldHandle->name();
+    }
     info.usage |= BufferUsage::TRANSFER_DST | BufferUsage::TRANSFER_SRC | BufferUsage::STORAGE | BufferUsage::DEVICE_ADDRESS;
 
     VkBuffer buffer;
