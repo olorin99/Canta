@@ -125,7 +125,7 @@ void canta::ImGuiContext::render(ImDrawData *drawData, canta::CommandBuffer &com
 
         if (!_vertexBuffer || _vertexBuffer->size() < vertexSize) {
             _vertexBuffer = _device->createBuffer({
-                .size = static_cast<u32>(vertexSize),
+                .size = static_cast<u32>(vertexSize * 2),
                 .usage = BufferUsage::VERTEX,
                 .type = MemoryType::STAGING,
                 .persistentlyMapped = true,
@@ -134,7 +134,7 @@ void canta::ImGuiContext::render(ImDrawData *drawData, canta::CommandBuffer &com
         }
         if (!_indexBuffer || _indexBuffer->size() < indexSize) {
             _indexBuffer = _device->createBuffer({
-                .size = static_cast<u32>(indexSize),
+                .size = static_cast<u32>(indexSize * 2),
                 .usage = BufferUsage::INDEX,
                 .type = MemoryType::STAGING,
                 .persistentlyMapped = true,
