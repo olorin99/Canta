@@ -160,8 +160,6 @@ namespace canta {
             _resources[oldIndex]->first = std::move(_resources[newIndex]->first);
             _resources[newIndex]->second.index = newIndex;
             _resources[oldIndex]->second.index = oldIndex;
-            _resources[oldIndex]->second.count = 0;
-            _resources[oldIndex]->second.deleter(oldIndex);
             return getHandle(newIndex);
         }
 

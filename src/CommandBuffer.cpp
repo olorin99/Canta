@@ -168,6 +168,7 @@ void canta::CommandBuffer::bindPipeline(PipelineHandle pipeline) {
 
 void canta::CommandBuffer::bindVertexBuffer(canta::BufferHandle handle) {
     assert(handle);
+    assert((handle->usage() & BufferUsage::VERTEX) == BufferUsage::VERTEX);
     VkDeviceSize offset = 0;
     auto buffer = handle->buffer();
     vkCmdBindVertexBuffers(_buffer, 0, 1, &buffer, &offset);
@@ -178,6 +179,7 @@ void canta::CommandBuffer::bindVertexBuffers(std::span<BufferHandle> handles, u3
     VkBuffer buffers[handles.size()];
     for (u32 i = 0; i < handles.size(); i++) {
         assert(handles[i]);
+        assert((handles[i]->usage() & BufferUsage::VERTEX) == BufferUsage::VERTEX);
         buffers[i] = handles[i]->buffer();
     }
     vkCmdBindVertexBuffers(_buffer, first, handles.size(), buffers, &off);
@@ -185,6 +187,7 @@ void canta::CommandBuffer::bindVertexBuffers(std::span<BufferHandle> handles, u3
 
 void canta::CommandBuffer::bindIndexBuffer(canta::BufferHandle handle, u32 offset, u32 indexType) {
     assert(handle);
+    assert((handle->usage() & BufferUsage::INDEX) == BufferUsage::INDEX);
     vkCmdBindIndexBuffer(_buffer, handle->buffer(), offset, static_cast<VkIndexType>(indexType));
 }
 
