@@ -40,7 +40,18 @@ size_t std::hash<canta::Pipeline::CreateInfo>::operator()(const canta::Pipeline:
 
 size_t std::hash<canta::ShaderDescription>::operator()(const canta::ShaderDescription &object) const {
     u64 hash = 0;
-    hash = ende::util::combineHash(hash, std::hash<std::filesystem::path>()(object.path));
+    if (!object.path.empty())
+        hash = ende::util::combineHash(hash, std::hash<std::filesystem::path>()(object.path));
+    if (!object.spirv.empty()) {
+        for (auto& code : object.spirv)
+            hash = ende::util::combineHash(hash, static_cast<u64>(code));
+    }
+    if (!object.glsl.empty())
+        hash = ende::util::combineHash(hash, std::hash<std::string_view>()(object.glsl));
+    for (auto& macro : object.macros) {
+        hash = ende::util::combineHash(hash, std::hash<std::string>()(macro.name));
+        hash = ende::util::combineHash(hash, std::hash<std::string>()(macro.value));
+    }
     hash = ende::util::combineHash(hash, (u64)object.stage);
     return hash;
 }
@@ -72,8 +83,16 @@ bool canta::operator==(const Pipeline::CreateInfo &lhs, const Pipeline::CreateIn
 }
 
 bool canta::operator==(const ShaderDescription &lhs, const ShaderDescription &rhs) {
-    return lhs.stage == rhs.stage && lhs.path == rhs.path && lhs.spirv.size() == rhs.spirv.size() &&
-            memcmp(reinterpret_cast<const void*>(lhs.spirv.data()), reinterpret_cast<const void*>(rhs.spirv.data()), sizeof(u32) * lhs.spirv.size()) == 0;
+    auto result = lhs.stage == rhs.stage && lhs.path == rhs.path && lhs.spirv.size() == rhs.spirv.size() &&
+            lhs.glsl.size() == rhs.glsl.size() && lhs.macros.size() == rhs.macros.size() &&
+            memcmp(reinterpret_cast<const void*>(lhs.spirv.data()), reinterpret_cast<const void*>(rhs.spirv.data()), sizeof(u32) * lhs.spirv.size()) == 0 &&
+            memcmp(reinterpret_cast<const void*>(lhs.glsl.data()), reinterpret_cast<const void*>(rhs.glsl.data()), sizeof(u8) * lhs.glsl.size()) == 0;
+    if (!result)
+        return result;
+    for (u32 i = 0; i < lhs.macros.size(); i++) {
+        result = result && lhs.macros[i].name == rhs.macros[i].name && lhs.macros[i].value == rhs.macros[i].value;
+    }
+    return result;
 }
 
 auto canta::PipelineManager::create(canta::PipelineManager::CreateInfo info) -> PipelineManager {
@@ -218,7 +237,7 @@ auto canta::PipelineManager::createShader(canta::ShaderDescription info, ShaderH
     if (!info.path.empty()) {
         auto shaderFile = ende::fs::File::open(_rootPath / info.path);
         auto glsl = shaderFile->read();
-        spirv = compileGLSL(glsl, info.stage).transform_error([](const auto& error) {
+        spirv = compileGLSL(glsl, info.stage, info.macros).transform_error([](const auto& error) {
             std::printf("%s", error.c_str());
             return error;
         }).value();
@@ -378,7 +397,7 @@ private:
 
 };
 
-auto canta::PipelineManager::compileGLSL(std::string_view glsl, canta::ShaderStage stage, std::span<Macro> macros) -> std::expected<std::vector<u32>, std::string> {
+auto canta::PipelineManager::compileGLSL(std::string_view glsl, canta::ShaderStage stage, std::span<const Macro> macros) -> std::expected<std::vector<u32>, std::string> {
     shaderc_shader_kind kind = {};
     switch (stage) {
         case ShaderStage::VERTEX:

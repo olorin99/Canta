@@ -8,10 +8,17 @@
 #include <Ende/filesystem/FileWatcher.h>
 
 namespace canta {
+
+    struct Macro {
+        std::string name;
+        std::string value;
+    };
+
     struct ShaderDescription {
         std::filesystem::path path = {};
-        std::span<u32> spirv = {};
+        std::span<const u32> spirv = {};
         std::string_view glsl = {};
+        std::span<const Macro> macros = {};
         ShaderStage stage = ShaderStage::NONE;
     };
 }
@@ -59,11 +66,7 @@ namespace canta {
 
         auto createShader(ShaderDescription info, ShaderHandle handle = {}) -> ShaderHandle;
 
-        struct Macro {
-            std::string name;
-            std::string value;
-        };
-        auto compileGLSL(std::string_view glsl, ShaderStage stage, std::span<Macro> macros = {}) -> std::expected<std::vector<u32>, std::string>;
+        auto compileGLSL(std::string_view glsl, ShaderStage stage, std::span<const Macro> macros = {}) -> std::expected<std::vector<u32>, std::string>;
 
         Device* _device = nullptr;
         std::filesystem::path _rootPath = {};
