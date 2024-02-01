@@ -76,7 +76,7 @@ auto canta::Buffer::map(u32 offset, u32 size) -> Mapped {
     return mapped;
 }
 
-auto canta::Buffer::data(std::span<const u8> data, u32 offset) -> u32 {
+auto canta::Buffer::_data(std::span<const u8> data, u32 offset) -> u32 {
     if (_mapped._address)
         std::memcpy(static_cast<char*>(_mapped.address()) + offset, data.data(), data.size());
     else {
