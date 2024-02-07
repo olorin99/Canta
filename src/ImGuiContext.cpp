@@ -68,6 +68,13 @@ auto canta::ImGuiContext::create(canta::ImGuiContext::CreateInfo info) -> ImGuiC
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
 
+    ImGuiIO& io = ImGui::GetIO();
+    io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+    if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable) {
+        ImGui::GetStyle().WindowRounding = 0.f;
+        ImGui::GetStyle().Colors[ImGuiCol_WindowBg].w = 1.f;
+    }
+
     info.device->immediate([&](auto& cmd) {
         context.createFontsTexture(cmd);
     });
