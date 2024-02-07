@@ -18,6 +18,8 @@ namespace canta {
         };
         static auto create(CreateInfo info) -> ImGuiContext;
 
+        ImGuiContext() = default;
+
         ImGuiContext(ImGuiContext&& rhs) noexcept;
         auto operator=(ImGuiContext&& rhs) noexcept -> ImGuiContext&;
 
@@ -30,8 +32,6 @@ namespace canta {
         void processEvent(void* event);
 
     private:
-
-        ImGuiContext() = default;
 
         void setupRenderState(ImDrawData* drawData, CommandBuffer& commandBuffer, i32 width, i32 height, Format format);
 
