@@ -30,10 +30,24 @@ canta::UploadBuffer::~UploadBuffer() {
 
 canta::UploadBuffer::UploadBuffer(canta::UploadBuffer &&rhs) noexcept {
     std::swap(_device, rhs._device);
+    std::swap(_commandPool, rhs._commandPool);
+    std::swap(_timelineSemaphore, rhs._timelineSemaphore);
+    std::swap(_buffer, rhs._buffer);
+    std::swap(_offset, rhs._offset);
+    std::swap(_pendingStagedBufferCopies, rhs._pendingStagedBufferCopies);
+    std::swap(_pendingStagedImageCopies, rhs._pendingStagedImageCopies);
+    std::swap(_submitted, rhs._submitted);
 }
 
 auto canta::UploadBuffer::operator=(canta::UploadBuffer &&rhs) noexcept -> UploadBuffer & {
     std::swap(_device, rhs._device);
+    std::swap(_commandPool, rhs._commandPool);
+    std::swap(_timelineSemaphore, rhs._timelineSemaphore);
+    std::swap(_buffer, rhs._buffer);
+    std::swap(_offset, rhs._offset);
+    std::swap(_pendingStagedBufferCopies, rhs._pendingStagedBufferCopies);
+    std::swap(_pendingStagedImageCopies, rhs._pendingStagedImageCopies);
+    std::swap(_submitted, rhs._submitted);
     return *this;
 }
 

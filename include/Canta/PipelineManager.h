@@ -47,6 +47,9 @@ namespace canta {
 
         static auto create(CreateInfo info) -> PipelineManager;
 
+        PipelineManager(PipelineManager&& rhs) noexcept;
+        auto operator=(PipelineManager&& rhs) noexcept -> PipelineManager&;
+
         PipelineManager() = default;
 
         auto getShader(ShaderDescription info) -> ShaderHandle;

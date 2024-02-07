@@ -106,6 +106,27 @@ auto canta::PipelineManager::create(canta::PipelineManager::CreateInfo info) -> 
     return manager;
 }
 
+canta::PipelineManager::PipelineManager(canta::PipelineManager &&rhs) noexcept {
+    std::swap(_device, rhs._device);
+    std::swap(_rootPath, rhs._rootPath);
+    std::swap(_shaders, rhs._shaders);
+    std::swap(_pipelines, rhs._pipelines);
+    std::swap(_fileWatcher, rhs._fileWatcher);
+    std::swap(_watchedPipelines, rhs._watchedPipelines);
+    std::swap(_virtualFiles, rhs._virtualFiles);
+}
+
+auto canta::PipelineManager::operator=(canta::PipelineManager &&rhs) noexcept -> PipelineManager & {
+    std::swap(_device, rhs._device);
+    std::swap(_rootPath, rhs._rootPath);
+    std::swap(_shaders, rhs._shaders);
+    std::swap(_pipelines, rhs._pipelines);
+    std::swap(_fileWatcher, rhs._fileWatcher);
+    std::swap(_watchedPipelines, rhs._watchedPipelines);
+    std::swap(_virtualFiles, rhs._virtualFiles);
+    return *this;
+}
+
 auto canta::PipelineManager::getShader(canta::ShaderDescription info) -> ShaderHandle {
     auto it = _shaders.find(info);
     if (it != _shaders.end())
