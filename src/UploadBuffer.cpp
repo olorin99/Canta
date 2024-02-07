@@ -206,6 +206,8 @@ void canta::UploadBuffer::flushStagedData() {
 }
 
 void canta::UploadBuffer::wait(u64 timeout) {
+    if (_submitted.empty())
+        return;
     auto maxSignal = std::max_element(_submitted.begin(), _submitted.end());
     _timelineSemaphore.wait(*maxSignal);
 }
