@@ -3,6 +3,9 @@ project(Canta)
 
 set(CMAKE_CXX_STANDARD 23)
 
+option(CANTA_BUILD_EXAMPLES "enable examples" ON)
+option(CANTA_ENABLE_IMGUI "enable imgui" ON)
+
 add_compile_definitions(CANTA_SRC_DIR="${CMAKE_SOURCE_DIR}")
 
 find_package(SDL2 REQUIRED)
@@ -68,7 +71,6 @@ target_link_libraries(Canta
     Ende
     volk
     GPUOpen::VulkanMemoryAllocator
-    imgui
     spdlog
     ${SDL2_LIBRARIES}
     spirv-cross-cpp
@@ -76,4 +78,10 @@ target_link_libraries(Canta
     tsl::robin_map
 )
 
-add_subdirectory(examples)
+if (CANTA_BUILD_EXAMPLES)
+    add_subdirectory(examples)
+endif ()
+
+if (CANTA_ENABLE_IMGUI)
+    target_link_libraries(Canta imgui)
+endif ()
