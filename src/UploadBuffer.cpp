@@ -20,6 +20,7 @@ auto canta::UploadBuffer::create(canta::UploadBuffer::CreateInfo info) -> Upload
         .persistentlyMapped = true,
         .name = "upload_buffer"
     });
+    buffer._mutex = std::make_unique<std::mutex>();
 
     return buffer;
 }
@@ -37,6 +38,7 @@ canta::UploadBuffer::UploadBuffer(canta::UploadBuffer &&rhs) noexcept {
     std::swap(_pendingStagedBufferCopies, rhs._pendingStagedBufferCopies);
     std::swap(_pendingStagedImageCopies, rhs._pendingStagedImageCopies);
     std::swap(_submitted, rhs._submitted);
+    std::swap(_mutex, rhs._mutex);
 }
 
 auto canta::UploadBuffer::operator=(canta::UploadBuffer &&rhs) noexcept -> UploadBuffer & {
@@ -48,6 +50,7 @@ auto canta::UploadBuffer::operator=(canta::UploadBuffer &&rhs) noexcept -> Uploa
     std::swap(_pendingStagedBufferCopies, rhs._pendingStagedBufferCopies);
     std::swap(_pendingStagedImageCopies, rhs._pendingStagedImageCopies);
     std::swap(_submitted, rhs._submitted);
+    std::swap(_mutex, rhs._mutex);
     return *this;
 }
 
@@ -56,6 +59,7 @@ auto canta::UploadBuffer::upload(canta::BufferHandle dstHandle, std::span<const 
     i32 uploadSizeRemaining = data.size() - uploadOffset;
 
     while (uploadSizeRemaining > 0) {
+        std::unique_lock lock(*_mutex);
         u32 availableSize = _buffer->size() - _offset;
         u32 allocationSize = std::min(availableSize, static_cast<u32>(uploadSizeRemaining));
 
@@ -74,6 +78,7 @@ auto canta::UploadBuffer::upload(canta::BufferHandle dstHandle, std::span<const 
             dstOffset += allocationSize;
             uploadSizeRemaining = data.size() - uploadOffset;
         } else {
+            lock.unlock();
             flushStagedData();
             wait();
         }
@@ -89,6 +94,7 @@ auto canta::UploadBuffer::upload(canta::ImageHandle dstHandle, std::span<const u
     //TODO: support loading 3d images
 
     while (uploadSizeRemaining > 0) {
+        std::unique_lock lock(*_mutex);
         u32 availableSize = _buffer->size() - _offset;
         u32 allocationSize = std::min(availableSize, uploadSizeRemaining);
 
@@ -149,6 +155,7 @@ auto canta::UploadBuffer::upload(canta::ImageHandle dstHandle, std::span<const u
             dstOffset = { x, y, z };
 
         } else {
+            lock.unlock();
             flushStagedData();
             wait();
         }
@@ -157,6 +164,7 @@ auto canta::UploadBuffer::upload(canta::ImageHandle dstHandle, std::span<const u
 }
 
 void canta::UploadBuffer::flushStagedData() {
+    std::unique_lock lock(*_mutex);
     if (!_pendingStagedBufferCopies.empty() || !_pendingStagedImageCopies.empty()) {
         auto& commandBuffer = _commandPool.getBuffer();
         commandBuffer.begin();
@@ -215,6 +223,7 @@ void canta::UploadBuffer::wait(u64 timeout) {
 auto canta::UploadBuffer::clearSubmitted() -> u32 {
     auto gpuTimelineValue = _timelineSemaphore.gpuValue();
     u32 clearedCount = 0;
+    std::unique_lock lock(*_mutex);
     for (auto it = _submitted.begin(); it != _submitted.end(); it++) {
         if (*it < gpuTimelineValue) {
             _submitted.erase(it--);

@@ -2,6 +2,7 @@
 #define CANTA_UPLOADBUFFER_H
 
 #include <Canta/Device.h>
+#include <mutex>
 
 namespace canta {
 
@@ -89,6 +90,8 @@ namespace canta {
         std::vector<StagedImageInfo> _pendingStagedImageCopies = {};
 
         std::vector<u64> _submitted = {};
+
+        std::unique_ptr<std::mutex> _mutex = nullptr;
 
     };
 
