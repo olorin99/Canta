@@ -163,7 +163,7 @@ auto canta::UploadBuffer::upload(canta::ImageHandle dstHandle, std::span<const u
     return data.size();
 }
 
-void canta::UploadBuffer::flushStagedData() {
+auto canta::UploadBuffer::flushStagedData() -> UploadBuffer& {
     std::unique_lock lock(*_mutex);
     if (!_pendingStagedBufferCopies.empty() || !_pendingStagedImageCopies.empty()) {
         auto& commandBuffer = _commandPool.getBuffer();
@@ -211,6 +211,7 @@ void canta::UploadBuffer::flushStagedData() {
     _pendingStagedBufferCopies.clear();
     _pendingStagedImageCopies.clear();
     _offset = 0;
+    return *this;
 }
 
 void canta::UploadBuffer::wait(u64 timeout) {

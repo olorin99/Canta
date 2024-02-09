@@ -241,15 +241,61 @@ auto canta::Device::create(canta::Device::CreateInfo info) noexcept -> std::expe
     std::vector<VkQueueFamilyProperties> familyProperties(queueCount);
     vkGetPhysicalDeviceQueueFamilyProperties(device->_physicalDevice, &queueCount, familyProperties.data());
 
-    f32 queuePriority = 1.0;
+    i32 maxQueueCount = std::max_element(familyProperties.begin(), familyProperties.end(), [](auto& lhs, auto& rhs) { return lhs.queueCount < rhs.queueCount; })->queueCount;
+
+    std::vector<f32> queuePriorities(maxQueueCount, 1.f);
 
     std::vector<VkDeviceQueueCreateInfo> queueCreateInfos = {};
+    const auto findQueueFamilyIndex = [&](QueueType type, QueueType reject = QueueType::NONE) -> i32 {
+        u32 flags = static_cast<u32>(type);
+        u32 rejectFlags = static_cast<u32>(reject);
+        i32 i = 0;
+        for (auto& queueFamily : familyProperties) {
+            if ((queueFamily.queueFlags & rejectFlags) != 0) {
+                i++;
+                continue;
+            }
+            if (queueFamily.queueCount > 0) {
+                if ((queueFamily.queueFlags & flags) == flags) {
+                    return i;
+                }
+            }
+        }
+        return -1;
+    };
+
+    auto graphicsFamilyIndex = findQueueFamilyIndex(QueueType::GRAPHICS);
+    auto computeFamilyIndex = findQueueFamilyIndex(QueueType::COMPUTE, QueueType::GRAPHICS);
+    auto transferFamilyIndex = findQueueFamilyIndex(QueueType::TRANSFER, QueueType::GRAPHICS | QueueType::COMPUTE);
+
+    u32 graphicsQueueIndex = 0;
+    u32 computeQueueIndex = 0;
+    u32 transferQueueIndex = 0;
+
+    if (computeFamilyIndex < 0)
+        computeFamilyIndex = graphicsFamilyIndex;
+    if (transferFamilyIndex < 0)
+        transferFamilyIndex = computeFamilyIndex;
+
     for (u32 i = 0; i < familyProperties.size(); i++) {
         VkDeviceQueueCreateInfo queueCreateInfo = {};
         queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
         queueCreateInfo.queueFamilyIndex = i;
-        queueCreateInfo.queueCount = 1; //TODO: ensure enough queues for both async compute and transfer
-        queueCreateInfo.pQueuePriorities = &queuePriority;
+
+        u32 familyQueueCount = 0;
+        if (i == graphicsFamilyIndex)
+            graphicsQueueIndex = familyQueueCount++;
+        if (info.enableAsyncComputeQueue && i == computeFamilyIndex)
+            computeQueueIndex = familyQueueCount++;
+        if (info.enableAsyncTransferQueue && i == transferFamilyIndex)
+            transferQueueIndex = familyQueueCount++;
+
+        assert(familyQueueCount <= familyProperties[i].queueCount);
+
+        queueCreateInfo.queueCount = familyQueueCount; //TODO: ensure enough queues for both async compute and transfer
+        queueCreateInfo.pQueuePriorities = queuePriorities.data();
+        if (familyQueueCount == 0)
+            continue;
         queueCreateInfos.push_back(queueCreateInfo);
     }
 
@@ -361,47 +407,33 @@ auto canta::Device::create(canta::Device::CreateInfo info) noexcept -> std::expe
     volkLoadDevice(device->_logicalDevice);
 
     // get queues
-    const auto findQueueIndex = [&](QueueType type, QueueType reject = QueueType::NONE) -> i32 {
-        u32 flags = static_cast<u32>(type);
-        u32 rejectFlags = static_cast<u32>(reject);
-        i32 i = 0;
-        for (auto& queueFamily : familyProperties) {
-            if ((queueFamily.queueFlags & rejectFlags) != 0) {
-                i++;
-                continue;
-            }
-            if (queueFamily.queueCount > 0) {
-                if ((queueFamily.queueFlags & flags) == flags) {
-                    return i;
-                }
-            }
-        }
-        return -1;
-    };
-
     {
-        u32 graphicsIndex = findQueueIndex(QueueType::GRAPHICS);
         VkQueue graphicsQueue;
-        vkGetDeviceQueue(device->_logicalDevice, graphicsIndex, 0, &graphicsQueue);
+        vkGetDeviceQueue(device->_logicalDevice, graphicsFamilyIndex, graphicsQueueIndex, &graphicsQueue);
         device->_graphicsQueue._device = device.get();
         device->_graphicsQueue._queue = graphicsQueue;
-        device->_graphicsQueue._familyIndex = graphicsIndex;
+        device->_graphicsQueue._familyIndex = graphicsFamilyIndex;
+        device->_graphicsQueue._queueIndex = graphicsQueueIndex;
     }
     if (info.enableAsyncComputeQueue) {
-        u32 computeIndex = findQueueIndex(QueueType::COMPUTE, QueueType::GRAPHICS);
         VkQueue computeQueue;
-        vkGetDeviceQueue(device->_logicalDevice, computeIndex, 0, &computeQueue);
+        vkGetDeviceQueue(device->_logicalDevice, computeFamilyIndex, computeQueueIndex, &computeQueue);
         device->_computeQueue._device = device.get();
         device->_computeQueue._queue = computeQueue;
-        device->_computeQueue._familyIndex = computeIndex;
+        device->_computeQueue._familyIndex = computeFamilyIndex;
+        device->_computeQueue._queueIndex = computeQueueIndex;
+    } else {
+        device->_computeQueue = device->_graphicsQueue;
     }
     if (info.enableAsyncTransferQueue) {
-        u32 transferIndex = findQueueIndex(QueueType::TRANSFER, QueueType::GRAPHICS);
         VkQueue transferQueue;
-        vkGetDeviceQueue(device->_logicalDevice, transferIndex, 0, &transferQueue);
+        vkGetDeviceQueue(device->_logicalDevice, transferFamilyIndex, transferQueueIndex, &transferQueue);
         device->_transferQueue._device = device.get();
         device->_transferQueue._queue = transferQueue;
-        device->_transferQueue._familyIndex = transferIndex;
+        device->_transferQueue._familyIndex = transferFamilyIndex;
+        device->_transferQueue._queueIndex = transferQueueIndex;
+    } else {
+        device->_transferQueue = device->_graphicsQueue;
     }
 
 

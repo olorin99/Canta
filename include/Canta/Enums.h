@@ -740,6 +740,9 @@ namespace canta {
     ENUM_OPERATOR_EQUALS(BufferUsage, |)
 
 
+    ENUM_OPERATOR(QueueType, |)
+
+
     constexpr inline bool isDepthFormat(Format format) {
         switch (format) {
             case Format::D16_UNORM:

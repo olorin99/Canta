@@ -13,6 +13,7 @@ namespace canta {
 
         auto queue() const -> VkQueue { return _queue; }
         auto familyIndex() const -> u32 { return _familyIndex; }
+        auto queueIndex() const -> u32 { return _queueIndex; }
 
     private:
         friend Device;
@@ -22,6 +23,7 @@ namespace canta {
         Device* _device = nullptr;
         VkQueue _queue = VK_NULL_HANDLE;
         u32 _familyIndex = 0;
+        u32 _queueIndex = 0;
 
     };
 

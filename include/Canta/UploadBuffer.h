@@ -51,7 +51,7 @@ namespace canta {
             return upload(dstHandle, std::span<const u8>(reinterpret_cast<const u8*>(std::ranges::data(range)), std::ranges::size(range) * sizeof(std::ranges::range_value_t<Range>)), info);
         }
 
-        void flushStagedData();
+        auto flushStagedData() -> UploadBuffer&;
 
         void wait(u64 timeout = 1000000000);
 
