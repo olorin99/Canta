@@ -297,6 +297,7 @@ auto canta::Device::create(canta::Device::CreateInfo info) noexcept -> std::expe
         if (familyQueueCount == 0)
             continue;
         queueCreateInfos.push_back(queueCreateInfo);
+        device->_enabledQueueFamilies.push_back(i);
     }
 
 
@@ -1229,7 +1230,9 @@ auto canta::Device::createBuffer(Buffer::CreateInfo info, BufferHandle oldHandle
 
     createInfo.size = info.size;
     createInfo.usage = static_cast<VkBufferUsageFlagBits>(info.usage);
-    createInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+    createInfo.sharingMode = VK_SHARING_MODE_CONCURRENT;
+    createInfo.queueFamilyIndexCount = _enabledQueueFamilies.size();
+    createInfo.pQueueFamilyIndices = _enabledQueueFamilies.data();
 
     VmaAllocationCreateInfo allocInfo = {};
     allocInfo.usage = VMA_MEMORY_USAGE_AUTO;

@@ -266,6 +266,8 @@ namespace canta {
         Queue _computeQueue = {};
         Queue _transferQueue = {};
 
+        std::vector<u32> _enabledQueueFamilies = {};
+
         VmaAllocator _allocator = VK_NULL_HANDLE;
 
         ende::time::StopWatch _frameClock = {};

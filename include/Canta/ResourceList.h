@@ -7,6 +7,7 @@
 #include <functional>
 #include <atomic>
 #include <cassert>
+#include <mutex>
 
 namespace canta {
 
@@ -133,12 +134,14 @@ namespace canta {
 
         auto allocate() -> ResourceHandle {
             i32 index = -1;
+            std::unique_lock lock(_mutex);
             if (!_freeResources.empty()) {
                 index = _freeResources.back();
                 _freeResources.pop_back();
                 _resources[index] = std::make_unique<std::pair<T, ResourceData>>();
                 _resources[index]->second.index = index;
                 _resources[index]->second.deleter = [this](i32 index) {
+                    std::unique_lock lock(_mutex);
                     _destroyQueue.push_back(std::make_pair(_destroyDelay, index));
                 };
             } else {
@@ -146,6 +149,7 @@ namespace canta {
                 _resources.emplace_back(std::make_unique<std::pair<T, ResourceData>>());
                 _resources.back()->second.index = index;
                 _resources.back()->second.deleter = [this](i32 index) {
+                    std::unique_lock lock(_mutex);
                     _destroyQueue.push_back(std::make_pair(_destroyDelay, index));
                 };
             }
@@ -155,6 +159,7 @@ namespace canta {
         auto reallocate(ResourceHandle handle) -> ResourceHandle {
             i32 oldIndex = handle.index();
             auto newHandle = allocate();
+            std::unique_lock lock(_mutex);
             auto newIndex = newHandle.index();
             _resources[newIndex].swap(_resources[oldIndex]);
             _resources[oldIndex]->first = std::move(_resources[newIndex]->first);
@@ -164,6 +169,7 @@ namespace canta {
         }
 
         void clearQueue(std::function<void(T&)> func = [](auto& resource) { resource = {}; }) {
+            std::unique_lock lock(_mutex);
             for (auto it = _destroyQueue.begin(); it != _destroyQueue.end(); it++) {
                 if (it->first <= 0) {
                     func(_resources[it->second]->first);
@@ -175,6 +181,7 @@ namespace canta {
         }
 
         void clearAll(std::function<void(T&)> func = [](auto& resource) { resource = {}; }) {
+            std::unique_lock lock(_mutex);
             for (auto& resource : _resources) {
                 func(resource->first);
             }
@@ -205,6 +212,7 @@ namespace canta {
         std::vector<u32> _freeResources = {};
         std::vector<std::pair<i32, i32>> _destroyQueue = {};
         i32 _destroyDelay = 3;
+        std::mutex _mutex = {};
 
     };
 
