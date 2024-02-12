@@ -35,6 +35,7 @@ namespace canta {
         u32 mipLevels = 1;
         Format format = Format::RGBA8_UNORM;
         ImageUsage usage = ImageUsage::SAMPLED | ImageUsage::TRANSFER_SRC;
+        ImageLayout initialLayout = ImageLayout::UNDEFINED;
     };
 
     struct BufferResource : public Resource {
@@ -62,6 +63,7 @@ namespace canta {
         Format format = Format::RGBA8_UNORM;
         ImageUsage usage = ImageUsage::SAMPLED | ImageUsage::TRANSFER_SRC;
         ImageHandle handle = {};
+        ImageLayout initialLayout = ImageLayout::UNDEFINED;
         std::string_view name = {};
     };
 

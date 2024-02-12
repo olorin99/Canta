@@ -275,8 +275,10 @@ auto canta::RenderGraph::addImage(canta::ImageDescription description) -> ImageI
     auto it = _nameToIndex.find(description.name.data());
     if (it != _nameToIndex.end()) {
         u32 index = it->second;
+        auto imageResource = dynamic_cast<ImageResource*>(_resources[index].get());
+        imageResource->initialLayout = description.initialLayout;
         if (description.handle) {
-            u32 imageIndex = dynamic_cast<ImageResource*>(_resources[index].get())->imageIndex;
+            u32 imageIndex = imageResource->imageIndex;
             _images[imageIndex] = description.handle;
         }
         return {
@@ -305,6 +307,7 @@ auto canta::RenderGraph::addImage(canta::ImageDescription description) -> ImageI
         resource.format = description.format;
         resource.usage = description.usage;
     }
+    resource.initialLayout = description.initialLayout;
     resource.index = index;
     resource.type = ResourceType::IMAGE;
     resource.name = description.name;
@@ -624,13 +627,18 @@ void canta::RenderGraph::buildBarriers() {
         if (accessPassIndex < 0)
             continue;
         auto& accessPass = _orderedPasses[accessPassIndex];
+        auto& resource = _resources[i];
+        ImageLayout initialLayout = ImageLayout::UNDEFINED;
+        if (resource->type == ResourceType::IMAGE) {
+            initialLayout = dynamic_cast<ImageResource*>(resource.get())->initialLayout;
+        }
         accessPass->_barriers.push_back({
             nextAccess.index,
             PipelineStage::TOP,
             nextAccess.stage,
             Access::MEMORY_READ | Access::MEMORY_WRITE,
             nextAccess.access,
-            ImageLayout::UNDEFINED,
+            initialLayout,
             nextAccess.layout
         });
     }
