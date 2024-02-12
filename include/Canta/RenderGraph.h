@@ -188,7 +188,7 @@ namespace canta {
 
         auto addPass(std::string_view name, RenderPass::Type type = RenderPass::Type::COMPUTE) -> RenderPass&;
         auto addClearPass(std::string_view name, ImageIndex index) -> RenderPass&;
-        auto addBlitPass(std::string_view name, ImageIndex src, ImageIndex dst) -> RenderPass&;
+        auto addBlitPass(std::string_view name, ImageIndex src, ImageIndex dst, Filter filter = Filter::LINEAR) -> RenderPass&;
 
         auto addImage(ImageDescription description) -> ImageIndex;
         auto addBuffer(BufferDescription description) -> BufferIndex;

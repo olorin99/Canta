@@ -253,18 +253,19 @@ auto canta::RenderGraph::addClearPass(std::string_view name, canta::ImageIndex i
     return clearPass;
 }
 
-auto canta::RenderGraph::addBlitPass(std::string_view name, canta::ImageIndex src, canta::ImageIndex dst) -> RenderPass & {
+auto canta::RenderGraph::addBlitPass(std::string_view name, canta::ImageIndex src, canta::ImageIndex dst, Filter filter) -> RenderPass & {
     auto& blitPass = addPass(name);
     blitPass.addTransferRead(src);
     blitPass.addTransferWrite(dst);
-    blitPass.setExecuteFunction([src, dst] (CommandBuffer& cmd, RenderGraph& graph) {
+    blitPass.setExecuteFunction([src, dst, filter] (CommandBuffer& cmd, RenderGraph& graph) {
         auto srcImage = graph.getImage(src);
         auto dstImage = graph.getImage(dst);
         cmd.blit({
             .src = srcImage,
             .dst = dstImage,
             .srcLayout = ImageLayout::TRANSFER_SRC,
-            .dstLayout = ImageLayout::TRANSFER_DST
+            .dstLayout = ImageLayout::TRANSFER_DST,
+            .filter = filter
         });
     });
     return blitPass;
