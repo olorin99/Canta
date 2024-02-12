@@ -91,7 +91,7 @@ void main() {
         .compute = {
             .module = pipelineManager.getShader({
                 .path = "/home/christian/Documents/Projects/Canta/examples/particles.comp",
-                .macros = std::to_array({ canta::Macro{"CANTA_TEST", "HELLO"} }),
+                .macros = { canta::Macro{"CANTA_TEST", "HELLO"} },
                 .stage = canta::ShaderStage::COMPUTE
             })
         }

@@ -16,9 +16,9 @@ namespace canta {
 
     struct ShaderDescription {
         std::filesystem::path path = {};
-        std::span<const u32> spirv = {};
+        std::vector<u32> spirv = {};
         std::string_view glsl = {};
-        std::span<const Macro> macros = {};
+        std::vector<Macro> macros = {};
         ShaderStage stage = ShaderStage::NONE;
     };
 }
