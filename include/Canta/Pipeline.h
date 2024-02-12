@@ -81,11 +81,11 @@ namespace canta {
             RasterState rasterState = {};
             DepthState depthState = {};
             BlendState blendState = {};
-            std::span<const VertexInputBinding> inputBindings = {};
-            std::span<const VertexInputAttribute> inputAttributes = {};
+            std::vector<VertexInputBinding> inputBindings = {};
+            std::vector<VertexInputAttribute> inputAttributes = {};
             PrimitiveTopology topology = PrimitiveTopology::TRIANGLE_LIST;
             bool primitiveRestart = false;
-            std::span<const Format> colourFormats = {};
+            std::vector<Format> colourFormats = {};
             Format depthFormat = Format::UNDEFINED;
         };
 
