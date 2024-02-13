@@ -222,12 +222,13 @@ auto canta::RenderGraph::create(canta::RenderGraph::CreateInfo info) -> RenderGr
     return graph;
 }
 
-auto canta::RenderGraph::addPass(std::string_view name, RenderPass::Type type) -> RenderPass & {
+auto canta::RenderGraph::addPass(std::string_view name, PassType type, RenderGroup group) -> RenderPass & {
     u32 index = _passes.size();
     _passes.emplace_back();
     _passes.back()._graph = this;
     _passes.back()._name = name;
     _passes.back()._type = type;
+    _passes.back().setGroup(group);
     if (_timingEnabled && _timingMode != TimingMode::SINGLE) {
         if (_timers[_device->flyingIndex()].size() <= index) {
             _timers[_device->flyingIndex()].emplace_back(std::make_pair(name, _device->createTimer()));
@@ -243,8 +244,8 @@ auto canta::RenderGraph::addPass(std::string_view name, RenderPass::Type type) -
     return _passes.back();
 }
 
-auto canta::RenderGraph::addClearPass(std::string_view name, canta::ImageIndex index) -> RenderPass & {
-    auto& clearPass = addPass(name);
+auto canta::RenderGraph::addClearPass(std::string_view name, canta::ImageIndex index, RenderGroup group) -> RenderPass & {
+    auto& clearPass = addPass(name, PassType::TRANSFER, group);
     clearPass.addTransferWrite(index);
     clearPass.setExecuteFunction([index] (CommandBuffer& cmd, RenderGraph& graph) {
         auto image = graph.getImage(index);
@@ -253,8 +254,8 @@ auto canta::RenderGraph::addClearPass(std::string_view name, canta::ImageIndex i
     return clearPass;
 }
 
-auto canta::RenderGraph::addBlitPass(std::string_view name, canta::ImageIndex src, canta::ImageIndex dst, Filter filter) -> RenderPass & {
-    auto& blitPass = addPass(name);
+auto canta::RenderGraph::addBlitPass(std::string_view name, canta::ImageIndex src, canta::ImageIndex dst, Filter filter, RenderGroup group) -> RenderPass & {
+    auto& blitPass = addPass(name, PassType::TRANSFER, group);
     blitPass.addTransferRead(src);
     blitPass.addTransferWrite(dst);
     blitPass.setExecuteFunction([src, dst, filter] (CommandBuffer& cmd, RenderGraph& graph) {
@@ -271,26 +272,34 @@ auto canta::RenderGraph::addBlitPass(std::string_view name, canta::ImageIndex sr
     return blitPass;
 }
 
-auto canta::RenderGraph::getGroup(std::string_view name) -> RenderGroup {
+auto canta::RenderGraph::getGroup(std::string_view name, const std::array<f32, 4>& colour) -> RenderGroup {
     auto it = _renderGroups.find(name);
     if (it != _renderGroups.end()) {
         return {
-            .id = it->second
+            .id = it->second.first
         };
     }
 
-    auto it1 = _renderGroups.insert(std::make_pair(name, _groupId++));
+    auto it1 = _renderGroups.insert(std::make_pair(name, std::make_pair(_groupId++, colour)));
     return {
-        .id = it1.first->second
+        .id = it1.first->second.first
     };
 }
 
 auto canta::RenderGraph::getGroupName(canta::RenderGroup group) -> std::string {
     for (auto [key, value] : _renderGroups) {
-        if (value == group.id)
+        if (value.first == group.id)
             return key.data();
     }
     return {};
+}
+
+auto canta::RenderGraph::getGroupColour(canta::RenderGroup group) -> std::array<f32, 4> {
+    for (auto [key, value] : _renderGroups) {
+        if (value.first == group.id)
+            return value.second;
+    }
+    return { 0, 1, 0, 1 };
 }
 
 auto canta::RenderGraph::addImage(canta::ImageDescription description) -> ImageIndex {
@@ -485,11 +494,11 @@ auto canta::RenderGraph::execute(std::span<Semaphore::Pair> waits, std::span<Sem
                 cmd.popDebugLabel();
             groupChanged = true;
             if (pass->getGroup().id >= 0)
-                cmd.pushDebugLabel(getGroupName(pass->getGroup()));
+                cmd.pushDebugLabel(getGroupName(pass->getGroup()), getGroupColour(pass->getGroup()));
         } else
             groupChanged = false;
 
-        cmd.pushDebugLabel(pass->_name);
+        cmd.pushDebugLabel(pass->_name, pass->_debugColour);
 
         u32 imageBarrierCount = 0;
         ImageBarrier imageBarriers[pass->_barriers.size()];
@@ -544,7 +553,7 @@ auto canta::RenderGraph::execute(std::span<Semaphore::Pair> waits, std::span<Sem
         if (_pipelineStatisticsEnabled && _individualPipelineStatistics)
             _pipelineStats[_device->flyingIndex()][i].second.begin(cmd);
 
-        if (pass->_type == RenderPass::Type::GRAPHICS) {
+        if (pass->_type == PassType::GRAPHICS) {
             RenderingInfo info = {};
             i32 width = pass->_width;
             i32 height = pass->_height;
@@ -568,7 +577,7 @@ auto canta::RenderGraph::execute(std::span<Semaphore::Pair> waits, std::span<Sem
             cmd.beginRendering(info);
         }
         pass->_execute(cmd, *this);
-        if (pass->_type == RenderPass::Type::GRAPHICS) {
+        if (pass->_type == PassType::GRAPHICS) {
             cmd.endRendering();
         }
         if (_pipelineStatisticsEnabled && _individualPipelineStatistics)

@@ -334,7 +334,7 @@ void main() {
         renderGraph.addBlitPass("blit_to_swapchain", imageIndex, swapchainIndex);
         auto uiSwapchainIndex = renderGraph.addAlias(swapchainIndex);
 
-        auto& uiPass = renderGraph.addPass("ui", canta::RenderPass::Type::GRAPHICS);
+        auto& uiPass = renderGraph.addPass("ui", canta::PassType::GRAPHICS);
         uiPass.addColourRead(swapchainIndex);
         uiPass.addColourWrite(uiSwapchainIndex);
         uiPass.setExecuteFunction([&imguiContext, &swapchain](canta::CommandBuffer& cmd, canta::RenderGraph& graph) {

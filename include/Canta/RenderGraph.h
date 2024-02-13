@@ -80,14 +80,13 @@ namespace canta {
 
     class RenderGraph;
 
+    enum class PassType {
+        GRAPHICS,
+        COMPUTE,
+        TRANSFER
+    };
     class RenderPass {
     public:
-
-        enum class Type {
-            GRAPHICS,
-            COMPUTE,
-            TRANSFER
-        };
 
         void addColourWrite(ImageIndex index, const std::array<f32, 4>& clearColor = { 0, 0, 0, 1 });
         void addColourRead(ImageIndex index);
@@ -128,6 +127,10 @@ namespace canta {
 
         auto getGroup() -> RenderGroup { return _group; }
 
+        void setDebugColour(const std::array<f32, 4>& colour = { 0, 1, 0, 1 }) {
+            _debugColour = colour;
+        }
+
     private:
         friend RenderGraph;
 
@@ -140,7 +143,7 @@ namespace canta {
         RenderGraph* _graph = nullptr;
 
         std::string _name = {};
-        Type _type = Type::COMPUTE;
+        PassType _type = PassType::COMPUTE;
 
         std::function<void(CommandBuffer&, RenderGraph&)> _execute = {};
 
@@ -181,6 +184,7 @@ namespace canta {
         std::vector<Barrier> _barriers = {};
 
         RenderGroup _group = {};
+        std::array<f32, 4> _debugColour = { 0, 1, 0, 1 };
 
     };
 
@@ -206,12 +210,13 @@ namespace canta {
 
         RenderGraph() = default;
 
-        auto addPass(std::string_view name, RenderPass::Type type = RenderPass::Type::COMPUTE) -> RenderPass&;
-        auto addClearPass(std::string_view name, ImageIndex index) -> RenderPass&;
-        auto addBlitPass(std::string_view name, ImageIndex src, ImageIndex dst, Filter filter = Filter::LINEAR) -> RenderPass&;
+        auto addPass(std::string_view name, PassType type = PassType::COMPUTE, RenderGroup group = {}) -> RenderPass&;
+        auto addClearPass(std::string_view name, ImageIndex index, RenderGroup group = {}) -> RenderPass&;
+        auto addBlitPass(std::string_view name, ImageIndex src, ImageIndex dst, Filter filter = Filter::LINEAR, RenderGroup group = {}) -> RenderPass&;
 
-        auto getGroup(std::string_view name) -> RenderGroup;
+        auto getGroup(std::string_view name, const std::array<f32, 4>& colour = { 0, 1, 0, 1 }) -> RenderGroup;
         auto getGroupName(RenderGroup) -> std::string;
+        auto getGroupColour(RenderGroup) -> std::array<f32, 4>;
 
         auto addImage(ImageDescription description) -> ImageIndex;
         auto addBuffer(BufferDescription description) -> BufferIndex;
@@ -289,7 +294,7 @@ namespace canta {
         bool _individualPipelineStatistics = true;
         std::array<std::vector<std::pair<std::string, PipelineStatistics>>, FRAMES_IN_FLIGHT> _pipelineStats = {};
 
-        tsl::robin_map<std::string_view, i32> _renderGroups;
+        tsl::robin_map<std::string_view, std::pair<i32, std::array<f32, 4>>> _renderGroups;
         u32 _groupId = 0;
         tsl::robin_map<const char*, u32> _nameToIndex;
 
