@@ -204,11 +204,11 @@ auto canta::RenderGraph::create(canta::RenderGraph::CreateInfo info) -> RenderGr
         }).value();
     }
     graph._timingEnabled = info.enableTiming;
-    graph._individualTiming = info.individualTiming;
+    graph._timingMode = info.timingMode;
     graph._pipelineStatisticsEnabled = info.enablePipelineStatistics;
     graph._individualPipelineStatistics = info.individualPipelineStatistics;
 
-    if (info.enableTiming && !info.individualTiming) {
+    if (info.enableTiming && info.timingMode == TimingMode::SINGLE) {
         for (auto& frameTimers : graph._timers) {
             frameTimers.emplace_back(std::make_pair(info.name, info.device->createTimer()));
         }
@@ -228,7 +228,7 @@ auto canta::RenderGraph::addPass(std::string_view name, RenderPass::Type type) -
     _passes.back()._graph = this;
     _passes.back()._name = name;
     _passes.back()._type = type;
-    if (_timingEnabled && _individualTiming) {
+    if (_timingEnabled && _timingMode != TimingMode::SINGLE) {
         if (_timers[_device->flyingIndex()].size() <= index) {
             _timers[_device->flyingIndex()].emplace_back(std::make_pair(name, _device->createTimer()));
         } else
@@ -269,6 +269,28 @@ auto canta::RenderGraph::addBlitPass(std::string_view name, canta::ImageIndex sr
         });
     });
     return blitPass;
+}
+
+auto canta::RenderGraph::getGroup(std::string_view name) -> RenderGroup {
+    auto it = _renderGroups.find(name);
+    if (it != _renderGroups.end()) {
+        return {
+            .id = it->second
+        };
+    }
+
+    auto it1 = _renderGroups.insert(std::make_pair(name, _groupId++));
+    return {
+        .id = it1.first->second
+    };
+}
+
+auto canta::RenderGraph::getGroupName(canta::RenderGroup group) -> std::string {
+    for (auto [key, value] : _renderGroups) {
+        if (value == group.id)
+            return key.data();
+    }
+    return {};
 }
 
 auto canta::RenderGraph::addImage(canta::ImageDescription description) -> ImageIndex {
@@ -439,10 +461,13 @@ auto canta::RenderGraph::compile() -> std::expected<bool, RenderGraphError> {
 }
 
 auto canta::RenderGraph::execute(std::span<Semaphore::Pair> waits, std::span<Semaphore::Pair> signals, bool backbufferIsSwapchain) -> std::expected<bool, RenderGraphError> {
+    _timerCount = 0;
+    RenderGroup currentGroup = {};
+    bool groupChanged = false;
     _commandPools[_device->flyingIndex()].reset();
     auto& cmd = _commandPools[_device->flyingIndex()].getBuffer();
     cmd.begin();
-    if (_timingEnabled && !_individualTiming) {
+    if (_timingEnabled && _timingMode == TimingMode::SINGLE) {
         _timers[_device->flyingIndex()].front().first = _name;
         _timers[_device->flyingIndex()].front().second.begin(cmd);
     }
@@ -453,6 +478,15 @@ auto canta::RenderGraph::execute(std::span<Semaphore::Pair> waits, std::span<Sem
 
     for (u32 i = 0; i < _orderedPasses.size(); i++) {
         auto& pass = _orderedPasses[i];
+
+        // if render group changes
+        if (currentGroup.id != pass->getGroup().id) {
+            cmd.popDebugLabel();
+            groupChanged = true;
+            cmd.pushDebugLabel(getGroupName(pass->getGroup()));
+        } else
+            groupChanged = false;
+
         cmd.pushDebugLabel(pass->_name);
 
         u32 imageBarrierCount = 0;
@@ -489,8 +523,22 @@ auto canta::RenderGraph::execute(std::span<Semaphore::Pair> waits, std::span<Sem
         for (u32 barrier = 0; barrier < bufferBarrierCount; barrier++)
             cmd.barrier(bufferBarriers[barrier]);
 
-        if (_timingEnabled && _individualTiming)
-            _timers[_device->flyingIndex()][i].second.begin(cmd);
+        if (_timingEnabled && _timingMode != TimingMode::SINGLE) {
+            if (_timingMode == TimingMode::PER_GROUP && groupChanged) {
+                if (currentGroup.id >= 0) {
+                    _timers[_device->flyingIndex()][_timerCount].second.end(cmd);
+                    _timerCount++;
+                }
+                if (pass->getGroup().id >= 0) {
+                    _timers[_device->flyingIndex()][_timerCount].first = getGroupName(pass->getGroup());
+                    _timers[_device->flyingIndex()][_timerCount].second.begin(cmd);
+                }
+            }
+            if (_timingMode == TimingMode::PER_PASS || pass->getGroup().id < 0) {
+                _timers[_device->flyingIndex()][_timerCount].first = pass->_name;
+                _timers[_device->flyingIndex()][_timerCount].second.begin(cmd);
+            }
+        }
         if (_pipelineStatisticsEnabled && _individualPipelineStatistics)
             _pipelineStats[_device->flyingIndex()][i].second.begin(cmd);
 
@@ -523,9 +571,13 @@ auto canta::RenderGraph::execute(std::span<Semaphore::Pair> waits, std::span<Sem
         }
         if (_pipelineStatisticsEnabled && _individualPipelineStatistics)
             _pipelineStats[_device->flyingIndex()][i].second.end(cmd);
-        if (_timingEnabled && _individualTiming)
-            _timers[_device->flyingIndex()][i].second.end(cmd);
+        if (_timingEnabled && _timingMode != TimingMode::SINGLE) {
+            if (_timingMode == TimingMode::PER_PASS || pass->getGroup().id < 0) {
+                _timers[_device->flyingIndex()][_timerCount++].second.end(cmd);
+            }
+        }
         cmd.popDebugLabel();
+        currentGroup = pass->getGroup();
     }
 
     if (backbufferIsSwapchain) {
@@ -542,7 +594,7 @@ auto canta::RenderGraph::execute(std::span<Semaphore::Pair> waits, std::span<Sem
 
     if (_pipelineStatisticsEnabled && !_individualPipelineStatistics)
         _pipelineStats[_device->flyingIndex()].front().second.end(cmd);
-    if (_timingEnabled && !_individualTiming)
+    if (_timingEnabled && _timingMode == TimingMode::SINGLE)
         _timers[_device->flyingIndex()].front().second.end(cmd);
     cmd.end();
     cmd.submit(waits, signals);

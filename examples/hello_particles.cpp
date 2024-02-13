@@ -180,9 +180,21 @@ void main() {
             auto timingEnabled = renderGraph.timingEnabled();
             if (ImGui::Checkbox("RenderGraph Timing", &timingEnabled))
                 renderGraph.setTimingEnabled(timingEnabled);
-            auto individualTiming = renderGraph.individualTiming();
-            if (ImGui::Checkbox("RenderGraph Per Pass Timing", &individualTiming))
-                renderGraph.setIndividualTiming(individualTiming);
+            const char* modes[] = { "PER_PASS", "PER_GROUP", "SINGLE" };
+            static int modeIndex = 0;
+            if (ImGui::Combo("TimingMode", &modeIndex, modes, 3)) {
+                switch (modeIndex) {
+                    case 0:
+                        renderGraph.setTimingMode(canta::RenderGraph::TimingMode::PER_PASS);
+                        break;
+                    case 1:
+                        renderGraph.setTimingMode(canta::RenderGraph::TimingMode::PER_GROUP);
+                        break;
+                    case 2:
+                        renderGraph.setTimingMode(canta::RenderGraph::TimingMode::SINGLE);
+                        break;
+                }
+            }
             auto pipelineStatsEnabled = renderGraph.pipelineStatisticsEnabled();
             if (ImGui::Checkbox("RenderGraph PiplelineStats", &pipelineStatsEnabled))
                 renderGraph.setPipelineStatisticsEnabled(pipelineStatsEnabled);
@@ -277,7 +289,10 @@ void main() {
 
         renderGraph.addClearPass("clear_image", imageIndex);
 
+        auto particleGroup = renderGraph.getGroup("particles");
+
         auto& particlesMovePass = renderGraph.addPass("particles_move");
+        particlesMovePass.setGroup(particleGroup);
         particlesMovePass.addStorageBufferWrite(particleBufferIndex, canta::PipelineStage::COMPUTE_SHADER);
         particlesMovePass.setExecuteFunction([pipeline, particleBufferIndex, numParticles, dt](canta::CommandBuffer& cmd, canta::RenderGraph& graph) {
             auto buffer = graph.getBuffer(particleBufferIndex);
@@ -296,6 +311,7 @@ void main() {
         });
 
         auto& particlesDrawPass = renderGraph.addPass("particles_draw");
+        particlesDrawPass.setGroup(particleGroup);
         particlesDrawPass.addStorageBufferRead(particleBufferIndex, canta::PipelineStage::COMPUTE_SHADER);
         particlesDrawPass.addStorageImageWrite(imageIndex, canta::PipelineStage::COMPUTE_SHADER);
         particlesDrawPass.setExecuteFunction([pipelineDraw, particleBufferIndex, imageIndex, numParticles](canta::CommandBuffer& cmd, canta::RenderGraph& graph) {

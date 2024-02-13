@@ -307,14 +307,14 @@ auto canta::ImGuiContext::createPipeline(canta::Format format) -> PipelineHandle
     }).value();
 
 
-    auto inputBindings = std::to_array({
+    auto inputBindings = std::vector{
         VertexInputBinding {
             .binding = 0,
             .stride = sizeof(ImDrawVert),
             .inputRate = VK_VERTEX_INPUT_RATE_VERTEX
         }
-    });
-    auto inputAttributes = std::to_array({
+    };
+    auto inputAttributes = std::vector{
         VertexInputAttribute {
             .location = 0,
             .binding = 0,
@@ -333,8 +333,8 @@ auto canta::ImGuiContext::createPipeline(canta::Format format) -> PipelineHandle
             .format = Format::RGBA8_UNORM,
             .offset = IM_OFFSETOF(ImDrawVert, col)
         },
-    });
-    auto colourFormats = std::to_array({ format });
+    };
+    auto colourFormats = std::vector{ format };
 
     return _device->createPipeline({
         .vertex = {

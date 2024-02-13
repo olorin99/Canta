@@ -54,6 +54,10 @@ namespace canta {
         u32 index = 0;
     };
 
+    struct RenderGroup {
+        i32 id = -1;
+    };
+
     struct ImageDescription {
         bool matchesBackbuffer = true;
         u32 width = 1;
@@ -118,6 +122,12 @@ namespace canta {
             _height = height;
         }
 
+        void setGroup(RenderGroup group) {
+            _group = group;
+        }
+
+        auto getGroup() -> RenderGroup { return _group; }
+
     private:
         friend RenderGraph;
 
@@ -170,15 +180,23 @@ namespace canta {
         };
         std::vector<Barrier> _barriers = {};
 
+        RenderGroup _group = {};
+
     };
 
     class RenderGraph {
     public:
 
+        enum class TimingMode {
+            PER_PASS,
+            PER_GROUP,
+            SINGLE
+        };
+
         struct CreateInfo {
             Device* device = nullptr;
             bool enableTiming = true;
-            bool individualTiming = true;
+            TimingMode timingMode = TimingMode::PER_PASS;
             bool enablePipelineStatistics = true;
             bool individualPipelineStatistics = false;
             std::string_view name = {};
@@ -191,6 +209,9 @@ namespace canta {
         auto addPass(std::string_view name, RenderPass::Type type = RenderPass::Type::COMPUTE) -> RenderPass&;
         auto addClearPass(std::string_view name, ImageIndex index) -> RenderPass&;
         auto addBlitPass(std::string_view name, ImageIndex src, ImageIndex dst, Filter filter = Filter::LINEAR) -> RenderPass&;
+
+        auto getGroup(std::string_view name) -> RenderGroup;
+        auto getGroupName(RenderGroup) -> std::string;
 
         auto addImage(ImageDescription description) -> ImageIndex;
         auto addBuffer(BufferDescription description) -> BufferIndex;
@@ -209,11 +230,11 @@ namespace canta {
         auto execute(std::span<Semaphore::Pair> waits, std::span<Semaphore::Pair> signals, bool backbufferIsSwapchain = false) -> std::expected<bool, RenderGraphError>;
 
         auto timers() -> std::span<std::pair<std::string, Timer>> {
-            auto count = _orderedPasses.size();
+            std::size_t count = _timerCount;
             if (!_timingEnabled) count = 0;
-            if (_timingEnabled && !_individualTiming) count = 1;
+            if (_timingEnabled && _timingMode == TimingMode::SINGLE) count = 1;
             count = std::min(_timers[_device->flyingIndex()].size(), count);
-            return std::span(_timers[_device->flyingIndex()].data(), count);
+            return { _timers[_device->flyingIndex()].data(), count };
         }
         auto pipelineStatistics() -> std::span<std::pair<std::string, PipelineStatistics>> {
             auto count = _orderedPasses.size();
@@ -226,13 +247,13 @@ namespace canta {
         auto timingEnabled() const -> bool { return _timingEnabled; }
         auto pipelineStatisticsEnabled() const -> bool { return _pipelineStatisticsEnabled; }
 
-        auto individualTiming() const -> bool { return _individualTiming; }
+        auto timingMode() const -> TimingMode { return _timingMode; }
         auto individualPipelineStatistics() const -> bool { return _individualPipelineStatistics; }
 
         void setTimingEnabled(bool enabled) { _timingEnabled = enabled; }
         void setPipelineStatisticsEnabled(bool enabled) { _pipelineStatisticsEnabled = enabled; }
 
-        void setIndividualTiming(bool individual) { _individualTiming = individual; }
+        void setTimingMode(TimingMode mode) { _timingMode = mode; }
         void setIndividualPipelineStatistics(bool individual) { _individualPipelineStatistics = individual; }
 
         struct Statistics {
@@ -261,12 +282,15 @@ namespace canta {
         std::vector<RenderPass*> _orderedPasses = {};
 
         bool _timingEnabled = true;
-        bool _individualTiming = true;
+        TimingMode _timingMode = TimingMode::PER_PASS;
         std::array<std::vector<std::pair<std::string, Timer>>, FRAMES_IN_FLIGHT> _timers = {};
+        u32 _timerCount = 0;
         bool _pipelineStatisticsEnabled = true;
         bool _individualPipelineStatistics = true;
         std::array<std::vector<std::pair<std::string, PipelineStatistics>>, FRAMES_IN_FLIGHT> _pipelineStats = {};
 
+        tsl::robin_map<std::string_view, i32> _renderGroups;
+        u32 _groupId = 0;
         tsl::robin_map<const char*, u32> _nameToIndex;
 
         std::vector<std::unique_ptr<Resource>> _resources = {};
