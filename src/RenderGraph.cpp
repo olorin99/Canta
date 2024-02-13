@@ -481,9 +481,11 @@ auto canta::RenderGraph::execute(std::span<Semaphore::Pair> waits, std::span<Sem
 
         // if render group changes
         if (currentGroup.id != pass->getGroup().id) {
-            cmd.popDebugLabel();
+            if (currentGroup.id >= 0)
+                cmd.popDebugLabel();
             groupChanged = true;
-            cmd.pushDebugLabel(getGroupName(pass->getGroup()));
+            if (pass->getGroup().id >= 0)
+                cmd.pushDebugLabel(getGroupName(pass->getGroup()));
         } else
             groupChanged = false;
 
