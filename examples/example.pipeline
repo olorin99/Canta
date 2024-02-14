@@ -1,0 +1,32 @@
+{
+  "vertex": {},
+  "tesselationControl": {},
+  "tesselationEvaluation": {},
+  "geometry": {},
+  "fragment": {},
+  "compute": {
+    "path": "/home/christian/Documents/Projects/Canta/examples/particles.comp",
+    "macros": [{
+      "name": "CANTA_TEST",
+      "value": "HELLO"
+    }],
+    "stage": "COMPUTE"
+  },
+  "rayGen": {},
+  "anyHit": {},
+  "closestHit": {},
+  "miss": {},
+  "intersection": {},
+  "callable": {},
+  "task": {},
+  "mesh": {},
+  "rasterState": {},
+  "depthState": {},
+  "blendState": {},
+  "inputBindings": {},
+  "inputAttributes": {},
+  "topology": {},
+  "primitiveRestart": {},
+  "colourFormats": {},
+  "depthFormat": {}
+}

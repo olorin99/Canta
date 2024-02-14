@@ -87,15 +87,17 @@ void main() {
         .device = device.get()
     });
 
-    auto pipeline = pipelineManager.getPipeline({
-        .compute = {
-            .module = pipelineManager.getShader({
-                .path = "/home/christian/Documents/Projects/Canta/examples/particles.comp",
-                .macros = { canta::Macro{"CANTA_TEST", "HELLO"} },
-                .stage = canta::ShaderStage::COMPUTE
-            })
-        }
-    });
+    auto pipeline = pipelineManager.getPipeline("/home/christian/Documents/Projects/Canta/examples/particles_update.pipeline");
+
+//    auto pipeline = pipelineManager.getPipeline({
+//        .compute = {
+//            .module = pipelineManager.getShader({
+//                .path = "/home/christian/Documents/Projects/Canta/examples/particles.comp",
+//                .macros = { canta::Macro{"CANTA_TEST", "HELLO"} },
+//                .stage = canta::ShaderStage::COMPUTE
+//            })
+//        }
+//    });
 
     auto pipelineDraw = pipelineManager.getPipeline({
         .compute = {

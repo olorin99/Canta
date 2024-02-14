@@ -1,0 +1,10 @@
+{
+  "compute": {
+    "path": "/home/christian/Documents/Projects/Canta/examples/particles.comp",
+    "macros": [{
+      "name": "CANTA_TEST",
+      "value": "HELLO"
+    }],
+    "stage": "COMPUTE"
+  }
+}

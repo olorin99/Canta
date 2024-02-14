@@ -5,6 +5,8 @@
 #include <Ende/filesystem/File.h>
 #include <format>
 #include <shaderc/shaderc.hpp>
+#include <rapidjson/document.h>
+#include <Ende/filesystem/File.h>
 
 size_t std::hash<canta::Pipeline::CreateInfo>::operator()(const canta::Pipeline::CreateInfo &object) const {
     u64 hash = 0;
@@ -190,6 +192,12 @@ auto canta::PipelineManager::getPipeline(Pipeline::CreateInfo info) -> PipelineH
         addShaderDependency(info.mesh.module, it1.first->second);
 
     return it1.first->second;
+}
+
+auto loadFromFile(canta::PipelineManager& manager, const std::filesystem::path &path) -> canta::Pipeline::CreateInfo;
+auto canta::PipelineManager::getPipeline(const std::filesystem::path &path) -> PipelineHandle {
+    auto createInfo = loadFromFile(*this, path);
+    return getPipeline(createInfo);
 }
 
 auto canta::PipelineManager::reload(canta::ShaderHandle shader) -> ShaderHandle {
@@ -487,4 +495,329 @@ auto canta::PipelineManager::compileGLSL(std::string_view glsl, canta::ShaderSta
     }
 
     return std::vector<u32>(result.cbegin(), result.cend());
+}
+
+
+auto loadShaderDescription(canta::PipelineManager& manager, rapidjson::Value& node) -> canta::ShaderDescription {
+    canta::ShaderDescription description = {};
+    if (node.HasMember("path")) {
+        assert(node["path"].IsString());
+        description.path = node["path"].GetString();
+    }
+//    if (node.HasMember("spirv")) {
+//        assert(node["path"].Is)
+//    }
+    if (node.HasMember("glsl")) {
+        assert(node["glsl"].IsString());
+        description.glsl = node["glsl"].GetString();
+    }
+    if (node.HasMember("macros")) {
+        assert(node["macros"].IsArray());
+        for (auto i = 0; i < node["macros"].Size(); i++) {
+            canta::Macro macro = {};
+            macro.name = node["macros"][i]["name"].GetString();
+            macro.value = node["macros"][i]["value"].GetString();
+        }
+    }
+    if (node.HasMember("stage")) {
+        assert(node["stage"].IsString());
+        std::string stage = node["stage"].GetString();
+        if (stage == "NONE")
+            description.stage = canta::ShaderStage::NONE;
+        else if (stage == "VERTEX")
+            description.stage = canta::ShaderStage::VERTEX;
+        else if (stage == "TESS_CONTROL")
+            description.stage = canta::ShaderStage::TESS_CONTROL;
+        else if (stage == "TESS_EVAL")
+            description.stage = canta::ShaderStage::TESS_EVAL;
+        else if (stage == "GEOMETRY")
+            description.stage = canta::ShaderStage::GEOMETRY;
+        else if (stage == "FRAGMENT")
+            description.stage = canta::ShaderStage::FRAGMENT;
+        else if (stage == "COMPUTE")
+            description.stage = canta::ShaderStage::COMPUTE;
+        else if (stage == "ALL_GRAPHICS")
+            description.stage = canta::ShaderStage::ALL_GRAPHICS;
+        else if (stage == "ALL")
+            description.stage = canta::ShaderStage::ALL;
+        else if (stage == "RAYGEN")
+            description.stage = canta::ShaderStage::RAYGEN;
+        else if (stage == "ANY_HIT")
+            description.stage = canta::ShaderStage::ANY_HIT;
+        else if (stage == "CLOSEST_HIT")
+            description.stage = canta::ShaderStage::CLOSEST_HIT;
+        else if (stage == "MISS")
+            description.stage = canta::ShaderStage::MISS;
+        else if (stage == "INTERSECTION")
+            description.stage = canta::ShaderStage::INTERSECTION;
+        else if (stage == "CALLABLE")
+            description.stage = canta::ShaderStage::CALLABLE;
+        else if (stage == "TASK")
+            description.stage = canta::ShaderStage::TASK;
+        else if (stage == "MESH")
+            description.stage = canta::ShaderStage::MESH;
+    }
+
+    return description;
+}
+
+auto loadRasterState(canta::PipelineManager& manager, rapidjson::Value& node) -> canta::RasterState {
+    canta::RasterState rasterState = {};
+    if (node.HasMember("cullMode")) {
+        auto& cullMode = node["cullMode"];
+        assert(cullMode.IsString());
+        std::string mode = cullMode.GetString();
+        if (mode == "NONE")
+            rasterState.cullMode = canta::CullMode::NONE;
+        else if (mode == "FRONT")
+            rasterState.cullMode = canta::CullMode::FRONT;
+        else if (mode == "BACK")
+            rasterState.cullMode = canta::CullMode::BACK;
+        else if (mode == "FRONT_BACK")
+            rasterState.cullMode = canta::CullMode::FRONT_BACK;
+    }
+    if (node.HasMember("frontFace")) {
+        auto& frontFace = node["frontFace"];
+        assert(frontFace.IsString());
+        std::string face = frontFace.GetString();
+        if (face == "CCW")
+            rasterState.frontFace = canta::FrontFace::CCW;
+        else if (face == "CW")
+            rasterState.frontFace = canta::FrontFace::CW;
+    }
+    if (node.HasMember("polygonMode")) {
+        auto& polygonMode = node["polygonMode"];
+        assert(polygonMode.IsString());
+        std::string mode = polygonMode.GetString();
+        if (mode == "FILL")
+            rasterState.polygonMode = canta::PolygonMode::FILL;
+        else if (mode == "LINE")
+            rasterState.polygonMode = canta::PolygonMode::LINE;
+        else if (mode == "POINT")
+            rasterState.polygonMode = canta::PolygonMode::POINT;
+    }
+    if (node.HasMember("lineWidth")) {
+        auto& lineWidth = node["lineWidth"];
+        assert(lineWidth.IsFloat());
+        rasterState.lineWidth = lineWidth.GetFloat();
+    }
+    if (node.HasMember("depthClamp")) {
+        auto& depthClamp = node["depthClamp"];
+        assert(depthClamp.IsBool());
+        rasterState.depthClamp = depthClamp.GetBool();
+    }
+    if (node.HasMember("rasterDiscard")) {
+        auto& rasterDiscard = node["rasterDiscard"];
+        assert(rasterDiscard.IsBool());
+        rasterState.rasterDiscard = rasterDiscard.GetBool();
+    }
+    if (node.HasMember("depthBias")) {
+        auto& depthBias = node["depthBias"];
+        assert(depthBias.IsBool());
+        rasterState.depthBias = depthBias.GetBool();
+    }
+    return rasterState;
+}
+
+auto loadDepthState(canta::PipelineManager& manager, rapidjson::Value& node) -> canta::DepthState {
+    canta::DepthState depthState = {};
+    if (node.HasMember("test")) {
+        auto& test = node["test"];
+        assert(test.IsBool());
+        depthState.test = test.GetBool();
+    }
+    if (node.HasMember("write")) {
+        auto& write = node["write"];
+        assert(write.IsBool());
+        depthState.write = write.GetBool();
+    }
+    if (node.HasMember("compareOp")) {
+        auto& compareOp = node["compareOp"];
+        assert(compareOp.IsString());
+        std::string op = compareOp.GetString();
+        if (op == "NEVER")
+            depthState.compareOp = canta::CompareOp::NEVER;
+        else if (op == "LESS")
+            depthState.compareOp = canta::CompareOp::LESS;
+        else if (op == "EQUAL")
+            depthState.compareOp = canta::CompareOp::EQUAL;
+        else if (op == "LEQUAL")
+            depthState.compareOp = canta::CompareOp::LEQUAL;
+        else if (op == "GREATER")
+            depthState.compareOp = canta::CompareOp::GREATER;
+        else if (op == "NEQUAL")
+            depthState.compareOp = canta::CompareOp::NEQUAL;
+        else if (op == "GEQUAL")
+            depthState.compareOp = canta::CompareOp::GEQUAL;
+        else if (op == "ALWAYS")
+            depthState.compareOp = canta::CompareOp::ALWAYS;
+    }
+    return depthState;
+}
+
+auto loadBlendState(canta::PipelineManager& manager, rapidjson::Value& node) -> canta::BlendState {
+    canta::BlendState blendState = {};
+    //TODO: blendstate
+    return blendState;
+}
+
+auto loadFormat(std::string_view format) -> canta::Format {
+#define ELIF_FORMAT(f) else if (format == #f) return canta::Format::f;
+
+    if (format == "UNDEFINED")
+        return canta::Format::UNDEFINED;
+    ELIF_FORMAT(RGBA8_UNORM)
+    ELIF_FORMAT(R32_UINT)
+    ELIF_FORMAT(R32_SINT)
+    ELIF_FORMAT(RGBA32_SFLOAT)
+    ELIF_FORMAT(D32_SFLOAT)
+    return canta::Format::UNDEFINED;
+}
+
+auto loadFromFile(canta::PipelineManager& manager, const std::filesystem::path &path) -> canta::Pipeline::CreateInfo {
+    auto file = ende::fs::File::open(path);
+
+    rapidjson::Document document;
+    document.Parse(file->read().c_str());
+    assert(document.IsObject());
+
+    canta::Pipeline::CreateInfo createInfo = {};
+
+    if (document.HasMember("vertex")) {
+        rapidjson::Value& vertexShader = document["vertex"];
+        assert(vertexShader.IsObject());
+        createInfo.vertex = {
+            .module = manager.getShader(loadShaderDescription(manager, vertexShader))
+        };
+    }
+    if (document.HasMember("tesselationControl")) {
+        rapidjson::Value& tesselationControl = document["tesselationControl"];
+        assert(tesselationControl.IsObject());
+        createInfo.tesselationControl = {
+            .module = manager.getShader(loadShaderDescription(manager, tesselationControl))
+        };
+    }
+    if (document.HasMember("tesselationEvaluation")) {
+        rapidjson::Value& tesselationEvaluation = document["tesselationEvaluation"];
+        assert(tesselationEvaluation.IsObject());
+        createInfo.tesselationEvaluation = {
+            .module = manager.getShader(loadShaderDescription(manager, tesselationEvaluation))
+        };
+    }
+    if (document.HasMember("geometry")) {
+        rapidjson::Value& geometry = document["geometry"];
+        assert(geometry.IsObject());
+        createInfo.geometry = {
+            .module = manager.getShader(loadShaderDescription(manager, geometry))
+        };
+    }
+    if (document.HasMember("fragment")) {
+        rapidjson::Value& fragment = document["fragment"];
+        assert(fragment.IsObject());
+        createInfo.fragment = {
+            .module = manager.getShader(loadShaderDescription(manager, fragment))
+        };
+    }
+    if (document.HasMember("compute")) {
+        rapidjson::Value& compute = document["compute"];
+        assert(compute.IsObject());
+        createInfo.compute = {
+            .module = manager.getShader(loadShaderDescription(manager, compute))
+        };
+    }
+    if (document.HasMember("rayGen")) {
+        rapidjson::Value& rayGen = document["rayGen"];
+        assert(rayGen.IsObject());
+        createInfo.rayGen = {
+            .module = manager.getShader(loadShaderDescription(manager, rayGen))
+        };
+    }
+    if (document.HasMember("rayGen")) {
+        rapidjson::Value& anyHit = document["anyHit"];
+        assert(anyHit.IsObject());
+        createInfo.anyHit = {
+            .module = manager.getShader(loadShaderDescription(manager, anyHit))
+        };
+    }
+    if (document.HasMember("rayGen")) {
+        rapidjson::Value& closestHit = document["closestHit"];
+        assert(closestHit.IsObject());
+        createInfo.closestHit = {
+            .module = manager.getShader(loadShaderDescription(manager, closestHit))
+        };
+    }
+    if (document.HasMember("rayGen")) {
+        rapidjson::Value& miss = document["miss"];
+        assert(miss.IsObject());
+        createInfo.miss = {
+            .module = manager.getShader(loadShaderDescription(manager, miss))
+        };
+    }
+    if (document.HasMember("rayGen")) {
+        rapidjson::Value& intersection = document["intersection"];
+        assert(intersection.IsObject());
+        createInfo.intersection = {
+            .module = manager.getShader(loadShaderDescription(manager, intersection))
+        };
+    }
+    if (document.HasMember("rayGen")) {
+        rapidjson::Value& callable = document["callable"];
+        assert(callable.IsObject());
+        createInfo.callable = {
+            .module = manager.getShader(loadShaderDescription(manager, callable))
+        };
+    }
+    if (document.HasMember("rayGen")) {
+        rapidjson::Value& task = document["task"];
+        assert(task.IsObject());
+        createInfo.task = {
+            .module = manager.getShader(loadShaderDescription(manager, task))
+        };
+    }
+    if (document.HasMember("rayGen")) {
+        rapidjson::Value& mesh = document["mesh"];
+        assert(mesh.IsObject());
+        createInfo.mesh = {
+            .module = manager.getShader(loadShaderDescription(manager, mesh))
+        };
+    }
+    if (document.HasMember("rasterState")) {
+        rapidjson::Value& rasterState = document["rasterState"];
+        assert(rasterState.IsObject());
+        createInfo.rasterState = loadRasterState(manager, rasterState);
+    }
+    if (document.HasMember("depthState")) {
+        rapidjson::Value& depthState = document["depthState"];
+        assert(depthState.IsObject());
+        createInfo.depthState = loadDepthState(manager, depthState);
+    }
+    if (document.HasMember("blendState")) {
+        rapidjson::Value& blendState = document["blendState"];
+        assert(blendState.IsObject());
+        createInfo.blendState = loadBlendState(manager, blendState);
+    }
+    //TODO: bindings
+//    rapidjson::Value& inputBindings = document["inputBindings"];
+//    rapidjson::Value& inputAttributes = document["inputAttributes"];
+//    rapidjson::Value& topology = document["topology"];
+    if (document.HasMember("primitiveRestart")) {
+        rapidjson::Value& primitiveRestart = document["primitiveRestart"];
+        assert(primitiveRestart.IsBool());
+        createInfo.primitiveRestart = primitiveRestart.GetBool();
+    }
+    if (document.HasMember("colourFormats")) {
+        rapidjson::Value& colourFormats = document["colourFormats"];
+        assert(colourFormats.IsArray());
+        for (auto i = 0; i < colourFormats.Size(); i++) {
+            assert(colourFormats[i].IsString());
+            createInfo.colourFormats.push_back(loadFormat(colourFormats[i].GetString()));
+        }
+    }
+    if (document.HasMember("depthFormat")) {
+        rapidjson::Value& depthFormat = document["depthFormat"];
+        assert(depthFormat.IsString());
+        createInfo.depthFormat = loadFormat(depthFormat.GetString());
+    }
+
+    return createInfo;
 }
