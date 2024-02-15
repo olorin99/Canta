@@ -95,7 +95,7 @@ void main() {
     }));
 
     for (auto& type : pipeline->interface().getTypeList()) {
-        std::printf("%s\n", type.name.c_str());
+        std::printf("%s - size: %d\n", type.name.c_str(), type.size);
     }
 
 //    auto pipeline = pipelineManager.getPipeline({

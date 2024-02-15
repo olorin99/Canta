@@ -77,6 +77,8 @@ void getStruct(tsl::robin_map<std::string, canta::ShaderInterface::Member>& type
         const std::string& name = compiler.get_member_name(type.self, memberIndex);
         u32 a = compiler.get_declared_struct_size_runtime_array(type, 1);
         u32 memberSize = compiler.get_declared_struct_member_size(type, memberIndex);
+        if (memberSize == 0 && a > 0)
+            memberSize = a;
         u32 memberOffset = compiler.type_struct_member_offset(type, memberIndex);
         types[name] = { name, memberSize, memberOffset, typeToMemberType(memberType) };
         if (memberType.basetype == spirv_cross::SPIRType::Struct)
