@@ -54,7 +54,7 @@ namespace canta {
             u32 size = 0;
             u32 offset = 0;
             MemberType type = MemberType::STRUCT;
-            std::vector<std::string> _members = {};
+            std::vector<std::string> members = {};
         };
 
         struct Binding {

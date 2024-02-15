@@ -69,7 +69,7 @@ std::vector<canta::ShaderInterface::Member> getStructMembers(const spirv_cross::
     return members;
 }
 
-void getStruct(tsl::robin_map<std::string, canta::ShaderInterface::Member>& types, const spirv_cross::SPIRType& type, spirv_cross::Compiler& compiler, u32 depth) {
+void getStruct(tsl::robin_map<std::string, canta::ShaderInterface::Member>& types, std::vector<std::string>& members, const spirv_cross::SPIRType& type, spirv_cross::Compiler& compiler, u32 depth) {
     if (depth > 3)
         return;
     for (u32 memberIndex = 0; memberIndex < type.member_types.size(); memberIndex++) {
@@ -80,9 +80,11 @@ void getStruct(tsl::robin_map<std::string, canta::ShaderInterface::Member>& type
         if (memberSize == 0 && a > 0)
             memberSize = a;
         u32 memberOffset = compiler.type_struct_member_offset(type, memberIndex);
-        types[name] = { name, memberSize, memberOffset, typeToMemberType(memberType) };
+        canta::ShaderInterface::Member member{ name, memberSize, memberOffset, typeToMemberType(memberType) };
         if (memberType.basetype == spirv_cross::SPIRType::Struct)
-            getStruct(types, memberType, compiler, depth + 1);
+            getStruct(types, member.members, memberType, compiler, depth + 1);
+        types[name] = member;
+        members.push_back(name);
     }
 }
 
@@ -117,13 +119,13 @@ auto canta::ShaderInterface::create(std::span<CreateInfo> infos) -> ShaderInterf
                 offset = std::min(offset, memberOffset);
 
                 if (memberType.basetype == spirv_cross::SPIRType::Struct) {
-                    auto structMembers = getStructMembers(memberType, compiler);
-                    for (auto& member : structMembers) {
-                        member.offset += memberOffset;
-                        members.push_back(name);
-                        interface._types[name] = { name, memberSize, memberOffset, typeToMemberType(memberType) };
-                    }
-                    getStruct(interface._types, memberType, compiler, 0);
+//                    auto structMembers = getStructMembers(memberType, compiler);
+//                    for (auto& member : structMembers) {
+//                        member.offset += memberOffset;
+//                        members.push_back(name);
+//                        interface._types[name] = { name, memberSize, memberOffset, typeToMemberType(memberType) };
+//                    }
+                    getStruct(interface._types, members, memberType, compiler, 0);
                 } else {
                     members.push_back(name);
                     interface._types[name] = { name, memberSize, memberOffset, typeToMemberType(memberType) };
