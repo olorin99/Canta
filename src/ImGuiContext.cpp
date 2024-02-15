@@ -114,7 +114,7 @@ auto canta::ImGuiContext::operator=(canta::ImGuiContext &&rhs) noexcept -> ImGui
 
 void canta::ImGuiContext::beginFrame() {
     if (_window)
-        ImGui_ImplSDL2_NewFrame(_window->window());
+        ImGui_ImplSDL2_NewFrame();
     ImGui::NewFrame();
 }
 
