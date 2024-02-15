@@ -54,6 +54,7 @@ namespace canta {
             u32 size = 0;
             u32 offset = 0;
             MemberType type = MemberType::STRUCT;
+            std::vector<std::string> _members = {};
         };
 
         struct Binding {
@@ -76,6 +77,7 @@ namespace canta {
             u32 size = 0;
             u32 offset = 0;
             ShaderStage stage = ShaderStage::NONE;
+            std::vector<std::string> members = {};
         };
 
         auto getPushRange(u32 range) const -> const PushRange& { return _pushRanges[range]; }
@@ -89,6 +91,10 @@ namespace canta {
         auto getBindingMember(u32 set, u32 binding, std::string_view name) const -> Member;
 
         auto getBindingMemberList(u32 set, u32 binding) const -> std::vector<Member>;
+
+        auto getType(std::string_view name) const -> Member;
+
+        auto getTypeList() const -> std::vector<Member>;
 
         auto pushRangeCount() const -> u32 { return _pushRanges.size(); }
 
@@ -109,6 +115,7 @@ namespace canta {
         std::vector<PushRange> _pushRanges = {};
         std::vector<std::pair<ende::math::Vec<3, u32>, ShaderStage>> _localSizes = {};
         ShaderStage _stages = ShaderStage::NONE;
+        tsl::robin_map<std::string, Member> _types = {};
 
     };
 

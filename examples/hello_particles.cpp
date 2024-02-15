@@ -94,6 +94,10 @@ void main() {
         }
     }));
 
+    for (auto& type : pipeline->interface().getTypeList()) {
+        std::printf("%s\n", type.name.c_str());
+    }
+
 //    auto pipeline = pipelineManager.getPipeline({
 //        .compute = {
 //            .module = pipelineManager.getShader({

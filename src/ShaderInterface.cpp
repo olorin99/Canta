@@ -69,6 +69,21 @@ std::vector<canta::ShaderInterface::Member> getStructMembers(const spirv_cross::
     return members;
 }
 
+void getStruct(tsl::robin_map<std::string, canta::ShaderInterface::Member>& types, const spirv_cross::SPIRType& type, spirv_cross::Compiler& compiler, u32 depth) {
+    if (depth > 3)
+        return;
+    for (u32 memberIndex = 0; memberIndex < type.member_types.size(); memberIndex++) {
+        auto& memberType = compiler.get_type(type.member_types[memberIndex]);
+        const std::string& name = compiler.get_member_name(type.self, memberIndex);
+        u32 a = compiler.get_declared_struct_size_runtime_array(type, 1);
+        u32 memberSize = compiler.get_declared_struct_member_size(type, memberIndex);
+        u32 memberOffset = compiler.type_struct_member_offset(type, memberIndex);
+        types[name] = { name, memberSize, memberOffset, typeToMemberType(memberType) };
+        if (memberType.basetype == spirv_cross::SPIRType::Struct)
+            getStruct(types, memberType, compiler, depth + 1);
+    }
+}
+
 auto canta::ShaderInterface::create(std::span<CreateInfo> infos) -> ShaderInterface {
     ShaderInterface interface = {};
 
@@ -91,15 +106,33 @@ auto canta::ShaderInterface::create(std::span<CreateInfo> infos) -> ShaderInterf
 
             u32 size = compiler.get_declared_struct_size(type);
             u32 offset = 10000;
-            for (u32 member = 0; member < type.member_types.size(); member++) {
-                u32 memberOffset = compiler.type_struct_member_offset(type, i);
+            std::vector<std::string> members = {};
+            for (u32 memberIndex = 0; memberIndex < type.member_types.size(); memberIndex++) {
+                auto& memberType = compiler.get_type(type.member_types[memberIndex]);
+                auto& name = compiler.get_member_name(type.self, memberIndex);
+                u32 memberSize = compiler.get_declared_struct_member_size(type, memberIndex);
+                u32 memberOffset = compiler.type_struct_member_offset(type, memberIndex);
                 offset = std::min(offset, memberOffset);
+
+                if (memberType.basetype == spirv_cross::SPIRType::Struct) {
+                    auto structMembers = getStructMembers(memberType, compiler);
+                    for (auto& member : structMembers) {
+                        member.offset += memberOffset;
+                        members.push_back(name);
+                        interface._types[name] = { name, memberSize, memberOffset, typeToMemberType(memberType) };
+                    }
+                    getStruct(interface._types, memberType, compiler, 0);
+                } else {
+                    members.push_back(name);
+                    interface._types[name] = { name, memberSize, memberOffset, typeToMemberType(memberType) };
+                }
             }
 
             interface._pushRanges.push_back({
                 size,
                 offset,
-                info.stage
+                info.stage,
+                members
             });
         }
 
@@ -242,6 +275,8 @@ auto canta::ShaderInterface::merge(std::span<ShaderInterface> inputs) -> ShaderI
 
         for (auto& inputLocalSize : moduleInterface._localSizes)
             interface._localSizes.push_back(inputLocalSize);
+
+        interface._types.insert(moduleInterface._types.begin(), moduleInterface._types.end());
     }
 
     return interface;
@@ -266,6 +301,20 @@ auto canta::ShaderInterface::getBindingMember(u32 set, u32 binding, std::string_
 auto canta::ShaderInterface::getBindingMemberList(u32 set, u32 binding) const -> std::vector<Member> {
     std::vector<Member> members = {};
     for (auto [key, value] : _sets[set].bindings[binding].members)
+        members.push_back(value);
+    return members;
+}
+
+auto canta::ShaderInterface::getType(std::string_view name) const -> Member {
+    auto it = _types.find(name.data());
+    if (it != _types.end())
+        return it->second;
+    return {};
+}
+
+auto canta::ShaderInterface::getTypeList() const -> std::vector<Member> {
+    std::vector<Member> members = {};
+    for (auto [key, value] : _types)
         members.push_back(value);
     return members;
 }
