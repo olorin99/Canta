@@ -232,7 +232,7 @@ namespace canta {
 
         void reset();
         auto compile() -> std::expected<bool, RenderGraphError>;
-        auto execute(std::span<Semaphore::Pair> waits, std::span<Semaphore::Pair> signals, bool backbufferIsSwapchain = false) -> std::expected<bool, RenderGraphError>;
+        auto execute(std::span<Semaphore::Pair> waits, std::span<Semaphore::Pair> signals, bool backbufferIsSwapchain = false, std::span<ImageBarrier> imagesToAcquire = {}) -> std::expected<bool, RenderGraphError>;
 
         auto timers() -> std::span<std::pair<std::string, Timer>> {
             std::size_t count = _timerCount;

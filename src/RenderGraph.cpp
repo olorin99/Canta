@@ -469,7 +469,7 @@ auto canta::RenderGraph::compile() -> std::expected<bool, RenderGraphError> {
     return true;
 }
 
-auto canta::RenderGraph::execute(std::span<Semaphore::Pair> waits, std::span<Semaphore::Pair> signals, bool backbufferIsSwapchain) -> std::expected<bool, RenderGraphError> {
+auto canta::RenderGraph::execute(std::span<Semaphore::Pair> waits, std::span<Semaphore::Pair> signals, bool backbufferIsSwapchain, std::span<ImageBarrier> imagesToAcquire) -> std::expected<bool, RenderGraphError> {
     _timerCount = 0;
     RenderGroup currentGroup = {};
     bool groupChanged = false;
@@ -483,6 +483,10 @@ auto canta::RenderGraph::execute(std::span<Semaphore::Pair> waits, std::span<Sem
     if (_pipelineStatisticsEnabled && !_individualPipelineStatistics) {
         _pipelineStats[_device->flyingIndex()].front().first = _name;
         _pipelineStats[_device->flyingIndex()].front().second.begin(cmd);
+    }
+
+    for (auto& image : imagesToAcquire) {
+        cmd.barrier(image);
     }
 
     for (u32 i = 0; i < _orderedPasses.size(); i++) {

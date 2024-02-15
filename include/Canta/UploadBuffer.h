@@ -61,6 +61,8 @@ namespace canta {
 
         auto clearSubmitted() -> u32;
 
+        auto releasedImages() -> std::vector<ImageBarrier>;
+
     private:
 
         Device* _device = nullptr;
@@ -86,8 +88,10 @@ namespace canta {
             u32 dstLayerCount = 1;
             u32 srcSize = 0;
             u32 srcOffset = 0;
+            bool finalTransfer = false;
         };
         std::vector<StagedImageInfo> _pendingStagedImageCopies = {};
+        std::vector<ImageBarrier> _releasedFromQueue = {};
 
         std::vector<u64> _submitted = {};
 

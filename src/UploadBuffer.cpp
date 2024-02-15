@@ -134,7 +134,8 @@ auto canta::UploadBuffer::upload(canta::ImageHandle dstHandle, std::span<const u
                 .dstLayer = info.layer,
                 .dstLayerCount = 1,
                 .srcSize = allocationSize,
-                .srcOffset = offset
+                .srcOffset = offset,
+                .finalTransfer = data.size() - (uploadOffset + allocationSize) == 0
             });
 
             _offset = offset + allocationSize;
@@ -182,6 +183,15 @@ auto canta::UploadBuffer::flushStagedData() -> UploadBuffer& {
         if (!_pendingStagedImageCopies.empty()) {
             for (auto& staged : _pendingStagedImageCopies) {
                 //TODO: manager barriers
+                commandBuffer.barrier({
+                    .image = staged.dst,
+                    .srcStage = PipelineStage::TOP,
+                    .dstStage = PipelineStage::TRANSFER,
+                    .srcAccess = Access::NONE,
+                    .dstAccess = Access::TRANSFER_WRITE,
+                    .srcLayout = ImageLayout::UNDEFINED,
+                    .dstLayout = ImageLayout::TRANSFER_DST
+                });
                 commandBuffer.copyBufferToImage({
                     .src = _buffer,
                     .dst = staged.dst,
@@ -194,6 +204,31 @@ auto canta::UploadBuffer::flushStagedData() -> UploadBuffer& {
                     .size = staged.srcSize,
                     .srcOffset = staged.srcOffset
                 });
+                if (staged.finalTransfer) {
+                    auto barrier = ImageBarrier {
+                            .image = staged.dst,
+                            .srcStage = PipelineStage::TRANSFER,
+                            .dstStage = PipelineStage::FRAGMENT_SHADER | PipelineStage::COMPUTE_SHADER,
+                            .srcAccess = Access::TRANSFER_WRITE,
+                            .dstAccess = Access::SHADER_READ,
+                            .srcLayout = ImageLayout::TRANSFER_DST,
+                            .dstLayout = ImageLayout::SHADER_READ_ONLY,
+                            .srcQueue = _device->queue(QueueType::TRANSFER).familyIndex(),
+                            .dstQueue = _device->queue(QueueType::GRAPHICS).familyIndex()
+                    };
+                    commandBuffer.barrier(barrier);
+                    _releasedFromQueue.push_back(barrier);
+                } else {
+                    commandBuffer.barrier({
+                        .image = staged.dst,
+                        .srcStage = PipelineStage::TRANSFER,
+                        .dstStage = PipelineStage::FRAGMENT_SHADER | PipelineStage::COMPUTE_SHADER,
+                        .srcAccess = Access::TRANSFER_WRITE,
+                        .dstAccess = Access::SHADER_READ,
+                        .srcLayout = ImageLayout::TRANSFER_DST,
+                        .dstLayout = ImageLayout::SHADER_READ_ONLY
+                    });
+                }
             }
         }
         commandBuffer.end();
@@ -232,4 +267,11 @@ auto canta::UploadBuffer::clearSubmitted() -> u32 {
         }
     }
     return clearedCount;
+}
+
+auto canta::UploadBuffer::releasedImages() -> std::vector<ImageBarrier> {
+    std::unique_lock lock(*_mutex);
+    auto tmp = _releasedFromQueue;
+    _releasedFromQueue.clear();
+    return tmp;
 }
