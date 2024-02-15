@@ -54,7 +54,7 @@ namespace canta {
 
         auto getShader(ShaderDescription info) -> ShaderHandle;
         auto getPipeline(Pipeline::CreateInfo info) -> PipelineHandle;
-        auto getPipeline(const std::filesystem::path& path) -> PipelineHandle;
+        auto getPipeline(const std::filesystem::path& path, std::span<const Macro> additionalMacros = {}) -> PipelineHandle;
 
         auto reload(ShaderHandle shader) -> ShaderHandle;
         auto reload(PipelineHandle pipeline) -> PipelineHandle;

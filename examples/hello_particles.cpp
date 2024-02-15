@@ -87,7 +87,12 @@ void main() {
         .device = device.get()
     });
 
-    auto pipeline = pipelineManager.getPipeline("/home/christian/Documents/Projects/Canta/examples/particles_update.pipeline");
+    auto pipeline = pipelineManager.getPipeline("/home/christian/Documents/Projects/Canta/examples/particles_update.pipeline", std::to_array({
+        canta::Macro{
+            .name = "ADDITIONAL",
+            .value = "TEST"
+        }
+    }));
 
 //    auto pipeline = pipelineManager.getPipeline({
 //        .compute = {
