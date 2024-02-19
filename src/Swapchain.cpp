@@ -240,7 +240,7 @@ void canta::Swapchain::createSwapchain() {
         imageViewCreateInfo.subresourceRange.layerCount = 1;
 
         vkCreateImageView(_device->logicalDevice(), &imageViewCreateInfo, nullptr, &_imageViews[i]);
-        _device->setDebugName(_imageViews[i], std::format("swapchain_view_{}", i));
+        _device->setDebugName(VK_OBJECT_TYPE_IMAGE_VIEW, (u64)_imageViews[i], std::format("swapchain_view_{}", i));
     }
 
     _imageHandles.resize(_images.size());
