@@ -1138,7 +1138,7 @@ auto canta::Device::createImage(Image::CreateInfo info, ImageHandle oldHandle) -
     allocInfo.flags = 0;
     VK_TRY(vmaCreateImage(_allocator, &createInfo, &allocInfo, &image, &allocation, nullptr))
 
-    setDebugName(image, info.name);
+    setDebugName(VK_OBJECT_TYPE_IMAGE, (u64)image, info.name);
 
     ImageHandle handle = {};
     if (oldHandle)
@@ -1253,7 +1253,7 @@ auto canta::Device::createBuffer(Buffer::CreateInfo info, BufferHandle oldHandle
 
     VK_TRY(vmaCreateBuffer(_allocator, &createInfo, &allocInfo, &buffer, &allocation, nullptr));
 
-    setDebugName(buffer, info.name);
+    setDebugName(VK_OBJECT_TYPE_BUFFER, (u64)buffer, info.name);
 
     VkBufferDeviceAddressInfo deviceAddressInfo = {};
     deviceAddressInfo.sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO;
