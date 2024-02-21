@@ -244,12 +244,12 @@ auto canta::RenderGraph::addPass(std::string_view name, PassType type, RenderGro
     return _passes.back();
 }
 
-auto canta::RenderGraph::addClearPass(std::string_view name, canta::ImageIndex index, RenderGroup group) -> RenderPass & {
+auto canta::RenderGraph::addClearPass(std::string_view name, canta::ImageIndex index, const std::array<f32, 4>& value, RenderGroup group) -> RenderPass & {
     auto& clearPass = addPass(name, PassType::TRANSFER, group);
     clearPass.addTransferWrite(index);
-    clearPass.setExecuteFunction([index] (CommandBuffer& cmd, RenderGraph& graph) {
+    clearPass.setExecuteFunction([index, value] (CommandBuffer& cmd, RenderGraph& graph) {
         auto image = graph.getImage(index);
-        cmd.clearImage(image, ImageLayout::TRANSFER_DST);
+        cmd.clearImage(image, ImageLayout::TRANSFER_DST, value);
     });
     return clearPass;
 }

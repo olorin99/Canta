@@ -211,7 +211,7 @@ namespace canta {
         RenderGraph() = default;
 
         auto addPass(std::string_view name, PassType type = PassType::COMPUTE, RenderGroup group = {}) -> RenderPass&;
-        auto addClearPass(std::string_view name, ImageIndex index, RenderGroup group = {}) -> RenderPass&;
+        auto addClearPass(std::string_view name, ImageIndex index, const std::array<f32, 4>& value = { 0, 0, 0, 1 }, RenderGroup group = {}) -> RenderPass&;
         auto addBlitPass(std::string_view name, ImageIndex src, ImageIndex dst, Filter filter = Filter::LINEAR, RenderGroup group = {}) -> RenderPass&;
 
         auto getGroup(std::string_view name, const std::array<f32, 4>& colour = { 0, 1, 0, 1 }) -> RenderGroup;
