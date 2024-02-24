@@ -70,7 +70,7 @@ namespace canta {
 
         auto createShader(ShaderDescription info, ShaderHandle handle = {}) -> ShaderHandle;
 
-        auto compileGLSL(std::string_view glsl, ShaderStage stage, std::span<const Macro> macros = {}) -> std::expected<std::vector<u32>, std::string>;
+        auto compileGLSL(std::string_view name, std::string_view glsl, ShaderStage stage, std::span<const Macro> macros = {}) -> std::expected<std::vector<u32>, std::string>;
 
         Device* _device = nullptr;
         std::filesystem::path _rootPath = {};

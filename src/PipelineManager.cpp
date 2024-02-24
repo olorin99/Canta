@@ -266,7 +266,7 @@ auto canta::PipelineManager::createShader(canta::ShaderDescription info, ShaderH
     if (!info.path.empty()) {
         auto shaderFile = ende::fs::File::open(_rootPath / info.path);
         auto glsl = shaderFile->read();
-        spirv = compileGLSL(glsl, info.stage, info.macros).transform_error([](const auto& error) {
+        spirv = compileGLSL(info.path.string(), glsl, info.stage, info.macros).transform_error([](const auto& error) {
             std::printf("%s", error.c_str());
             return error;
         }).value();
@@ -276,7 +276,7 @@ auto canta::PipelineManager::createShader(canta::ShaderDescription info, ShaderH
                 _fileWatcher.addWatch(_rootPath / info.path);
         }
     } else if (!info.glsl.empty()) {
-        spirv = compileGLSL(info.glsl, info.stage).transform_error([](const auto& error) {
+        spirv = compileGLSL(info.path.string(), info.glsl, info.stage).transform_error([](const auto& error) {
             std::printf("%s", error.c_str());
             return error;
         }).value();
@@ -426,7 +426,7 @@ private:
 
 };
 
-auto canta::PipelineManager::compileGLSL(std::string_view glsl, canta::ShaderStage stage, std::span<const Macro> macros) -> std::expected<std::vector<u32>, std::string> {
+auto canta::PipelineManager::compileGLSL(std::string_view name, std::string_view glsl, canta::ShaderStage stage, std::span<const Macro> macros) -> std::expected<std::vector<u32>, std::string> {
     shaderc_shader_kind kind = {};
     switch (stage) {
         case ShaderStage::VERTEX:
@@ -489,7 +489,7 @@ auto canta::PipelineManager::compileGLSL(std::string_view glsl, canta::ShaderSta
     for (auto& macro : macros)
         options.AddMacroDefinition(macro.name, macro.value);
 
-    shaderc::SpvCompilationResult result = compiler.CompileGlslToSpv(glsl.data(), kind, "canta_shader", options);
+    shaderc::SpvCompilationResult result = compiler.CompileGlslToSpv(glsl.data(), kind, name.data(), options);
     if (result.GetCompilationStatus() != shaderc_compilation_status_success) {
         return std::unexpected(std::format("Failed to compiler shader :\nErrors: {}\nWarnings: {}\nMessage: {}", result.GetNumErrors(), result.GetNumWarnings(), result.GetErrorMessage()));
     }
