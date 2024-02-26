@@ -130,8 +130,8 @@ namespace canta {
         void clearImage(ImageHandle handle, ImageLayout layout = ImageLayout::GENERAL, const std::array<f32, 4>& clearColour = { 0, 0, 0, 1 });
         void clearBuffer(BufferHandle handle, u32 clearValue = 0, u32 offset = 0, u32 size = 0);
         struct BufferImageCopyInfo {
-            BufferHandle src = {};
-            ImageHandle dst = {};
+            BufferHandle buffer = {};
+            ImageHandle image = {};
             ImageLayout dstLayout = ImageLayout::TRANSFER_DST;
             ende::math::Vec<3, u32> dstDimensions = { 0, 0, 0 };
             ende::math::Vec<3, u32> dstOffsets = { 0, 0, 0 };
@@ -142,6 +142,7 @@ namespace canta {
             u32 srcOffset = 0;
         };
         void copyBufferToImage(BufferImageCopyInfo info);
+        void copyImageToBuffer(BufferImageCopyInfo info);
         struct BufferCopyInfo {
             BufferHandle src = {};
             BufferHandle dst = {};

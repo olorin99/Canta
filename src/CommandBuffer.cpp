@@ -364,18 +364,38 @@ void canta::CommandBuffer::copyBufferToImage(BufferImageCopyInfo info) {
     imageCopy.bufferRowLength = 0;
     imageCopy.bufferImageHeight = 0;
 
-    imageCopy.imageSubresource.aspectMask = aspectMask(info.dst->format());
+    imageCopy.imageSubresource.aspectMask = aspectMask(info.image->format());
     imageCopy.imageSubresource.mipLevel = info.dstMipLevel;
     imageCopy.imageSubresource.baseArrayLayer = info.dstLayer;
     imageCopy.imageSubresource.layerCount = info.dstLayerCount;
-    imageCopy.imageExtent.width = info.dstDimensions.x() == 0 ? info.dst->width() : info.dstDimensions.x();
-    imageCopy.imageExtent.height = info.dstDimensions.y() == 0 ? info.dst->height() : info.dstDimensions.y();
-    imageCopy.imageExtent.depth = info.dstDimensions.z() == 0 ? info.dst->depth() : info.dstDimensions.z();
+    imageCopy.imageExtent.width = info.dstDimensions.x() == 0 ? info.image->width() : info.dstDimensions.x();
+    imageCopy.imageExtent.height = info.dstDimensions.y() == 0 ? info.image->height() : info.dstDimensions.y();
+    imageCopy.imageExtent.depth = info.dstDimensions.z() == 0 ? info.image->depth() : info.dstDimensions.z();
     imageCopy.imageOffset.x = info.dstOffsets.x();
     imageCopy.imageOffset.y = info.dstOffsets.y();
     imageCopy.imageOffset.z = info.dstOffsets.z();
 
-    vkCmdCopyBufferToImage(_buffer, info.src->buffer(), info.dst->image(), static_cast<VkImageLayout>(info.dstLayout), 1, &imageCopy);
+    vkCmdCopyBufferToImage(_buffer, info.buffer->buffer(), info.image->image(), static_cast<VkImageLayout>(info.dstLayout), 1, &imageCopy);
+}
+
+void canta::CommandBuffer::copyImageToBuffer(canta::CommandBuffer::BufferImageCopyInfo info) {
+    VkBufferImageCopy imageCopy = {};
+    imageCopy.bufferOffset = info.srcOffset;
+    imageCopy.bufferRowLength = 0;
+    imageCopy.bufferImageHeight = 0;
+
+    imageCopy.imageSubresource.aspectMask = aspectMask(info.image->format());
+    imageCopy.imageSubresource.mipLevel = info.dstMipLevel;
+    imageCopy.imageSubresource.baseArrayLayer = info.dstLayer;
+    imageCopy.imageSubresource.layerCount = info.dstLayerCount;
+    imageCopy.imageExtent.width = info.dstDimensions.x() == 0 ? info.image->width() : info.dstDimensions.x();
+    imageCopy.imageExtent.height = info.dstDimensions.y() == 0 ? info.image->height() : info.dstDimensions.y();
+    imageCopy.imageExtent.depth = info.dstDimensions.z() == 0 ? info.image->depth() : info.dstDimensions.z();
+    imageCopy.imageOffset.x = info.dstOffsets.x();
+    imageCopy.imageOffset.y = info.dstOffsets.y();
+    imageCopy.imageOffset.z = info.dstOffsets.z();
+
+    vkCmdCopyImageToBuffer(_buffer, info.image->image(), static_cast<VkImageLayout>(info.dstLayout), info.buffer->buffer(), 1, &imageCopy);
 }
 
 void canta::CommandBuffer::copyBuffer(canta::CommandBuffer::BufferCopyInfo info) {

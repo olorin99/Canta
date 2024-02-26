@@ -193,8 +193,8 @@ auto canta::UploadBuffer::flushStagedData() -> UploadBuffer& {
                     .dstLayout = ImageLayout::TRANSFER_DST
                 });
                 commandBuffer.copyBufferToImage({
-                    .src = _buffer,
-                    .dst = staged.dst,
+                    .buffer = _buffer,
+                    .image = staged.dst,
                     .dstLayout = ImageLayout::TRANSFER_DST,
                     .dstDimensions = staged.dstDimensions,
                     .dstOffsets = staged.dstOffsets,

@@ -245,8 +245,8 @@ bool canta::ImGuiContext::createFontsTexture(canta::CommandBuffer &commandBuffer
     };
     commandBuffer.barrier(copyBarrier);
     commandBuffer.copyBufferToImage({
-        .src = _uploadBuffer,
-        .dst = _fontImage,
+        .buffer = _uploadBuffer,
+        .image = _fontImage,
         .dstLayout = ImageLayout::TRANSFER_DST
     });
     copyBarrier = {

@@ -43,6 +43,7 @@ namespace canta {
         auto usage() const -> ImageUsage { return _usage; }
         auto layout() const -> ImageLayout { return _layout; }
         auto name() const -> std::string_view { return _name; }
+        auto size() const -> u32 { return _width * _height * _depth * _layers * _mips * formatSize(_format); }
 
 
         class View {
