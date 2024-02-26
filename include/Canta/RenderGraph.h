@@ -270,6 +270,12 @@ namespace canta {
         };
         auto statistics() const -> Statistics;
 
+        auto resources() const -> std::span<const std::unique_ptr<Resource>> { return _resources; }
+        auto buffers() const -> std::span<const BufferHandle> { return _buffers; }
+        auto images() const -> std::span<const ImageHandle> { return _images; }
+
+        auto orderedPasses() -> std::span<RenderPass*> { return _orderedPasses; }
+
     private:
         friend RenderPass;
 
