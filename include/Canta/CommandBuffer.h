@@ -48,6 +48,10 @@ namespace canta {
         ImageLayout dstLayout = ImageLayout::UNDEFINED;
         u32 srcQueue = -1;
         u32 dstQueue = -1;
+        u32 layer = 0;
+        u32 layerCount = 0;
+        u32 mip = 0;
+        u32 mipCount = 0;
     };
 
     struct BufferBarrier {
@@ -118,10 +122,14 @@ namespace canta {
             u32 srcMip = 0;
             u32 srcLayer = 0;
             u32 srcLayerCount = 0;
+            ende::math::Vec<3, i32> srcSize = { 0, 0, 0 };
+            ende::math::Vec<3, i32> srcOffset = { 0, 0, 0 };
             ImageHandle dst = {};
             u32 dstMip = 0;
             u32 dstLayer = 0;
             u32 dstLayerCount = 0;
+            ende::math::Vec<3, i32> dstSize = { 0, 0, 0 };
+            ende::math::Vec<3, i32> dstOffset = { 0, 0, 0 };
             ImageLayout srcLayout = ImageLayout::UNDEFINED;
             ImageLayout dstLayout = ImageLayout::UNDEFINED;
             Filter filter = Filter::LINEAR;
@@ -151,6 +159,8 @@ namespace canta {
             u32 size = 0;
         };
         void copyBuffer(BufferCopyInfo info);
+
+        void generateMips(ImageHandle image, ImageLayout initialLayout, ImageLayout finalLayout);
 
         void barrier(ImageBarrier barrier);
         void barrier(BufferBarrier barrier);

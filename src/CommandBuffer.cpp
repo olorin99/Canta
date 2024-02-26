@@ -332,12 +332,18 @@ void canta::CommandBuffer::blit(canta::CommandBuffer::BlitInfo info) {
 
     VkImageBlit blit = {};
     blit.srcSubresource = srcSubresource;
-    blit.srcOffsets[0] = { 0, 0, 0 };
-    blit.srcOffsets[1] = { static_cast<i32>(info.src->width()), static_cast<i32>(info.src->height()), static_cast<i32>(info.src->depth()) };
+    blit.srcOffsets[0] = { info.srcOffset.x(), info.srcOffset.y(), info.srcOffset.z() };
+    if (info.srcSize.x() > 0 || info.srcSize.y() > 0 || info.srcSize.z() > 0)
+        blit.srcOffsets[1] = { static_cast<i32>(info.src->width()), static_cast<i32>(info.src->height()), static_cast<i32>(info.src->depth()) };
+    else
+        blit.srcOffsets[1] = { info.srcSize.x(), info.srcSize.y(), info.srcSize.z() };
 
     blit.dstSubresource = dstSubresource;
-    blit.dstOffsets[0] = { 0, 0, 0 };
-    blit.dstOffsets[1] = { static_cast<i32>(info.dst->width()), static_cast<i32>(info.dst->height()), static_cast<i32>(info.dst->depth()) };
+    blit.dstOffsets[0] = { info.dstOffset.x(), info.dstOffset.y(), info.dstOffset.z() };
+    if (info.dstSize.x() > 0 || info.dstSize.y() > 0 || info.dstSize.z() > 0)
+        blit.dstOffsets[1] = { static_cast<i32>(info.dst->width()), static_cast<i32>(info.dst->height()), static_cast<i32>(info.dst->depth()) };
+    else
+        blit.dstOffsets[1] = { info.dstSize.x(), info.dstSize.y(), info.dstSize.z() };
 
     vkCmdBlitImage(_buffer, info.src->image(), static_cast<VkImageLayout>(info.srcLayout), info.dst->image(), static_cast<VkImageLayout>(info.dstLayout), 1, &blit, static_cast<VkFilter>(info.filter));
 }
@@ -406,6 +412,84 @@ void canta::CommandBuffer::copyBuffer(canta::CommandBuffer::BufferCopyInfo info)
     vkCmdCopyBuffer(_buffer, info.src->buffer(), info.dst->buffer(), 1, &copy);
 }
 
+void canta::CommandBuffer::generateMips(canta::ImageHandle image, ImageLayout initalLayout, ImageLayout finalLayout) {
+    barrier({
+        .image = image,
+        .srcStage = PipelineStage::TOP,
+        .dstStage = PipelineStage::TRANSFER,
+        .srcAccess = Access::NONE,
+        .dstAccess = Access::TRANSFER_READ,
+        .srcLayout = initalLayout,
+        .dstLayout = ImageLayout::TRANSFER_SRC,
+    });
+
+    for (u32 layer = 0; layer < image->layers(); layer++) {
+        i32 mipWidth = image->width();
+        i32 mipHeight = image->height();
+        i32 mipDepth = image->depth();
+
+        for (u32 mip = 1; mip < image->mips(); mip++) {
+            barrier({
+                .image = image,
+                .srcStage = PipelineStage::TRANSFER,
+                .dstStage = PipelineStage::TRANSFER,
+                .srcAccess = Access::TRANSFER_READ,
+                .dstAccess = Access::TRANSFER_WRITE,
+                .srcLayout = ImageLayout::TRANSFER_SRC,
+                .dstLayout = ImageLayout::TRANSFER_DST,
+                .layer = layer,
+                .layerCount = 1,
+                .mip = mip,
+                .mipCount = 1
+            });
+
+            BlitInfo blitInfo = {
+                .src = image,
+                .srcMip = mip - 1,
+                .srcLayer = layer,
+                .srcLayerCount = 1,
+                .srcSize = { mipWidth, mipHeight, mipDepth },
+                .dst = image,
+                .dstMip = mip,
+                .dstLayer = layer,
+                .dstLayerCount = 1
+            };
+
+            mipWidth = std::max(1, mipWidth / 2);
+            mipHeight = std::max(1, mipHeight / 2);
+            mipDepth = std::max(1, mipDepth / 2);
+
+            blitInfo.dstSize = { mipWidth, mipHeight, mipDepth };
+
+            blit(blitInfo);
+
+            barrier({
+                .image = image,
+                .srcStage = PipelineStage::TRANSFER,
+                .dstStage = PipelineStage::TRANSFER,
+                .srcAccess = Access::TRANSFER_WRITE,
+                .dstAccess = Access::TRANSFER_READ,
+                .srcLayout = ImageLayout::TRANSFER_DST,
+                .dstLayout = ImageLayout::TRANSFER_SRC,
+                .layer = layer,
+                .layerCount = 1,
+                .mip = mip,
+                .mipCount = 1
+            });
+        }
+    }
+
+    barrier({
+        .image = image,
+        .srcStage = PipelineStage::TRANSFER,
+        .dstStage = PipelineStage::BOTTOM,
+        .srcAccess = Access::TRANSFER_READ | Access::TRANSFER_WRITE,
+        .dstAccess = Access::NONE,
+        .srcLayout = ImageLayout::TRANSFER_DST,
+        .dstLayout = finalLayout,
+    });
+}
+
 void canta::CommandBuffer::barrier(ImageBarrier barrier) {
     VkImageMemoryBarrier2 imageBarrier = {};
     imageBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
@@ -419,10 +503,10 @@ void canta::CommandBuffer::barrier(ImageBarrier barrier) {
     imageBarrier.srcQueueFamilyIndex = barrier.srcQueue;
     imageBarrier.dstQueueFamilyIndex = barrier.dstQueue;
 
-    imageBarrier.subresourceRange.layerCount = 1;
-    imageBarrier.subresourceRange.baseArrayLayer = 0;
-    imageBarrier.subresourceRange.levelCount = 1;
-    imageBarrier.subresourceRange.baseMipLevel = 0;
+    imageBarrier.subresourceRange.layerCount = barrier.layerCount == 0 ? VK_REMAINING_ARRAY_LAYERS : barrier.layerCount;
+    imageBarrier.subresourceRange.baseArrayLayer = barrier.layer;
+    imageBarrier.subresourceRange.levelCount = barrier.mipCount == 0 ? VK_REMAINING_MIP_LEVELS : barrier.mipCount;
+    imageBarrier.subresourceRange.baseMipLevel = barrier.mip;
     imageBarrier.subresourceRange.aspectMask = aspectMask(barrier.image->format());
 
     VkDependencyInfo info = {};
