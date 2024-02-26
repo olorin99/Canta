@@ -155,6 +155,11 @@ namespace canta {
             });
         }
 
+        template <typename Func>
+        void deferred(Func func) {
+            _deferredCommands.push_back(func);
+        }
+
         auto frameSemaphore() -> Semaphore* { return &_frameTimeline; }
         auto frameValue() const -> u64 { return _frameTimeline.value(); }
         auto framePrevValue() const -> u64 { return std::max(0l, static_cast<i64>(_frameTimeline.value()) - 1); }
@@ -290,6 +295,8 @@ namespace canta {
         ResourceList<Image> _imageList = {};
         ResourceList<Buffer> _bufferList = {};
         ResourceList<Sampler> _samplerList = {};
+
+        std::vector<std::function<void(CommandBuffer&)>> _deferredCommands = {};
 
     };
 
