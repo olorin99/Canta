@@ -302,10 +302,10 @@ void main() {
 
         auto particleGroup = renderGraph.getGroup("particles");
 
-        auto& particlesMovePass = renderGraph.addPass("particles_move");
-        particlesMovePass.setGroup(particleGroup);
-        particlesMovePass.addStorageBufferWrite(particleBufferIndex, canta::PipelineStage::COMPUTE_SHADER);
-        particlesMovePass.setExecuteFunction([pipeline, particleBufferIndex, numParticles, dt](canta::CommandBuffer& cmd, canta::RenderGraph& graph) {
+        auto& particlesMovePass = renderGraph.addPass("particles_move")
+            .setGroup(particleGroup)
+            .addStorageBufferWrite(particleBufferIndex, canta::PipelineStage::COMPUTE_SHADER)
+            .setExecuteFunction([pipeline, particleBufferIndex, numParticles, dt](canta::CommandBuffer& cmd, canta::RenderGraph& graph) {
             auto buffer = graph.getBuffer(particleBufferIndex);
             cmd.bindPipeline(pipeline);
             struct Push {
@@ -321,11 +321,11 @@ void main() {
             cmd.dispatchThreads(numParticles);
         });
 
-        auto& particlesDrawPass = renderGraph.addPass("particles_draw");
-        particlesDrawPass.setGroup(particleGroup);
-        particlesDrawPass.addStorageBufferRead(particleBufferIndex, canta::PipelineStage::COMPUTE_SHADER);
-        particlesDrawPass.addStorageImageWrite(imageIndex, canta::PipelineStage::COMPUTE_SHADER);
-        particlesDrawPass.setExecuteFunction([pipelineDraw, particleBufferIndex, imageIndex, numParticles](canta::CommandBuffer& cmd, canta::RenderGraph& graph) {
+        auto& particlesDrawPass = renderGraph.addPass("particles_draw")
+            .setGroup(particleGroup)
+            .addStorageBufferRead(particleBufferIndex, canta::PipelineStage::COMPUTE_SHADER)
+            .addStorageImageWrite(imageIndex, canta::PipelineStage::COMPUTE_SHADER)
+            .setExecuteFunction([pipelineDraw, particleBufferIndex, imageIndex, numParticles](canta::CommandBuffer& cmd, canta::RenderGraph& graph) {
             auto buffer = graph.getBuffer(particleBufferIndex);
             auto image = graph.getImage(imageIndex);
             cmd.bindPipeline(pipelineDraw);
@@ -342,13 +342,12 @@ void main() {
             cmd.dispatchThreads(numParticles);
         });
 
-        renderGraph.addBlitPass("blit_to_swapchain", imageIndex, swapchainIndex);
-        auto uiSwapchainIndex = renderGraph.addAlias(swapchainIndex);
+        auto [uiSwapchainIndex] = renderGraph.addBlitPass("blit_to_swapchain", imageIndex, swapchainIndex).aliasImageOutputs<1>();
 
-        auto& uiPass = renderGraph.addPass("ui", canta::PassType::GRAPHICS);
-        uiPass.addColourRead(swapchainIndex);
-        uiPass.addColourWrite(uiSwapchainIndex);
-        uiPass.setExecuteFunction([&imguiContext, &swapchain](canta::CommandBuffer& cmd, canta::RenderGraph& graph) {
+        auto& uiPass = renderGraph.addPass("ui", canta::PassType::GRAPHICS)
+            .addColourRead(swapchainIndex)
+            .addColourWrite(uiSwapchainIndex)
+            .setExecuteFunction([&imguiContext, &swapchain](canta::CommandBuffer& cmd, canta::RenderGraph& graph) {
             imguiContext.render(ImGui::GetDrawData(), cmd, swapchain->format());
         });
 

@@ -45,12 +45,12 @@ namespace canta {
     };
 
     struct ImageIndex {
-        u32 id = 0;
+        i32 id = -1;
         u32 index = 0;
     };
 
     struct BufferIndex {
-        u32 id = 0;
+        i32 id = -1;
         u32 index = 0;
     };
 
@@ -88,48 +88,60 @@ namespace canta {
     class RenderPass {
     public:
 
-        void addColourWrite(ImageIndex index, const std::array<f32, 4>& clearColor = { 0, 0, 0, 1 });
-        void addColourRead(ImageIndex index);
+        auto addColourWrite(ImageIndex index, const std::array<f32, 4>& clearColor = { 0, 0, 0, 1 }) -> RenderPass&;
+        auto addColourRead(ImageIndex index) -> RenderPass&;
 
-        void addDepthWrite(ImageIndex index, const std::array<f32, 4>& clearColor = { 1, 0, 0, 0 });
-        void addDepthRead(ImageIndex index);
+        auto addDepthWrite(ImageIndex index, const std::array<f32, 4>& clearColor = { 1, 0, 0, 0 }) -> RenderPass&;
+        auto addDepthRead(ImageIndex index) -> RenderPass&;
 
-        void addStorageImageWrite(ImageIndex index, PipelineStage stage);
-        void addStorageImageRead(ImageIndex index, PipelineStage stage);
+        auto addStorageImageWrite(ImageIndex index, PipelineStage stage) -> RenderPass&;
+        auto addStorageImageRead(ImageIndex index, PipelineStage stage) -> RenderPass&;
 
-        void addStorageBufferWrite(BufferIndex index, PipelineStage stage);
-        void addStorageBufferRead(BufferIndex index, PipelineStage stage);
+        auto addStorageBufferWrite(BufferIndex index, PipelineStage stage) -> RenderPass&;
+        auto addStorageBufferRead(BufferIndex index, PipelineStage stage) -> RenderPass&;
 
-        void addSampledRead(ImageIndex index, PipelineStage stage);
+        auto addSampledRead(ImageIndex index, PipelineStage stage) -> RenderPass&;
 
-        void addBlitWrite(ImageIndex index);
-        void addBlitRead(ImageIndex index);
+        auto addBlitWrite(ImageIndex index) -> RenderPass&;
+        auto addBlitRead(ImageIndex index) -> RenderPass&;
 
-        void addTransferWrite(ImageIndex index);
-        void addTransferRead(ImageIndex index);
-        void addTransferWrite(BufferIndex index);
-        void addTransferRead(BufferIndex index);
+        auto addTransferWrite(ImageIndex index) -> RenderPass&;
+        auto addTransferRead(ImageIndex index) -> RenderPass&;
+        auto addTransferWrite(BufferIndex index) -> RenderPass&;
+        auto addTransferRead(BufferIndex index) -> RenderPass&;
 
-        void addIndirectRead(BufferIndex index);
+        auto addIndirectRead(BufferIndex index) -> RenderPass&;
 
-        void setExecuteFunction(std::function<void(CommandBuffer&, RenderGraph&)> execute) {
+        auto setExecuteFunction(std::function<void(CommandBuffer&, RenderGraph&)> execute) -> RenderPass& {
             _execute = execute;
+            return *this;
         }
 
-        void setDimensions(u32 width, u32 height) {
+        auto setDimensions(u32 width, u32 height) -> RenderPass& {
             _width = width;
             _height = height;
+            return *this;
         }
 
-        void setGroup(RenderGroup group) {
+        auto setGroup(RenderGroup group) -> RenderPass& {
             _group = group;
+            return *this;
         }
 
         auto getGroup() -> RenderGroup { return _group; }
 
-        void setDebugColour(const std::array<f32, 4>& colour = { 0, 1, 0, 1 }) {
+        auto setDebugColour(const std::array<f32, 4>& colour = { 0, 1, 0, 1 }) -> RenderPass& {
             _debugColour = colour;
+            return *this;
         }
+
+        auto aliasImageOutputs() const -> std::vector<ImageIndex>;
+        auto aliasBufferOutputs() const -> std::vector<BufferIndex>;
+
+        template <u8 N>
+        auto aliasImageOutputs() const -> std::array<ImageIndex, N>;
+        template <u8 N>
+        auto aliasBufferOutputs() const -> std::array<BufferIndex, N>;
 
     private:
         friend RenderGraph;
@@ -148,7 +160,7 @@ namespace canta {
         std::function<void(CommandBuffer&, RenderGraph&)> _execute = {};
 
         struct ResourceAccess {
-            u32 id = 0;
+            i32 id = 0;
             u32 index = 0;
             Access access = Access::NONE;
             PipelineStage stage = PipelineStage::NONE;
@@ -305,7 +317,7 @@ namespace canta {
         tsl::robin_map<const char*, u32> _nameToIndex;
 
         std::vector<std::unique_ptr<Resource>> _resources = {};
-        u32 _resourceId = 0;
+        i32 _resourceId = 0;
 
         std::vector<ImageHandle> _images = {};
         std::vector<BufferHandle> _buffers = {};
@@ -313,6 +325,30 @@ namespace canta {
         std::array<CommandPool, FRAMES_IN_FLIGHT> _commandPools = {};
 
     };
+
+    template <u8 N>
+    auto RenderPass::aliasImageOutputs() const -> std::array<ImageIndex, N> {
+        std::array<ImageIndex, N> aliases = {};
+        for (u32 i = 0; auto& output : _outputs) {
+            if (i >= N) break;
+            auto& resource = _graph->_resources[output.index];
+            if (resource->type == ResourceType::IMAGE)
+                aliases[i++] = _graph->addAlias(ImageIndex{ .id = output.id, .index = output.index });
+        }
+        return aliases;
+    }
+
+    template <u8 N>
+    auto RenderPass::aliasBufferOutputs() const -> std::array<BufferIndex, N> {
+        std::array<BufferIndex, N> aliases = {};
+        for (u32 i = 0; auto& output : _outputs) {
+            if (i >= N) break;
+            auto& resource = _graph->_resources[output.index];
+            if (resource->type == ResourceType::BUFFER)
+                aliases[i++] = _graph->addAlias(BufferIndex{ .id = output.id, .index = output.index });
+        }
+        return aliases;
+    }
 
 }
 
