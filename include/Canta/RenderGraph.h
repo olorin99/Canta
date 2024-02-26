@@ -239,12 +239,12 @@ namespace canta {
         auto getImage(ImageIndex index) -> ImageHandle;
         auto getBuffer(BufferIndex index) -> BufferHandle;
 
-        void setBackbuffer(ImageIndex index);
+        void setBackbuffer(ImageIndex index, ImageLayout finalLayout = ImageLayout::UNDEFINED);
         void setBackbuffer(BufferIndex index);
 
         void reset();
         auto compile() -> std::expected<bool, RenderGraphError>;
-        auto execute(std::span<Semaphore::Pair> waits, std::span<Semaphore::Pair> signals, bool backbufferIsSwapchain = false, std::span<ImageBarrier> imagesToAcquire = {}) -> std::expected<bool, RenderGraphError>;
+        auto execute(std::span<Semaphore::Pair> waits, std::span<Semaphore::Pair> signals, std::span<ImageBarrier> imagesToAcquire = {}) -> std::expected<bool, RenderGraphError>;
 
         auto timers() -> std::span<std::pair<std::string, Timer>> {
             std::size_t count = _timerCount;
@@ -300,6 +300,8 @@ namespace canta {
 
         i32 _backbufferId = -1;
         i32 _backbufferIndex = -1;
+        ImageLayout _backbufferFinalLayout = ImageLayout::UNDEFINED;
+        RenderPass::Barrier _backbufferBarrier = {};
 
         std::vector<RenderPass> _passes = {};
         std::vector<RenderPass*> _orderedPasses = {};

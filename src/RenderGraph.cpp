@@ -463,9 +463,10 @@ auto canta::RenderGraph::getBuffer(canta::BufferIndex index) -> BufferHandle {
     return _buffers[bufferIndex];
 }
 
-void canta::RenderGraph::setBackbuffer(canta::ImageIndex index) {
+void canta::RenderGraph::setBackbuffer(canta::ImageIndex index, ImageLayout finalLayout) {
     _backbufferId = index.id;
     _backbufferIndex = index.index;
+    _backbufferFinalLayout = finalLayout;
 }
 
 void canta::RenderGraph::setBackbuffer(canta::BufferIndex index) {
@@ -522,7 +523,7 @@ auto canta::RenderGraph::compile() -> std::expected<bool, RenderGraphError> {
     return true;
 }
 
-auto canta::RenderGraph::execute(std::span<Semaphore::Pair> waits, std::span<Semaphore::Pair> signals, bool backbufferIsSwapchain, std::span<ImageBarrier> imagesToAcquire) -> std::expected<bool, RenderGraphError> {
+auto canta::RenderGraph::execute(std::span<Semaphore::Pair> waits, std::span<Semaphore::Pair> signals, std::span<ImageBarrier> imagesToAcquire) -> std::expected<bool, RenderGraphError> {
     _timerCount = 0;
     RenderGroup currentGroup = {};
     bool groupChanged = false;
@@ -648,15 +649,15 @@ auto canta::RenderGraph::execute(std::span<Semaphore::Pair> waits, std::span<Sem
         currentGroup = pass->getGroup();
     }
 
-    if (backbufferIsSwapchain) {
+    if (_backbufferFinalLayout != ImageLayout::UNDEFINED) {
         cmd.barrier({
-            .image = getImage({ .index = static_cast<u32>(_backbufferIndex) }),
-            .srcStage = canta::PipelineStage::COLOUR_OUTPUT,
-            .dstStage = canta::PipelineStage::BOTTOM,
-            .srcAccess = canta::Access::COLOUR_WRITE | canta::Access::COLOUR_READ,
-            .dstAccess = canta::Access::MEMORY_WRITE | canta::Access::MEMORY_READ,
-            .srcLayout = canta::ImageLayout::COLOUR_ATTACHMENT,
-            .dstLayout = canta::ImageLayout::PRESENT
+            .image = getImage({ .index = static_cast<u32>(_backbufferIndex)}),
+            .srcStage = _backbufferBarrier.srcStage,
+            .dstStage = _backbufferBarrier.dstStage,
+            .srcAccess = _backbufferBarrier.srcAccess,
+            .dstAccess = _backbufferBarrier.dstAccess,
+            .srcLayout = _backbufferBarrier.srcLayout,
+            .dstLayout = _backbufferBarrier.dstLayout
         });
     }
 
@@ -673,6 +674,20 @@ auto canta::RenderGraph::execute(std::span<Semaphore::Pair> waits, std::span<Sem
 void canta::RenderGraph::buildBarriers() {
     auto findNextAccess = [&](i32 startIndex, u32 resource) -> std::tuple<i32, i32, RenderPass::ResourceAccess> {
         for (i32 passIndex = startIndex + 1; passIndex < _orderedPasses.size(); passIndex++) {
+            auto& pass = _orderedPasses[passIndex];
+            for (i32 outputIndex = 0; outputIndex < pass->_outputs.size(); outputIndex++) {
+                if (pass->_outputs[outputIndex].index == resource)
+                    return { passIndex, outputIndex, pass->_outputs[outputIndex] };
+            }
+            for (i32 inputIndex = 0; inputIndex < pass->_inputs.size(); inputIndex++) {
+                if (pass->_inputs[inputIndex].index == resource)
+                    return { passIndex, inputIndex, pass->_inputs[inputIndex] };
+            }
+        }
+        return { -1, -1, {} };
+    };
+    auto findPrevAccess = [&](i32 startIndex, u32 resource) -> std::tuple<i32, i32, RenderPass::ResourceAccess> {
+        for (i32 passIndex = startIndex; passIndex > -1; passIndex--) {
             auto& pass = _orderedPasses[passIndex];
             for (i32 outputIndex = 0; outputIndex < pass->_outputs.size(); outputIndex++) {
                 if (pass->_outputs[outputIndex].index == resource)
@@ -761,6 +776,19 @@ void canta::RenderGraph::buildBarriers() {
             initialLayout,
             nextAccess.layout
         });
+    }
+
+    if (_backbufferFinalLayout != ImageLayout::UNDEFINED) {
+        auto [accessPassIndex, accessIndex, prevAccess] = findPrevAccess(_orderedPasses.size() - 1, _backbufferIndex);
+        _backbufferBarrier = {
+            .index = prevAccess.index,
+            .srcStage = prevAccess.stage,
+            .dstStage = PipelineStage::BOTTOM,
+            .srcAccess = prevAccess.access,
+            .dstAccess = Access::MEMORY_WRITE | Access::MEMORY_READ,
+            .srcLayout = prevAccess.layout,
+            .dstLayout = _backbufferFinalLayout
+        };
     }
 }
 

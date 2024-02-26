@@ -351,7 +351,7 @@ void main() {
             imguiContext.render(ImGui::GetDrawData(), cmd, swapchain->format());
         });
 
-        renderGraph.setBackbuffer(uiSwapchainIndex);
+        renderGraph.setBackbuffer(uiSwapchainIndex, canta::ImageLayout::PRESENT);
 //        renderGraph.setBackbuffer(swapchainIndex);
         renderGraph.compile();
 
@@ -364,7 +364,7 @@ void main() {
             device->frameSemaphore()->getPair(),
             swapchain->presentSemaphore()->getPair()
         });
-        renderGraph.execute(waits, signals, true);
+        renderGraph.execute(waits, signals);
 
         swapchain->present();
 
