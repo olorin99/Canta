@@ -362,6 +362,21 @@ auto canta::RenderGraph::addImage(canta::ImageDescription description) -> ImageI
         auto imageResource = dynamic_cast<ImageResource*>(_resources[index].get());
         imageResource->initialLayout = description.initialLayout;
         if (description.handle) {
+            imageResource->width = description.handle->width();
+            imageResource->height = description.handle->height();
+            imageResource->depth = description.handle->depth();
+            imageResource->mipLevels = description.handle->mips();
+            imageResource->format = description.handle->format();
+            imageResource->usage = description.handle->usage();
+        } else {
+            imageResource->width = description.width;
+            imageResource->height = description.height;
+            imageResource->depth = description.depth;
+            imageResource->mipLevels = description.mipLevels;
+            imageResource->format = description.format;
+            imageResource->usage = description.usage;
+        }
+        if (description.handle) {
             u32 imageIndex = imageResource->imageIndex;
             _images[imageIndex] = description.handle;
         }
@@ -407,8 +422,16 @@ auto canta::RenderGraph::addBuffer(canta::BufferDescription description) -> Buff
     auto it = _nameToIndex.find(description.name.data());
     if (it != _nameToIndex.end()) {
         u32 index = it->second;
+        auto bufferResource = dynamic_cast<BufferResource*>(_resources[index].get());
         if (description.handle) {
-            u32 bufferIndex = dynamic_cast<BufferResource*>(_resources[index].get())->bufferIndex;
+            bufferResource->size = description.handle->size();
+            bufferResource->usage = description.handle->usage();
+        } else {
+            bufferResource->size = description.size;
+            bufferResource->usage = description.usage;
+        }
+        if (description.handle) {
+            u32 bufferIndex = bufferResource->bufferIndex;
             _buffers[bufferIndex] = description.handle;
         }
         return {
