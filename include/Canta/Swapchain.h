@@ -42,7 +42,8 @@ namespace canta {
         auto getPresentMode() const -> PresentMode { return _presentMode; }
 
         auto format() const -> Format { return _format; }
-
+        auto width() const -> u32 { return _extent.width; }
+        auto height() const -> u32 { return _extent.height; }
         auto index() const -> u32 { return _index; }
 
         void resize(u32 width, u32 height);
