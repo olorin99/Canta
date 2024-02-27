@@ -9,6 +9,7 @@
 template<> u32 canta::ShaderHandle::s_hash = 0;
 template<> u32 canta::PipelineHandle::s_hash = 0;
 template<> u32 canta::ImageHandle::s_hash = 0;
+template<> u32 canta::ImageViewHandle::s_hash = 0;
 template<> u32 canta::BufferHandle::s_hash = 0;
 template<> u32 canta::SamplerHandle::s_hash = 0;
 
@@ -593,6 +594,7 @@ canta::Device::~Device() {
 
     _shaderList.clearAll();
     _pipelineList.clearAll();
+    _imageViewList.clearAll();
     _imageList.clearAll();
     _bufferList.clearAll();
     _samplerList.clearAll();
@@ -655,6 +657,7 @@ void canta::Device::gc() {
     });
     _shaderList.clearQueue();
     _pipelineList.clearQueue();
+    _imageViewList.clearQueue();
     _imageList.clearQueue();
     _bufferList.clearQueue();
     _samplerList.clearQueue();
@@ -1162,13 +1165,25 @@ auto canta::Device::createImage(Image::CreateInfo info, ImageHandle oldHandle) -
     handle->_format = info.format;
     handle->_usage = info.usage;
     handle->_layout = ImageLayout::UNDEFINED;
-    handle->_defaultView = handle->createView({});
     handle->_name = info.name;
+    handle->_views.push_back(createImageView({
+        .image = &*handle
+    }));
 
     bool isSampled = (info.usage & ImageUsage::SAMPLED) == ImageUsage::SAMPLED;
     bool isStorage = (info.usage & ImageUsage::STORAGE) == ImageUsage::STORAGE;
 
-    updateBindlessImage(handle.index(), handle->defaultView(), isSampled, isStorage);
+    updateBindlessImage(handle->defaultView().index(), *handle->defaultView(), isSampled, isStorage);
+    if (info.allocateMipViews) {
+        for (u32 mip = 1; mip < info.mipLevels; mip++) {
+            handle->_views.push_back(createImageView({
+                .image = &*handle,
+                .mipLevel = mip,
+                .levelCount = 1
+            }));
+            updateBindlessImage(handle->_views.back().index(), *handle->_views.back(), isSampled, isStorage);
+        }
+    }
 
     return handle;
 }
@@ -1186,7 +1201,7 @@ auto canta::Device::registerImage(Image::CreateInfo info, VkImage image, VkImage
         }
     }
 
-    Image::View defaultView = {};
+    ImageView defaultView = {};
     // set device as null so object destructor doesnt destroy view
     defaultView._device = nullptr;
     defaultView._image = nullptr;
@@ -1206,13 +1221,76 @@ auto canta::Device::registerImage(Image::CreateInfo info, VkImage image, VkImage
     handle->_format = info.format;
     handle->_usage = info.usage;
     handle->_layout = ImageLayout::UNDEFINED;
-    handle->_defaultView = std::move(defaultView);
     handle->_name = info.name;
+    handle->_views.push_back(createImageView({
+        .image = &*handle
+    }));
 
     bool isSampled = (info.usage & ImageUsage::SAMPLED) == ImageUsage::SAMPLED;
     bool isStorage = (info.usage & ImageUsage::STORAGE) == ImageUsage::STORAGE;
 
-    updateBindlessImage(handle.index(), handle->defaultView(), isSampled, isStorage);
+    updateBindlessImage(handle->defaultView().index(), *handle->defaultView(), isSampled, isStorage);
+
+    return handle;
+}
+
+auto canta::Device::createImageView(ImageView::CreateInfo info, canta::ImageViewHandle oldHandle) -> ImageViewHandle {
+    VkImageViewCreateInfo createInfo = {};
+    createInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+
+    auto type = info.type;
+    if (type == ImageViewType::AUTO) {
+        switch (info.image->_type) {
+            case ImageType::IMAGE1D:
+                if (info.image->layers() > 1)
+                    type = ImageViewType::VIEW1D_ARRAY;
+                else
+                    type = ImageViewType::VIEW1D;
+                break;
+            case ImageType::IMAGE2D:
+                if (info.image->layers() == 6)
+                    type = ImageViewType::VIEW_CUBE;
+                else if (info.image->layers() > 1)
+                    type = ImageViewType::VIEW2D_ARRAY;
+                else
+                    type = ImageViewType::VIEW2D;
+                break;
+            case ImageType::IMAGE3D:
+                if (info.image->layers() > 1)
+                    type = ImageViewType::VIEW3D_ARRAY;
+                else
+                    type = ImageViewType::VIEW3D;
+                break;
+            case ImageType::AUTO:
+                break;
+        }
+    }
+
+    auto format = info.format;
+    if (format == Format::UNDEFINED)
+        format = info.image->format();
+
+    createInfo.image = info.image->image();
+    createInfo.viewType = static_cast<VkImageViewType>(type);
+    createInfo.format = static_cast<VkFormat>(format);
+    createInfo.subresourceRange.aspectMask = isDepthFormat(format) ? VK_IMAGE_ASPECT_DEPTH_BIT : VK_IMAGE_ASPECT_COLOR_BIT;
+    createInfo.subresourceRange.baseMipLevel = info.mipLevel;
+    createInfo.subresourceRange.levelCount = info.levelCount == 0 ? VK_REMAINING_MIP_LEVELS : info.levelCount;
+    createInfo.subresourceRange.baseArrayLayer = info.layer;
+    createInfo.subresourceRange.layerCount = info.layerCount == 0 ? VK_REMAINING_ARRAY_LAYERS : info.layerCount;
+
+    VkImageView view;
+    vkCreateImageView(logicalDevice(), &createInfo, nullptr, &view);
+
+    ImageViewHandle handle = {};
+    if (oldHandle)
+        handle = _imageViewList.reallocate(oldHandle);
+    else
+        handle = _imageViewList.allocate();
+
+    handle->_device = this;
+    handle->_view = view;
+    handle->_image = info.image;
 
     return handle;
 }
@@ -1349,7 +1427,7 @@ void canta::Device::setDebugName(u32 type, u64 object, std::string_view name) co
 #endif
 }
 
-void canta::Device::updateBindlessImage(u32 index, const Image::View &image, bool sampled, bool storage) {
+void canta::Device::updateBindlessImage(u32 index, const ImageView &image, bool sampled, bool storage) {
     VkWriteDescriptorSet descriptorWrite[2] = {};
     i32 writeNum = 0;
 

@@ -261,7 +261,7 @@ bool canta::ImGuiContext::createFontsTexture(canta::CommandBuffer &commandBuffer
     commandBuffer.barrier(copyBarrier);
 
     // Store our identifier
-    io.Fonts->SetTexID((ImTextureID)(u64)_fontImage.index());
+    io.Fonts->SetTexID((ImTextureID)(u64)_fontImage->defaultView().index());
 
     return true;
 }

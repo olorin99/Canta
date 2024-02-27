@@ -816,6 +816,7 @@ void canta::RenderGraph::buildResources() {
                     .depth = imageResource->depth,
                     .format = imageResource->format,
                     .mipLevels = imageResource->mipLevels,
+                    .allocateMipViews = true,
                     .usage = imageResource->usage,
                     .name = imageResource->name
                 });

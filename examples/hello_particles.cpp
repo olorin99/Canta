@@ -286,6 +286,7 @@ void main() {
         renderGraph.reset();
 
         auto imageIndex = renderGraph.addImage({
+            .mipLevels = 4,
             .name = "image"
         });
         auto swapchainIndex = renderGraph.addImage({
@@ -336,7 +337,7 @@ void main() {
             };
             cmd.pushConstants(canta::ShaderStage::COMPUTE, Push{
                     .address = buffer->address(),
-                    .index = image.index(),
+                    .index = image->defaultView().index(),
                     .maxParticles = numParticles
             });
             cmd.dispatchThreads(numParticles);

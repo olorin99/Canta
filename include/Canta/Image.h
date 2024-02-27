@@ -6,10 +6,45 @@
 #include <Canta/Enums.h>
 #include <string>
 #include <vk_mem_alloc.h>
+#include <Canta/ResourceList.h>
 
 namespace canta {
 
     class Device;
+    class Image;
+
+    class ImageView {
+    public:
+
+        struct CreateInfo {
+            const Image* image = nullptr;
+            u32 mipLevel = 0;
+            u32 levelCount = 0;
+            u32 layer = 0;
+            u32 layerCount = 0;
+            ImageViewType type = ImageViewType::AUTO;
+            Format format = Format::UNDEFINED;
+        };
+
+        ImageView() = default;
+        ~ImageView();
+
+        ImageView(ImageView&& rhs) noexcept;
+        auto operator=(ImageView&& rhs) noexcept -> ImageView&;
+
+        auto view() const -> VkImageView { return _view; }
+
+    private:
+        friend Image;
+        friend Device;
+
+        Device* _device = nullptr;
+        VkImageView _view = VK_NULL_HANDLE;
+        const Image* _image = nullptr;
+
+    };
+
+    using ImageViewHandle = Handle<ImageView, ResourceList<ImageView>>;
 
     class Image {
     public:
@@ -20,6 +55,7 @@ namespace canta {
             u32 depth = 1;
             Format format = Format::RGBA8_UNORM;
             u32 mipLevels = 1;
+            bool allocateMipViews = false;
             u32 layers = 1;
             ImageUsage usage = ImageUsage::SAMPLED | ImageUsage::TRANSFER_DST;
             ImageType type = ImageType::AUTO;
@@ -46,39 +82,13 @@ namespace canta {
         auto size() const -> u32 { return _width * _height * _depth * _layers * _mips * formatSize(_format); }
 
 
-        class View {
-        public:
 
-            struct CreateInfo {
-                u32 mipLevel = 0;
-                u32 levelCount = 0;
-                u32 layer = 0;
-                u32 layerCount = 0;
-                ImageViewType type = ImageViewType::AUTO;
-                Format format = Format::UNDEFINED;
-            };
 
-            View() = default;
-            ~View();
+        auto createView(ImageView::CreateInfo info) const -> ImageViewHandle;
 
-            View(View&& rhs) noexcept;
-            auto operator=(View&& rhs) noexcept -> View&;
+        auto defaultView() const -> ImageViewHandle { return _views.front(); }
 
-            auto view() const -> VkImageView { return _view; }
-
-        private:
-            friend Image;
-            friend Device;
-
-            Device* _device = nullptr;
-            VkImageView _view = VK_NULL_HANDLE;
-            const Image* _image = nullptr;
-
-        };
-
-        auto createView(View::CreateInfo info) const -> View;
-
-        auto defaultView() const -> const View& { return _defaultView; }
+        auto mipView(u32 mip = 0) -> ImageViewHandle;
 
     private:
         friend Device;
@@ -95,8 +105,9 @@ namespace canta {
         Format _format = Format::RGBA8_UNORM;
         ImageUsage _usage = ImageUsage::TRANSFER_DST;
         ImageLayout _layout = ImageLayout::UNDEFINED;
-        View _defaultView = {};
         std::string _name = {};
+
+        std::vector<ImageViewHandle> _views = {};
 
     };
 

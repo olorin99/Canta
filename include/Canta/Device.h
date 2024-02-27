@@ -42,6 +42,7 @@ namespace canta {
     using ShaderHandle = Handle<ShaderModule, ResourceList<ShaderModule>>;
     using PipelineHandle = Handle<Pipeline, ResourceList<Pipeline>>;
     using ImageHandle = Handle<Image, ResourceList<Image>>;
+    using ImageViewHandle = Handle<ImageView, ResourceList<ImageView>>;
     using BufferHandle = Handle<Buffer, ResourceList<Buffer>>;
     using SamplerHandle = Handle<Sampler, ResourceList<Sampler>>;
 
@@ -194,6 +195,7 @@ namespace canta {
         auto createShaderModule(ShaderModule::CreateInfo info, ShaderHandle oldHandle = {}) -> ShaderHandle;
         auto createPipeline(Pipeline::CreateInfo info, PipelineHandle oldHandle = {}) -> PipelineHandle;
         auto createImage(Image::CreateInfo info, ImageHandle oldHandle = {}) -> ImageHandle;
+        auto createImageView(ImageView::CreateInfo info, ImageViewHandle oldHandle = {}) -> ImageViewHandle;
         auto createBuffer(Buffer::CreateInfo info, BufferHandle oldHandle = {}) -> BufferHandle;
         auto createSampler(Sampler::CreateInfo info, SamplerHandle oldHandle = {}) -> SamplerHandle;
 
@@ -233,7 +235,7 @@ namespace canta {
 
         Device() = default;
 
-        void updateBindlessImage(u32 index, const Image::View& image, bool sampled, bool storage);
+        void updateBindlessImage(u32 index, const ImageView& image, bool sampled, bool storage);
         void updateBindlessBuffer(u32 index, const Buffer& buffer);
         void updateBindlessSampler(u32 index, const Sampler& sampler);
 
@@ -293,6 +295,7 @@ namespace canta {
         ResourceList<ShaderModule> _shaderList = {};
         ResourceList<Pipeline> _pipelineList = {};
         ResourceList<Image> _imageList = {};
+        ResourceList<ImageView> _imageViewList = {};
         ResourceList<Buffer> _bufferList = {};
         ResourceList<Sampler> _samplerList = {};
 

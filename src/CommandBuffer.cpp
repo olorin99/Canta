@@ -95,7 +95,7 @@ void canta::CommandBuffer::beginRendering(RenderingInfo info) {
         };
         colourAttachments[i] = {
                 .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
-                .imageView = info.colourAttachments[i].image->defaultView().view(),
+                .imageView = info.colourAttachments[i].image->defaultView()->view(),
                 .imageLayout = static_cast<VkImageLayout>(info.colourAttachments[i].imageLayout),
                 .resolveMode = VK_RESOLVE_MODE_NONE,
                 .resolveImageView = VK_NULL_HANDLE,
@@ -124,7 +124,7 @@ void canta::CommandBuffer::beginRendering(RenderingInfo info) {
             .clearValue = depthClearValue
     };
     if (info.depthAttachment.image) {
-        depthAttachment.imageView = info.depthAttachment.image->defaultView().view();
+        depthAttachment.imageView = info.depthAttachment.image->defaultView()->view();
         renderingInfo.pDepthAttachment = &depthAttachment;
     }
 
@@ -334,16 +334,16 @@ void canta::CommandBuffer::blit(canta::CommandBuffer::BlitInfo info) {
     blit.srcSubresource = srcSubresource;
     blit.srcOffsets[0] = { info.srcOffset.x(), info.srcOffset.y(), info.srcOffset.z() };
     if (info.srcSize.x() > 0 || info.srcSize.y() > 0 || info.srcSize.z() > 0)
-        blit.srcOffsets[1] = { static_cast<i32>(info.src->width()), static_cast<i32>(info.src->height()), static_cast<i32>(info.src->depth()) };
-    else
         blit.srcOffsets[1] = { info.srcSize.x(), info.srcSize.y(), info.srcSize.z() };
+    else
+    blit.srcOffsets[1] = { static_cast<i32>(info.src->width()), static_cast<i32>(info.src->height()), static_cast<i32>(info.src->depth()) };
 
     blit.dstSubresource = dstSubresource;
     blit.dstOffsets[0] = { info.dstOffset.x(), info.dstOffset.y(), info.dstOffset.z() };
     if (info.dstSize.x() > 0 || info.dstSize.y() > 0 || info.dstSize.z() > 0)
-        blit.dstOffsets[1] = { static_cast<i32>(info.dst->width()), static_cast<i32>(info.dst->height()), static_cast<i32>(info.dst->depth()) };
-    else
         blit.dstOffsets[1] = { info.dstSize.x(), info.dstSize.y(), info.dstSize.z() };
+    else
+        blit.dstOffsets[1] = { static_cast<i32>(info.dst->width()), static_cast<i32>(info.dst->height()), static_cast<i32>(info.dst->depth()) };
 
     vkCmdBlitImage(_buffer, info.src->image(), static_cast<VkImageLayout>(info.srcLayout), info.dst->image(), static_cast<VkImageLayout>(info.dstLayout), 1, &blit, static_cast<VkFilter>(info.filter));
 }
