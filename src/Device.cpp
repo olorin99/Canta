@@ -651,10 +651,13 @@ auto canta::Device::operator=(canta::Device &&rhs) noexcept -> Device & {
 }
 
 void canta::Device::gc() {
-    immediate([this] (auto& cmd) {
-        for (auto& deferredCommand : _deferredCommands)
-            deferredCommand(cmd);
-    });
+    if (!_deferredCommands.empty()) {
+        _immediatePool.reset();
+        immediate([this] (auto& cmd) {
+            for (auto& deferredCommand : _deferredCommands)
+                deferredCommand(cmd);
+        });
+    }
     _shaderList.clearQueue();
     _pipelineList.clearQueue();
     _imageViewList.clearQueue();
