@@ -794,6 +794,9 @@ auto canta::Device::createShaderModule(ShaderModule::CreateInfo info, ShaderHand
     if (result != VK_SUCCESS)
         return {};
 
+    if (!info.name.empty())
+        setDebugName(VK_OBJECT_TYPE_SHADER_MODULE, (u64)module, info.name);
+
     ShaderHandle handle = {};
     if (oldHandle)
         handle = _shaderList.reallocate(oldHandle);
@@ -805,6 +808,8 @@ auto canta::Device::createShaderModule(ShaderModule::CreateInfo info, ShaderHand
     handle->_stage = info.stage;
     auto ar = std::to_array({ ShaderInterface::CreateInfo{ info.spirv, info.stage } });
     handle->_interface = ShaderInterface::create(ar);
+    handle->_name = info.name;
+
     return handle;
 }
 
@@ -1086,6 +1091,8 @@ auto canta::Device::createPipeline(Pipeline::CreateInfo info, PipelineHandle old
         if (result != VK_SUCCESS)
             return {};
     }
+    if (!info.name.empty())
+        setDebugName(VK_OBJECT_TYPE_PIPELINE, (u64)pipeline, info.name);
 
     PipelineHandle handle = {};
     if (oldHandle)
@@ -1098,6 +1105,7 @@ auto canta::Device::createPipeline(Pipeline::CreateInfo info, PipelineHandle old
     handle->_layout = pipelineLayout;
     handle->_mode = mode;
     handle->_interface = interface;
+    handle->_name = info.name;
 
     return handle;
 }
@@ -1148,7 +1156,8 @@ auto canta::Device::createImage(Image::CreateInfo info, ImageHandle oldHandle) -
     allocInfo.flags = 0;
     VK_TRY(vmaCreateImage(_allocator, &createInfo, &allocInfo, &image, &allocation, nullptr))
 
-    setDebugName(VK_OBJECT_TYPE_IMAGE, (u64)image, info.name);
+    if (!info.name.empty())
+        setDebugName(VK_OBJECT_TYPE_IMAGE, (u64)image, info.name);
 
     ImageHandle handle = {};
     if (oldHandle)
@@ -1338,7 +1347,8 @@ auto canta::Device::createBuffer(Buffer::CreateInfo info, BufferHandle oldHandle
 
     VK_TRY(vmaCreateBuffer(_allocator, &createInfo, &allocInfo, &buffer, &allocation, nullptr));
 
-    setDebugName(VK_OBJECT_TYPE_BUFFER, (u64)buffer, info.name);
+    if (!info.name.empty())
+        setDebugName(VK_OBJECT_TYPE_BUFFER, (u64)buffer, info.name);
 
     VkBufferDeviceAddressInfo deviceAddressInfo = {};
     deviceAddressInfo.sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO;

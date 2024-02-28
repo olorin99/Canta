@@ -20,6 +20,7 @@ namespace canta {
         std::string_view glsl = {};
         std::vector<Macro> macros = {};
         ShaderStage stage = ShaderStage::NONE;
+        std::string_view name = {};
     };
 }
 

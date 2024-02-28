@@ -87,6 +87,7 @@ namespace canta {
             bool primitiveRestart = false;
             std::vector<Format> colourFormats = {};
             Format depthFormat = Format::UNDEFINED;
+            std::string_view name = {};
         };
 
         Pipeline() = default;
@@ -109,6 +110,7 @@ namespace canta {
         VkPipelineLayout _layout = VK_NULL_HANDLE;
         PipelineMode _mode = PipelineMode::GRAPHICS;
         ShaderInterface _interface = {};
+        std::string _name = {};
 
 
     };

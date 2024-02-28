@@ -18,6 +18,7 @@ namespace canta {
         struct CreateInfo {
             std::span<const u32> spirv = {};
             ShaderStage stage = ShaderStage::NONE;
+            std::string_view name = {};
         };
 
         ShaderModule() = default;
@@ -40,6 +41,7 @@ namespace canta {
         VkShaderModule _module = VK_NULL_HANDLE;
         ShaderStage _stage = ShaderStage::NONE;
         ShaderInterface _interface = {};
+        std::string _name = {};
 
     };
 
