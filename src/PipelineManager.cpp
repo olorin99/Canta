@@ -266,20 +266,26 @@ auto canta::PipelineManager::createShader(canta::ShaderDescription info, ShaderH
     if (!info.path.empty()) {
         auto shaderFile = ende::fs::File::open(_rootPath / info.path);
         auto glsl = shaderFile->read();
-        spirv = compileGLSL(info.path.string(), glsl, info.stage, info.macros).transform_error([](const auto& error) {
+        auto compilationResult = compileGLSL(info.path.string(), glsl, info.stage, info.macros).transform_error([](const auto& error) {
             std::printf("%s", error.c_str());
             return error;
-        }).value();
+        });
+        if (!compilationResult)
+            return {};
+        spirv = compilationResult.value();
         if (!handle) {
             auto watcher = _watchedPipelines.find(info.path);
             if (watcher == _watchedPipelines.end())
                 _fileWatcher.addWatch(_rootPath / info.path);
         }
     } else if (!info.glsl.empty()) {
-        spirv = compileGLSL(info.path.string(), info.glsl, info.stage).transform_error([](const auto& error) {
+        auto compilationResult = compileGLSL(info.path.string(), info.glsl, info.stage).transform_error([](const auto& error) {
             std::printf("%s", error.c_str());
             return error;
-        }).value();
+        });
+        if (!compilationResult)
+            return {};
+        spirv = compilationResult.value();
     }
     if (!spirv.empty())
         createInfo.spirv = spirv;
