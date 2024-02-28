@@ -59,14 +59,17 @@ namespace canta {
         auto reload(ShaderHandle shader) -> ShaderHandle;
         auto reload(PipelineHandle pipeline) -> PipelineHandle;
 
+        auto reload(ShaderDescription description) -> ShaderHandle;
+        auto reload(Pipeline::CreateInfo info) -> PipelineHandle;
+
         void reloadAll(bool force = false);
 
         void addVirtualFile(const std::filesystem::path& path, const std::string& contents);
+        auto shaders() const -> const tsl::robin_map<ShaderDescription, ShaderHandle>& { return _shaders; }
+
+        auto pipeline() const -> const tsl::robin_map<Pipeline::CreateInfo, PipelineHandle, std::hash<Pipeline::CreateInfo>>& { return _pipelines; }
 
     private:
-
-        auto reload(ShaderDescription description) -> ShaderHandle;
-        auto reload(Pipeline::CreateInfo info) -> PipelineHandle;
 
         auto createShader(ShaderDescription info, ShaderHandle handle = {}) -> ShaderHandle;
 
