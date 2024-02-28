@@ -68,7 +68,7 @@ namespace canta {
         void addVirtualFile(const std::filesystem::path& path, const std::string& contents);
         auto shaders() const -> const tsl::robin_map<ShaderDescription, ShaderHandle>& { return _shaders; }
 
-        auto pipeline() const -> const tsl::robin_map<Pipeline::CreateInfo, PipelineHandle, std::hash<Pipeline::CreateInfo>>& { return _pipelines; }
+        auto pipelines() const -> const tsl::robin_map<Pipeline::CreateInfo, PipelineHandle, std::hash<Pipeline::CreateInfo>>& { return _pipelines; }
 
     private:
 
