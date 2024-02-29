@@ -31,20 +31,11 @@ int main() {
     std::string particleDrawComp = R"(
 #version 460
 
-#extension GL_EXT_nonuniform_qualifier : enable
-#extension GL_GOOGLE_include_directive : enable
-#extension GL_EXT_buffer_reference : enable
-#extension GL_EXT_buffer_reference2 : enable
-#extension GL_EXT_scalar_block_layout : enable
-#extension GL_EXT_shader_explicit_arithmetic_types : enable
-
 #include "canta.glsl"
 
 layout (local_size_x = 32) in;
 
-//layout (set = 0, binding = 2) uniform writeonly image2D storageImages[];
-
-CANTA_USE_STORAGE_IMAGE(image2D, writeonly, storageImages);
+declareStorageImages(storageImages, image2D, writeonly);
 
 struct Particle {
     vec2 position;
@@ -53,9 +44,9 @@ struct Particle {
     int radius;
 };
 
-layout (scalar, buffer_reference, buffer_reference_align = 8) readonly buffer ParticleBuffer {
+declareBufferReference(ParticleBuffer,
     Particle particles[];
-};
+);
 
 layout (push_constant) uniform Push {
     ParticleBuffer particleBuffer;
