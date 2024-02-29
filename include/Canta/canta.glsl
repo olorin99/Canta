@@ -1,4 +1,4 @@
-R""(#ifndef CANTA_INCLUDE_GLSL
+#ifndef CANTA_INCLUDE_GLSL
 #define CANTA_INCLUDE_GLSL
 
 #ifndef __cplusplus
@@ -46,4 +46,4 @@ layout (set = 0, binding = CANTA_BINDLESS_SAMPLERS) uniform sampler samplers[];
 #define declareBufferReferenceReadonly(name, body) declareBufferReferenceQualifier(name, readonly, body)
 #define declareBufferReferenceWriteonly(name, body) declareBufferReferenceQualifier(name, writeonly, body)
 
-#endif)""
+#endif
