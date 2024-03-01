@@ -414,6 +414,23 @@ namespace canta {
                 return 4;
             case Format::RGBA32_SFLOAT:
                 return 4 * 4;
+            case Format::BC1_RGB_UNORM:
+            case Format::BC1_RGB_SRGB:
+            case Format::BC1_RGBA_UNORM:
+            case Format::BC1_RGBA_SRGB:
+            case Format::BC2_UNORM:
+            case Format::BC2_SRGB:
+            case Format::BC3_UNORM:
+            case Format::BC3_SRGB:
+            case Format::BC4_UNORM:
+            case Format::BC4_SNORM:
+            case Format::BC5_UNORM:
+            case Format::BC5_SNORM:
+            case Format::BC6_UFLOAT:
+            case Format::BC6_SFLOAT:
+            case Format::BC7_UNORM:
+            case Format::BC7_SRGB:
+                return 1;
         }
         return 0;
     }
