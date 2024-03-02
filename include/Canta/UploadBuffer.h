@@ -42,6 +42,7 @@ namespace canta {
             Format format = Format::RGBA8_UNORM;
             u32 mipLevel = 0;
             u32 layer = 0;
+            bool final = true;
         };
 
         auto upload(ImageHandle dstHandle, std::span<const u8> data, ImageInfo info) -> u32;

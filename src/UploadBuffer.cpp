@@ -150,7 +150,7 @@ auto canta::UploadBuffer::upload(canta::ImageHandle dstHandle, std::span<const u
                 .dstLayerCount = 1,
                 .srcSize = allocationSize,
                 .srcOffset = offset,
-                .finalTransfer = data.size() - (uploadOffset + allocationSize) == 0
+                .finalTransfer = (data.size() - (uploadOffset + allocationSize) == 0) && info.final
             });
 
             _offset = offset + allocationSize;
