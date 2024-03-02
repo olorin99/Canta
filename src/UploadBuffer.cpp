@@ -114,33 +114,23 @@ auto canta::UploadBuffer::upload(canta::ImageHandle dstHandle, std::span<const u
             if (rWidth < info.width)
                 rHeight = 1;
 
-            switch (info.format) {
-                case Format::BC1_RGB_UNORM:
-                case Format::BC1_RGB_SRGB:
-                case Format::BC1_RGBA_UNORM:
-                case Format::BC1_RGBA_SRGB:
-                case Format::BC2_UNORM:
-                case Format::BC2_SRGB:
-                case Format::BC3_UNORM:
-                case Format::BC3_SRGB:
-                case Format::BC4_UNORM:
-                case Format::BC4_SNORM:
-                case Format::BC5_UNORM:
-                case Format::BC5_SNORM:
-                case Format::BC6_UFLOAT:
-                case Format::BC6_SFLOAT:
-                case Format::BC7_UNORM:
-                case Format::BC7_SRGB:
-                    if (rHeight % 4 != 0 || rWidth % 4 != 0) {
+            u32 allocSize = rWidth * rHeight * formatSize(info.format);
+
+            if (isBlockFormat(info.format)) {
+                if (rHeight % 4 != 0 || rWidth % 4 != 0) {
+                    if (data.size() > 16) {
                         lock.unlock();
                         flushStagedData();
                         wait();
                         continue;
+                    } else {
+                        rWidth = info.width;
+                        rHeight = info.height;
+                        allocSize = allocationSize;
                     }
+                }
             }
 
-
-            u32 allocSize = rWidth * rHeight * formatSize(info.format);
             allocationSize = allocSize;
 
             u32 remainder = _offset % formatSize(info.format);
