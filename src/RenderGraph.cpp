@@ -1,7 +1,7 @@
 #include "Canta/RenderGraph.h"
 
 
-auto canta::RenderPass::addColourWrite(canta::ImageIndex index, const std::array<f32, 4> &clearColor) -> RenderPass& {
+auto canta::RenderPass::addColourWrite(canta::ImageIndex index, const ClearValue &clearColor) -> RenderPass& {
     assert(index.id >= 0);
     if (auto resource = writes(index, Access::COLOUR_WRITE | Access::COLOUR_READ,
                                PipelineStage::COLOUR_OUTPUT,
@@ -26,7 +26,7 @@ auto canta::RenderPass::addColourRead(canta::ImageIndex index) -> RenderPass& {
     return *this;
 }
 
-auto canta::RenderPass::addDepthWrite(canta::ImageIndex index, const std::array<f32, 4>& clearColor) -> RenderPass& {
+auto canta::RenderPass::addDepthWrite(canta::ImageIndex index, const ClearValue& clearColor) -> RenderPass& {
     assert(index.id >= 0);
     if (auto resource = writes(index, Access::DEPTH_STENCIL_WRITE | Access::DEPTH_STENCIL_READ,
                                PipelineStage::EARLY_FRAGMENT_TEST | PipelineStage::LATE_FRAGMENT_TEST | PipelineStage::FRAGMENT_SHADER,
@@ -297,7 +297,7 @@ auto canta::RenderGraph::addPass(std::string_view name, PassType type, RenderGro
     return _passes.back();
 }
 
-auto canta::RenderGraph::addClearPass(std::string_view name, canta::ImageIndex index, const std::array<f32, 4>& value, RenderGroup group) -> RenderPass & {
+auto canta::RenderGraph::addClearPass(std::string_view name, canta::ImageIndex index, const ClearValue& value, RenderGroup group) -> RenderPass & {
     auto& clearPass = addPass(name, PassType::TRANSFER, group);
     clearPass.addTransferWrite(index);
     clearPass.setExecuteFunction([index, value] (CommandBuffer& cmd, RenderGraph& graph) {

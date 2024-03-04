@@ -88,10 +88,10 @@ namespace canta {
     class RenderPass {
     public:
 
-        auto addColourWrite(ImageIndex index, const std::array<f32, 4>& clearColor = { 0, 0, 0, 1 }) -> RenderPass&;
+        auto addColourWrite(ImageIndex index, const ClearValue& clearColor = std::to_array({ 0.f, 0.f, 0.f, 1.f })) -> RenderPass&;
         auto addColourRead(ImageIndex index) -> RenderPass&;
 
-        auto addDepthWrite(ImageIndex index, const std::array<f32, 4>& clearColor = { 1, 0, 0, 0 }) -> RenderPass&;
+        auto addDepthWrite(ImageIndex index, const ClearValue& clearColor = DepthClearValue{ .depth = 1.f, .stencil = 0 }) -> RenderPass&;
         auto addDepthRead(ImageIndex index) -> RenderPass&;
 
         auto addStorageImageWrite(ImageIndex index, PipelineStage stage) -> RenderPass&;
@@ -173,7 +173,7 @@ namespace canta {
         struct Attachment {
             i32 index = -1;
             ImageLayout layout = ImageLayout::UNDEFINED;
-            std::array<f32, 4> clearColor = { 0, 0, 0, 1 };
+            ClearValue clearColor = std::to_array({ 0.f, 0.f, 0.f, 1.f });
         };
         std::vector<Attachment> _colourAttachments = {};
         Attachment _depthAttachment = {};
@@ -223,7 +223,7 @@ namespace canta {
         RenderGraph() = default;
 
         auto addPass(std::string_view name, PassType type = PassType::COMPUTE, RenderGroup group = {}) -> RenderPass&;
-        auto addClearPass(std::string_view name, ImageIndex index, const std::array<f32, 4>& value = { 0, 0, 0, 1 }, RenderGroup group = {}) -> RenderPass&;
+        auto addClearPass(std::string_view name, ImageIndex index, const ClearValue& value = std::to_array({ 0.f, 0.f, 0.f, 1.f }), RenderGroup group = {}) -> RenderPass&;
         auto addBlitPass(std::string_view name, ImageIndex src, ImageIndex dst, Filter filter = Filter::LINEAR, RenderGroup group = {}) -> RenderPass&;
 
         auto getGroup(std::string_view name, const std::array<f32, 4>& colour = { 0, 1, 0, 1 }) -> RenderGroup;

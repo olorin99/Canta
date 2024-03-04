@@ -3,6 +3,8 @@
 
 #include <volk.h>
 #include <type_traits>
+#include <variant>
+#include <array>
 
 namespace canta {
 
@@ -434,7 +436,174 @@ namespace canta {
         }
         return 0;
     }
-    
+
+    constexpr bool isFloatFormat(Format format) {
+        switch (format) {
+            case Format::RG4_UNORM:
+            case Format::RGBA4_UNORM:
+            case Format::BGRA4_UNORM:
+            case Format::RGB5_UNORM:
+            case Format::BGR5_UNORM:
+            case Format::RGB5A1_UNORM:
+            case Format::BGR5A1_UNORM:
+            case Format::A1RGB5_UNORM:
+            case Format::R8_UNORM:
+            case Format::R8_USCALED:
+            case Format::R8_SSCALED:
+            case Format::R8_SRGB:
+            case Format::RG8_UNORM:
+            case Format::RG8_SNORM:
+            case Format::RG8_USCALED:
+            case Format::RG8_SSCALED:
+            case Format::RG8_SRGB:
+            case Format::RGB8_UNORM:
+            case Format::RGB8_SNORM:
+            case Format::RGB8_USCALED:
+            case Format::RGB8_SSCALED:
+            case Format::RGB8_SRGB:
+            case Format::BGR8_UNORM:
+            case Format::BGR8_SNORM:
+            case Format::BGR8_USCALED:
+            case Format::BGR8_SSCALED:
+            case Format::BGR8_SRGB:
+            case Format::RGBA8_UNORM:
+            case Format::RGBA8_SNORM:
+            case Format::RGBA8_USCALED:
+            case Format::RGBA8_SSCALED:
+            case Format::RGBA8_SRGB:
+            case Format::BGRA8_UNORM:
+            case Format::BGRA8_SNORM:
+            case Format::BGRA8_USCALED:
+            case Format::BGRA8_SSCALED:
+            case Format::BGRA8_SRGB:
+            case Format::ABGR8_UNORM:
+            case Format::ABGR8_SNORM:
+            case Format::ABGR8_USCALED:
+            case Format::ABGR8_SSCALED:
+            case Format::ABGR8_SRGB:
+            case Format::A2RGB10_UNORM:
+            case Format::A2RGB10_SNORM:
+            case Format::A2RGB10_USCALED:
+            case Format::A2RGB10_SSCALED:
+            case Format::A2BGR10_UNORM:
+            case Format::A2BGR10_SNORM:
+            case Format::A2BGR10_USCALED:
+            case Format::A2BGR10_SSCALED:
+            case Format::R16_UNORM:
+            case Format::R16_SNORM:
+            case Format::R16_USCALED:
+            case Format::R16_SSCALED:
+            case Format::R16_SFLOAT:
+            case Format::RG16_UNORM:
+            case Format::RG16_SNORM:
+            case Format::RG16_USCALED:
+            case Format::RG16_SSCALED:
+            case Format::RG16_SFLOAT:
+            case Format::RGB16_UNORM:
+            case Format::RGB16_SNORM:
+            case Format::RGB16_USCALED:
+            case Format::RGB16_SSCALED:
+            case Format::RGB16_SFLOAT:
+            case Format::RGBA16_UNORM:
+            case Format::RGBA16_SNORM:
+            case Format::RGBA16_USCALED:
+            case Format::RGBA16_SSCALED:
+            case Format::RGBA16_SFLOAT:
+            case Format::R32_SFLOAT:
+            case Format::RG32_SFLOAT:
+            case Format::RGB32_SFLOAT:
+            case Format::RGBA32_SFLOAT:
+            case Format::R64_SFLOAT:
+            case Format::RG64_SFLOAT:
+            case Format::RGB64_SFLOAT:
+            case Format::RGBA64_SFLOAT:
+            case Format::B10GR11_UFLOAT:
+            case Format::E5BGR9_UFLOAT:
+                //TODO: check for more
+                return true;
+            default:
+                return false;
+        }
+        return false;
+    }
+
+    constexpr bool isIntFormat(Format format) {
+        switch (format) {
+            case Format::R8_SINT:
+            case Format::RG8_SINT:
+            case Format::RGB8_SINT:
+            case Format::BGR8_SINT:
+            case Format::RGBA8_SINT:
+            case Format::BGRA8_SINT:
+            case Format::ABGR8_SINT:
+            case Format::A2RGB10_SINT:
+            case Format::A2BGR10_SINT:
+            case Format::R16_SINT:
+            case Format::RG16_SINT:
+            case Format::RGB16_SINT:
+            case Format::RGBA16_SINT:
+            case Format::R32_SINT:
+            case Format::RG32_SINT:
+            case Format::RGB32_SINT:
+            case Format::RGBA32_SINT:
+            case Format::R64_SINT:
+            case Format::RG64_SINT:
+            case Format::RGB64_SINT:
+            case Format::RGBA64_SINT:
+                //TODO: check for more
+                return true;
+            default:
+                return false;
+        }
+        return false;
+    }
+
+    constexpr bool isUintFormat(Format format) {
+        switch (format) {
+            case Format::R8_UINT:
+            case Format::RG8_UINT:
+            case Format::RGB8_UINT:
+            case Format::BGR8_UINT:
+            case Format::RGBA8_UINT:
+            case Format::BGRA8_UINT:
+            case Format::ABGR8_UINT:
+            case Format::A2RGB10_UINT:
+            case Format::A2BGR10_UINT:
+            case Format::R16_UINT:
+            case Format::RG16_UINT:
+            case Format::RGB16_UINT:
+            case Format::RGBA16_UINT:
+            case Format::R32_UINT:
+            case Format::RG32_UINT:
+            case Format::RGB32_UINT:
+            case Format::RGBA32_UINT:
+            case Format::R64_UINT:
+            case Format::RG64_UINT:
+            case Format::RGB64_UINT:
+            case Format::RGBA64_UINT:
+                //TODO: check for more
+                return true;
+            default:
+                return false;
+        }
+        return false;
+    }
+
+    constexpr inline bool isDepthFormat(Format format) {
+        switch (format) {
+            case Format::D16_UNORM:
+            case Format::D16_UNORM_S8_UINT:
+            case Format::D24_UNORM_S8_UINT:
+            case Format::D32_SFLOAT:
+            case Format::D32_SFLOAT_S8_UINT:
+                //TODO: check for more
+                return true;
+            default:
+                return false;
+        }
+        return false;
+    }
+
     constexpr bool isBlockFormat(Format format) {
         switch (format) {
             case Format::BC1_RGB_UNORM:
@@ -456,6 +625,10 @@ namespace canta {
                 return true;
         }
         return false;
+    }
+
+    constexpr inline VkImageAspectFlagBits aspectMask(Format format) {
+        return isDepthFormat(format) ? VK_IMAGE_ASPECT_DEPTH_BIT : VK_IMAGE_ASPECT_COLOR_BIT;
     }
 
     enum class ImageLayout {
@@ -748,6 +921,41 @@ namespace canta {
         NONE = VK_ATTACHMENT_STORE_OP_NONE,
     };
 
+    struct DepthClearValue {
+        f32 depth;
+        u32 stencil;
+    };
+
+    using ClearValue = std::variant<std::array<f32, 4>, std::array<i32, 4>, std::array<u32, 4>, DepthClearValue>;
+
+    constexpr auto loadVkClearValue(Format format, const ClearValue& value) {
+        VkClearValue clearValue = {};
+        if (value.index() == 0) {
+            auto colour = get<std::array<f32, 4>>(value);
+            clearValue.color.float32[0] = colour[0];
+            clearValue.color.float32[1] = colour[1];
+            clearValue.color.float32[2] = colour[2];
+            clearValue.color.float32[3] = colour[3];
+        } else if (value.index() == 1) {
+            auto colour = get<std::array<i32, 4>>(value);
+            clearValue.color.int32[0] = colour[0];
+            clearValue.color.int32[1] = colour[1];
+            clearValue.color.int32[2] = colour[2];
+            clearValue.color.int32[3] = colour[3];
+        } else if (value.index() == 2) {
+            auto colour = get<std::array<u32, 4>>(value);
+            clearValue.color.int32[0] = colour[0];
+            clearValue.color.int32[1] = colour[1];
+            clearValue.color.int32[2] = colour[2];
+            clearValue.color.int32[3] = colour[3];
+        } else if (value.index() == 3) {
+            auto colour = get<DepthClearValue>(value);
+            clearValue.depthStencil.depth = colour.depth;
+            clearValue.depthStencil.stencil = colour.stencil;
+        }
+        return clearValue;
+    }
+
 #define ENUM_OPERATOR(enum, op) \
     constexpr enum operator op(enum lhs, enum rhs) noexcept { \
         return static_cast<enum>(static_cast<std::underlying_type<enum>::type>(lhs) op static_cast<std::underlying_type<enum>::type>(rhs)); \
@@ -788,25 +996,6 @@ namespace canta {
 
     ENUM_OPERATOR(QueueType, |)
 
-
-    constexpr inline bool isDepthFormat(Format format) {
-        switch (format) {
-            case Format::D16_UNORM:
-            case Format::D16_UNORM_S8_UINT:
-            case Format::D24_UNORM_S8_UINT:
-            case Format::D32_SFLOAT:
-            case Format::D32_SFLOAT_S8_UINT:
-                //TODO: check for more
-                return true;
-            default:
-                return false;
-        }
-        return false;
-    }
-
-    constexpr inline VkImageAspectFlagBits aspectMask(Format format) {
-        return isDepthFormat(format) ? VK_IMAGE_ASPECT_DEPTH_BIT : VK_IMAGE_ASPECT_COLOR_BIT;
-    }
 }
 
 #endif //CANTA_ENUMS_H

@@ -28,7 +28,7 @@ namespace canta {
         ImageLayout imageLayout = ImageLayout::UNDEFINED;
         LoadOp loadOp = LoadOp::NONE;
         StoreOp storeOp = StoreOp::NONE;
-        std::array<f32, 4> clearColour = { 0, 0, 0, 1 };
+        ClearValue clearColour = std::to_array({ 0.f, 0.f, 0.f, 1.f });
     };
 
     struct RenderingInfo {
@@ -135,7 +135,7 @@ namespace canta {
             Filter filter = Filter::LINEAR;
         };
         void blit(BlitInfo info);
-        void clearImage(ImageHandle handle, ImageLayout layout = ImageLayout::GENERAL, const std::array<f32, 4>& clearColour = { 0, 0, 0, 1 });
+        void clearImage(ImageHandle handle, ImageLayout layout = ImageLayout::GENERAL, const ClearValue& clearColour = std::to_array({ 0, 0, 0, 1 }));
         void clearBuffer(BufferHandle handle, u32 clearValue = 0, u32 offset = 0, u32 size = 0);
         struct BufferImageCopyInfo {
             BufferHandle buffer = {};

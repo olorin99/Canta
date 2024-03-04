@@ -87,12 +87,7 @@ void canta::CommandBuffer::beginRendering(RenderingInfo info) {
 
     std::vector<VkRenderingAttachmentInfo> colourAttachments(info.colourAttachments.size());
     for (u32 i = 0; i < info.colourAttachments.size(); i++) {
-        VkClearValue clearValue = {
-                info.colourAttachments[i].clearColour[0],
-                info.colourAttachments[i].clearColour[1],
-                info.colourAttachments[i].clearColour[2],
-                info.colourAttachments[i].clearColour[3],
-        };
+        VkClearValue clearValue = loadVkClearValue(info.colourAttachments[i].image->format(), info.colourAttachments[i].clearColour);
         colourAttachments[i] = {
                 .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
                 .imageView = info.colourAttachments[i].image->defaultView()->view(),
@@ -107,12 +102,7 @@ void canta::CommandBuffer::beginRendering(RenderingInfo info) {
     }
     renderingInfo.colorAttachmentCount = colourAttachments.size();
     renderingInfo.pColorAttachments = colourAttachments.data();
-    VkClearValue depthClearValue = {
-            info.depthAttachment.clearColour[0],
-            info.depthAttachment.clearColour[1],
-            info.depthAttachment.clearColour[2],
-            info.depthAttachment.clearColour[3],
-    };
+
     VkRenderingAttachmentInfo depthAttachment = {
             .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
             .imageLayout = static_cast<VkImageLayout>(info.depthAttachment.imageLayout),
@@ -121,9 +111,10 @@ void canta::CommandBuffer::beginRendering(RenderingInfo info) {
             .resolveImageLayout = VK_IMAGE_LAYOUT_UNDEFINED,
             .loadOp = static_cast<VkAttachmentLoadOp>(info.depthAttachment.loadOp),
             .storeOp = static_cast<VkAttachmentStoreOp>(info.depthAttachment.storeOp),
-            .clearValue = depthClearValue
+            .clearValue = {}
     };
     if (info.depthAttachment.image) {
+        depthAttachment.clearValue = loadVkClearValue(info.depthAttachment.image->format(), info.depthAttachment.clearColour);
         depthAttachment.imageView = info.depthAttachment.image->defaultView()->view();
         renderingInfo.pDepthAttachment = &depthAttachment;
     }
@@ -348,8 +339,8 @@ void canta::CommandBuffer::blit(canta::CommandBuffer::BlitInfo info) {
     vkCmdBlitImage(_buffer, info.src->image(), static_cast<VkImageLayout>(info.srcLayout), info.dst->image(), static_cast<VkImageLayout>(info.dstLayout), 1, &blit, static_cast<VkFilter>(info.filter));
 }
 
-void canta::CommandBuffer::clearImage(ImageHandle handle, ImageLayout layout, const std::array<f32, 4> &clearColour) {
-    VkClearColorValue clearValue = { clearColour[0], clearColour[1], clearColour[2], clearColour[3] };
+void canta::CommandBuffer::clearImage(ImageHandle handle, ImageLayout layout, const ClearValue &clearColour) {
+    VkClearColorValue clearValue = loadVkClearValue(handle->format(), clearColour).color;
     VkImageSubresourceRange range = {};
     range.aspectMask = aspectMask(handle->format());
     range.baseMipLevel = 0;
