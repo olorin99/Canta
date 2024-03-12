@@ -695,7 +695,7 @@ auto canta::RenderGraph::execute(std::span<Semaphore::Pair> waits, std::span<Sem
 }
 
 void canta::RenderGraph::buildBarriers() {
-    auto findNextAccess = [&](i32 startIndex, u32 resource) -> std::tuple<i32, i32, RenderPass::ResourceAccess> {
+    auto findNextAccess = [&](i32 startIndex, u32 resource) -> std::tuple<i32, i32, ResourceAccess> {
         for (i32 passIndex = startIndex + 1; passIndex < _orderedPasses.size(); passIndex++) {
             auto& pass = _orderedPasses[passIndex];
             for (i32 outputIndex = 0; outputIndex < pass->_outputs.size(); outputIndex++) {
@@ -709,7 +709,7 @@ void canta::RenderGraph::buildBarriers() {
         }
         return { -1, -1, {} };
     };
-    auto findPrevAccess = [&](i32 startIndex, u32 resource) -> std::tuple<i32, i32, RenderPass::ResourceAccess> {
+    auto findPrevAccess = [&](i32 startIndex, u32 resource) -> std::tuple<i32, i32, ResourceAccess> {
         for (i32 passIndex = startIndex; passIndex > -1; passIndex--) {
             auto& pass = _orderedPasses[passIndex];
             for (i32 outputIndex = 0; outputIndex < pass->_outputs.size(); outputIndex++) {
@@ -861,7 +861,7 @@ void canta::RenderGraph::buildResources() {
 }
 
 void canta::RenderGraph::buildRenderAttachments() {
-    auto findNextAccess = [&](i32 startIndex, u32 resource) -> std::tuple<i32, i32, RenderPass::ResourceAccess> {
+    auto findNextAccess = [&](i32 startIndex, u32 resource) -> std::tuple<i32, i32, ResourceAccess> {
         for (i32 passIndex = startIndex + 1; passIndex < _orderedPasses.size(); passIndex++) {
             auto& pass = _orderedPasses[passIndex];
             for (i32 outputIndex = 0; outputIndex < pass->_outputs.size(); outputIndex++) {
@@ -876,7 +876,7 @@ void canta::RenderGraph::buildRenderAttachments() {
         return { -1, -1, {} };
     };
 
-    auto findCurrAccess = [&](RenderPass& pass, u32 resource) -> std::tuple<bool, RenderPass::ResourceAccess> {
+    auto findCurrAccess = [&](RenderPass& pass, u32 resource) -> std::tuple<bool, ResourceAccess> {
         for (auto& input : pass._inputs) {
             if (input.index == resource)
                 return { true, input };
@@ -888,7 +888,7 @@ void canta::RenderGraph::buildRenderAttachments() {
         return { false, {} };
     };
 
-    auto findPrevAccess = [&](i32 startIndex, u32 resource) -> std::tuple<i32, i32, RenderPass::ResourceAccess> {
+    auto findPrevAccess = [&](i32 startIndex, u32 resource) -> std::tuple<i32, i32, ResourceAccess> {
         for (i32 passIndex = startIndex; passIndex > -1; passIndex--) {
             auto& pass = _orderedPasses[passIndex];
             for (i32 outputIndex = 0; outputIndex < pass->_outputs.size(); outputIndex++) {
