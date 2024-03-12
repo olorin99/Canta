@@ -78,6 +78,14 @@ namespace canta {
         std::string_view name = {};
     };
 
+    struct ResourceAccess {
+        i32 id = 0;
+        u32 index = 0;
+        Access access = Access::NONE;
+        PipelineStage stage = PipelineStage::NONE;
+        ImageLayout layout = ImageLayout::UNDEFINED;
+    };
+
     class RenderGraph;
 
     enum class PassType {
@@ -143,6 +151,10 @@ namespace canta {
         template <u8 N>
         auto aliasBufferOutputs() const -> std::array<BufferIndex, N>;
 
+        auto name() const -> std::string_view { return _name; }
+        auto inputs() const -> std::span<const ResourceAccess> { return _inputs; }
+        auto output() const -> std::span<const ResourceAccess> { return _outputs; }
+
     private:
         friend RenderGraph;
 
@@ -158,14 +170,6 @@ namespace canta {
         PassType _type = PassType::COMPUTE;
 
         std::function<void(CommandBuffer&, RenderGraph&)> _execute = {};
-
-        struct ResourceAccess {
-            i32 id = 0;
-            u32 index = 0;
-            Access access = Access::NONE;
-            PipelineStage stage = PipelineStage::NONE;
-            ImageLayout layout = ImageLayout::UNDEFINED;
-        };
 
         std::vector<ResourceAccess> _inputs = {};
         std::vector<ResourceAccess> _outputs = {};
