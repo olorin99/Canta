@@ -11,6 +11,12 @@
 
 int main() {
 
+    std::printf("%s", canta::formatString(canta::Format::RGBA8_UNORM));
+    std::printf("%s", canta::formatString(canta::Format::RGBA32_SFLOAT));
+    std::printf("%s", canta::formatString(canta::Format::R32_UINT));
+    std::printf("%s", canta::formatString(canta::Format::BC7_UNORM));
+    std::printf("%s", canta::formatString(canta::Format::R16_UNORM));
+
     canta::SDLWindow window("Hello Triangle", 1920, 1080);
 
     auto device = canta::Device::create({
