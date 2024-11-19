@@ -27,24 +27,32 @@ namespace canta {
         bool depthClamp = false;
         bool rasterDiscard = false;
         bool depthBias = false;
+
+        auto operator<=>(const RasterState&) const = default;
     };
 
     struct DepthState {
         bool test = false;
         bool write = false;
         CompareOp compareOp = CompareOp::LESS;
+
+        auto operator<=>(const DepthState&) const = default;
     };
 
     struct BlendState {
         bool blend = false;
         BlendFactor srcFactor = BlendFactor::ONE;
         BlendFactor dstFactor = BlendFactor::ONE;
+
+        auto operator<=>(const BlendState&) const = default;
     };
 
     struct VertexInputBinding {
         u32 binding = 0;
         u32 stride = 0;
         u32 inputRate = 0;
+
+        auto operator<=>(const VertexInputBinding&) const = default;
     };
 
     struct VertexInputAttribute {
@@ -52,6 +60,8 @@ namespace canta {
         u32 binding = 0;
         Format format = Format::RGBA32_SFLOAT;
         u32 offset = 0;
+
+        auto operator<=>(const VertexInputAttribute&) const = default;
     };
 
     enum PipelineMode {
@@ -101,6 +111,7 @@ namespace canta {
         auto layout() const -> VkPipelineLayout { return _layout; }
         auto mode() const -> PipelineMode { return _mode; }
         auto interface() const -> const ShaderInterface& { return _interface; }
+        auto info() const -> const CreateInfo& { return _info; }
 
     private:
         friend Device;
@@ -111,6 +122,7 @@ namespace canta {
         PipelineMode _mode = PipelineMode::GRAPHICS;
         ShaderInterface _interface = {};
         std::string _name = {};
+        CreateInfo _info = {};
 
 
     };
