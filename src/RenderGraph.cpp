@@ -297,6 +297,25 @@ auto canta::RenderGraph::addPass(std::string_view name, PassType type, RenderGro
     return _passes.back();
 }
 
+auto canta::RenderGraph::addPass(canta::RenderPass &&pass) -> RenderPass & {
+    u32 index = _passes.size();
+    _passes.push_back(std::move(pass));
+    _passes.back()._graph = this;
+    if (_timingEnabled && _timingMode != TimingMode::SINGLE) {
+        if (_timers[_device->flyingIndex()].size() <= index) {
+            _timers[_device->flyingIndex()].emplace_back(std::make_pair(_passes.back().name(), _device->createTimer()));
+        } else
+            _timers[_device->flyingIndex()][index].first = _passes.back().name();
+    }
+    if (_pipelineStatisticsEnabled && _individualPipelineStatistics) {
+        if (_pipelineStats[_device->flyingIndex()].size() <= index) {
+            _pipelineStats[_device->flyingIndex()].emplace_back(std::make_pair(_passes.back().name(), _device->createPipelineStatistics()));
+        } else
+            _pipelineStats[_device->flyingIndex()][index].first = _passes.back().name();
+    }
+    return _passes.back();
+}
+
 auto canta::RenderGraph::addClearPass(std::string_view name, canta::ImageIndex index, const ClearValue& value, RenderGroup group) -> RenderPass & {
     auto& clearPass = addPass(name, PassType::TRANSFER, group);
     clearPass.addTransferWrite(index);
