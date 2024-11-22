@@ -22,6 +22,7 @@
 #include <Canta/PipelineStatistics.h>
 #include <Canta/Queue.h>
 #include <Ende/time/StopWatch.h>
+#include <Canta/util.h>
 
 #define VMA_STATIC_VULKAN_FUNCTIONS 0
 #define VMA_DYNAMIC_VULKAN_FUNCTIONS 0
@@ -230,6 +231,11 @@ namespace canta {
         };
         auto resourceStats() const -> ResourceStats;
 
+        auto getFrameDebugMarkers(u8 frame) const -> const std::vector<std::array<u8, util::debugMarkerSize>>& {
+            assert(frame < FRAMES_IN_FLIGHT);
+            return _markerCommands[frame];
+        }
+
     private:
         friend CommandBuffer;
 
@@ -281,7 +287,7 @@ namespace canta {
         std::vector<FreeStat> _freePipelineStats = {};
 
         std::array<BufferHandle, FRAMES_IN_FLIGHT> _markerBuffers = {};
-        std::vector<std::string> _markerCommands[FRAMES_IN_FLIGHT] = {};
+        std::vector<std::array<u8, util::debugMarkerSize>> _markerCommands[FRAMES_IN_FLIGHT] = {};
         u32 _markerOffset = 0;
         u32 _marker = 0;
 

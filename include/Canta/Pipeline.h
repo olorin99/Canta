@@ -111,7 +111,7 @@ namespace canta {
         auto layout() const -> VkPipelineLayout { return _layout; }
         auto mode() const -> PipelineMode { return _mode; }
         auto interface() const -> const ShaderInterface& { return _interface; }
-        auto info() const -> const CreateInfo& { return _info; }
+//        auto info() const -> const CreateInfo& { return _info; }
 
     private:
         friend Device;
@@ -122,7 +122,7 @@ namespace canta {
         PipelineMode _mode = PipelineMode::GRAPHICS;
         ShaderInterface _interface = {};
         std::string _name = {};
-        CreateInfo _info = {};
+//        CreateInfo _info = {};
 
 
     };

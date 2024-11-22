@@ -1106,7 +1106,7 @@ auto canta::Device::createPipeline(Pipeline::CreateInfo info, PipelineHandle old
     handle->_mode = mode;
     handle->_interface = interface;
     handle->_name = info.name;
-    handle->_info = std::move(info);
+//    handle->_info = info;
 
     return handle;
 }

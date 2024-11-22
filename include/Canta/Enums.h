@@ -944,6 +944,39 @@ namespace canta {
         MESH_SHADER = VK_PIPELINE_STAGE_MESH_SHADER_BIT_EXT,
     };
 
+    constexpr const char* pipelineStageString(PipelineStage stage) {
+        switch (stage) {
+            TO_STRING_ENUM(PipelineStage::TOP)
+            TO_STRING_ENUM(PipelineStage::DRAW_INDIRECT)
+            TO_STRING_ENUM(PipelineStage::VERTEX_INPUT)
+            TO_STRING_ENUM(PipelineStage::VERTEX_SHADER)
+            TO_STRING_ENUM(PipelineStage::TESS_CONTROL_SHADER)
+            TO_STRING_ENUM(PipelineStage::TESS_EVAL_SHADER)
+            TO_STRING_ENUM(PipelineStage::GEOMETRY_SHADER)
+            TO_STRING_ENUM(PipelineStage::FRAGMENT_SHADER)
+            TO_STRING_ENUM(PipelineStage::EARLY_FRAGMENT_TEST)
+            TO_STRING_ENUM(PipelineStage::LATE_FRAGMENT_TEST)
+            TO_STRING_ENUM(PipelineStage::COLOUR_OUTPUT)
+            TO_STRING_ENUM(PipelineStage::COMPUTE_SHADER)
+            TO_STRING_ENUM(PipelineStage::TRANSFER)
+            TO_STRING_ENUM(PipelineStage::BOTTOM)
+            TO_STRING_ENUM(PipelineStage::HOST)
+            TO_STRING_ENUM(PipelineStage::ALL_GRAPHICS)
+            TO_STRING_ENUM(PipelineStage::ALL_COMMANDS)
+            TO_STRING_ENUM(PipelineStage::NONE)
+            TO_STRING_ENUM(PipelineStage::FEEDBACK)
+            TO_STRING_ENUM(PipelineStage::CONDITIONAL_RENDERING)
+            TO_STRING_ENUM(PipelineStage::ACCELERATION_STRCUTURE_BUILD)
+            TO_STRING_ENUM(PipelineStage::RAY_TRACING_SHADER)
+            TO_STRING_ENUM(PipelineStage::FRAGMENT_DENSITY_PROCESS)
+            TO_STRING_ENUM(PipelineStage::FRAGMENT_SHADING_RATE_ATTACHMENT)
+            TO_STRING_ENUM(PipelineStage::COMMAND_PREPROCSESS)
+            TO_STRING_ENUM(PipelineStage::TASK_SHADER)
+            TO_STRING_ENUM(PipelineStage::MESH_SHADER)
+        }
+        return STRINGIFY(PipelineStage::NONE);
+    }
+
     enum class Access {
         INDIRECT = VK_ACCESS_INDIRECT_COMMAND_READ_BIT,
         INDEX_READ = VK_ACCESS_INDEX_READ_BIT,

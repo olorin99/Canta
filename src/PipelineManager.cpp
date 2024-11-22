@@ -243,36 +243,36 @@ auto canta::PipelineManager::getPipeline(Pipeline::CreateInfo info) -> PipelineH
     return it1.first->second;
 }
 
-auto canta::PipelineManager::getPipeline(const canta::Pipeline &old, Pipeline::CreateInfo overrideInfo) -> PipelineHandle {
-    Pipeline::CreateInfo info = {
-            .vertex = (old.info().vertex.module == ShaderHandle() && old.info().vertex.entryPoint == "main") ? overrideInfo.vertex : old.info().vertex,
-            .tesselationControl = (old.info().tesselationControl.module == ShaderHandle() && old.info().tesselationControl.entryPoint == "main") ? overrideInfo.tesselationControl : old.info().tesselationControl,
-            .tesselationEvaluation = (old.info().tesselationEvaluation.module == ShaderHandle() && old.info().tesselationEvaluation.entryPoint == "main") ? overrideInfo.tesselationEvaluation : old.info().tesselationEvaluation,
-            .geometry = (old.info().geometry.module == ShaderHandle() && old.info().geometry.entryPoint == "main") ? overrideInfo.geometry : old.info().geometry,
-            .fragment = (old.info().fragment.module == ShaderHandle() && old.info().fragment.entryPoint == "main") ? overrideInfo.fragment : old.info().fragment,
-            .compute = (old.info().compute.module == ShaderHandle() && old.info().compute.entryPoint == "main") ? overrideInfo.compute : old.info().compute,
-            .rayGen = (old.info().rayGen.module == ShaderHandle() && old.info().rayGen.entryPoint == "main") ? overrideInfo.rayGen : old.info().rayGen,
-            .anyHit = (old.info().anyHit.module == ShaderHandle() && old.info().anyHit.entryPoint == "main") ? overrideInfo.anyHit : old.info().anyHit,
-            .closestHit = (old.info().closestHit.module == ShaderHandle() && old.info().closestHit.entryPoint == "main") ? overrideInfo.closestHit : old.info().closestHit,
-            .miss = (old.info().miss.module == ShaderHandle() && old.info().miss.entryPoint == "main") ? overrideInfo.miss : old.info().miss,
-            .intersection = (old.info().intersection.module == ShaderHandle() && old.info().intersection.entryPoint == "main") ? overrideInfo.intersection : old.info().intersection,
-            .callable = (old.info().callable.module == ShaderHandle() && old.info().callable.entryPoint == "main") ? overrideInfo.callable : old.info().callable,
-            .task = (old.info().task.module == ShaderHandle() && old.info().task.entryPoint == "main") ? overrideInfo.task : old.info().task,
-            .mesh = (old.info().mesh.module == ShaderHandle() && old.info().mesh.entryPoint == "main") ? overrideInfo.mesh : old.info().mesh,
-            .rasterState = (old.info().rasterState == RasterState{}) ? overrideInfo.rasterState : old.info().rasterState,
-            .depthState = (old.info().depthState == DepthState{}) ? overrideInfo.depthState : old.info().depthState,
-            .blendState = (old.info().blendState == BlendState{}) ? overrideInfo.blendState : old.info().blendState,
-            .inputBindings = (old.info().inputBindings.empty()) ? overrideInfo.inputBindings : old.info().inputBindings,
-            .inputAttributes = (old.info().inputAttributes.empty()) ? overrideInfo.inputAttributes : old.info().inputAttributes,
-            .topology = (old.info().topology == PrimitiveTopology::TRIANGLE_LIST) ? overrideInfo.topology : old.info().topology,
-            .primitiveRestart = (old.info().primitiveRestart == false) ? overrideInfo.primitiveRestart : old.info().primitiveRestart,
-            .colourFormats = (old.info().colourFormats.empty()) ? overrideInfo.colourFormats : old.info().colourFormats,
-            .depthFormat = (old.info().depthFormat == Format::UNDEFINED) ? overrideInfo.depthFormat : old.info().depthFormat,
-            .name = overrideInfo.name
-    };
-
-    return getPipeline(info);
-}
+//auto canta::PipelineManager::getPipeline(const canta::Pipeline &old, Pipeline::CreateInfo overrideInfo) -> PipelineHandle {
+//    Pipeline::CreateInfo info = {
+//            .vertex = (old.info().vertex.module == ShaderHandle() && old.info().vertex.entryPoint == "main") ? overrideInfo.vertex : old.info().vertex,
+//            .tesselationControl = (old.info().tesselationControl.module == ShaderHandle() && old.info().tesselationControl.entryPoint == "main") ? overrideInfo.tesselationControl : old.info().tesselationControl,
+//            .tesselationEvaluation = (old.info().tesselationEvaluation.module == ShaderHandle() && old.info().tesselationEvaluation.entryPoint == "main") ? overrideInfo.tesselationEvaluation : old.info().tesselationEvaluation,
+//            .geometry = (old.info().geometry.module == ShaderHandle() && old.info().geometry.entryPoint == "main") ? overrideInfo.geometry : old.info().geometry,
+//            .fragment = (old.info().fragment.module == ShaderHandle() && old.info().fragment.entryPoint == "main") ? overrideInfo.fragment : old.info().fragment,
+//            .compute = (old.info().compute.module == ShaderHandle() && old.info().compute.entryPoint == "main") ? overrideInfo.compute : old.info().compute,
+//            .rayGen = (old.info().rayGen.module == ShaderHandle() && old.info().rayGen.entryPoint == "main") ? overrideInfo.rayGen : old.info().rayGen,
+//            .anyHit = (old.info().anyHit.module == ShaderHandle() && old.info().anyHit.entryPoint == "main") ? overrideInfo.anyHit : old.info().anyHit,
+//            .closestHit = (old.info().closestHit.module == ShaderHandle() && old.info().closestHit.entryPoint == "main") ? overrideInfo.closestHit : old.info().closestHit,
+//            .miss = (old.info().miss.module == ShaderHandle() && old.info().miss.entryPoint == "main") ? overrideInfo.miss : old.info().miss,
+//            .intersection = (old.info().intersection.module == ShaderHandle() && old.info().intersection.entryPoint == "main") ? overrideInfo.intersection : old.info().intersection,
+//            .callable = (old.info().callable.module == ShaderHandle() && old.info().callable.entryPoint == "main") ? overrideInfo.callable : old.info().callable,
+//            .task = (old.info().task.module == ShaderHandle() && old.info().task.entryPoint == "main") ? overrideInfo.task : old.info().task,
+//            .mesh = (old.info().mesh.module == ShaderHandle() && old.info().mesh.entryPoint == "main") ? overrideInfo.mesh : old.info().mesh,
+//            .rasterState = (old.info().rasterState == RasterState{}) ? overrideInfo.rasterState : old.info().rasterState,
+//            .depthState = (old.info().depthState == DepthState{}) ? overrideInfo.depthState : old.info().depthState,
+//            .blendState = (old.info().blendState == BlendState{}) ? overrideInfo.blendState : old.info().blendState,
+//            .inputBindings = (old.info().inputBindings.empty()) ? overrideInfo.inputBindings : old.info().inputBindings,
+//            .inputAttributes = (old.info().inputAttributes.empty()) ? overrideInfo.inputAttributes : old.info().inputAttributes,
+//            .topology = (old.info().topology == PrimitiveTopology::TRIANGLE_LIST) ? overrideInfo.topology : old.info().topology,
+//            .primitiveRestart = (old.info().primitiveRestart == false) ? overrideInfo.primitiveRestart : old.info().primitiveRestart,
+//            .colourFormats = (old.info().colourFormats.empty()) ? overrideInfo.colourFormats : old.info().colourFormats,
+//            .depthFormat = (old.info().depthFormat == Format::UNDEFINED) ? overrideInfo.depthFormat : old.info().depthFormat,
+//            .name = overrideInfo.name
+//    };
+//
+//    return getPipeline(info);
+//}
 
 auto loadFromFile(canta::PipelineManager& manager, const std::filesystem::path &path, std::span<const canta::Macro> additionalMacros = {}) -> canta::Pipeline::CreateInfo;
 auto canta::PipelineManager::getPipeline(const std::filesystem::path &path, std::span<const Macro> additionalMacros) -> PipelineHandle {

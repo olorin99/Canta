@@ -253,6 +253,16 @@ void main() {
             ImGui::Text("Image: %d", renderGraphStats.images);
             ImGui::Text("Buffers: %d", renderGraphStats.buffers);
             ImGui::Text("Command Buffers: %d", renderGraphStats.commandBuffers);
+
+            if (ImGui::TreeNode("markers")) {
+                auto& markers = device->getFrameDebugMarkers(device->framePrevValue() % canta::FRAMES_IN_FLIGHT);
+                for (u32 i = 0; auto& marker : markers) {
+                    auto markerType = canta::util::getMarkerType(marker);
+                    auto markerStage = canta::util::getMarkerStage(marker);
+                    ImGui::Text("(%u) %s in %s", i++, canta::util::markerString(markerType), canta::pipelineStageString(markerStage));
+                }
+                ImGui::TreePop();
+            }
         }
         ImGui::End();
 

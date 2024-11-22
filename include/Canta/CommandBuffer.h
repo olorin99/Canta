@@ -7,6 +7,7 @@
 #include <span>
 #include <Canta/ResourceList.h>
 #include <Ende/math/Vec.h>
+#include <Canta/util.h>
 
 namespace canta {
 
@@ -169,7 +170,7 @@ namespace canta {
         void pushDebugLabel(std::string_view label, std::array<f32, 4> colour = { 0, 1, 0, 1 });
         void popDebugLabel();
 
-        void writeMarker(PipelineStage stage, std::string_view command);
+        void writeMarker(PipelineStage stage, std::array<u8, util::debugMarkerSize> marker);
 
         struct Stats {
             u32 drawCalls = 0;
