@@ -31,7 +31,7 @@ namespace canta {
 
         Handle() = default;
         ~Handle() {
-            release();
+            decrement(_data);
         }
 
         Handle(const Handle& rhs)
@@ -39,20 +39,31 @@ namespace canta {
             _data(rhs._data),
             _hash(rhs._hash)
         {
-            if (_data)
-                ++_data->count;
+            increment(_data);
+        }
+
+        Handle(Handle&& rhs) noexcept {
+            std::swap(_list, rhs._list);
+            std::swap(_data, rhs._data);
+            std::swap(_hash, rhs._hash);
         }
 
         auto operator=(const Handle& rhs) -> Handle& {
-            if (this == &rhs)
-                return *this;
+            if (this == &rhs) return *this;
 
-            auto newData = rhs._data;
-            if (newData)
-                ++newData->count;
-            release();
+            auto tmp = _data;
             _list = rhs._list;
-            _data = newData;
+            _data = rhs._data;
+            _hash = rhs._hash;
+            increment(_data);
+            decrement(tmp);
+            return *this;
+        }
+
+        auto operator=(Handle&& rhs) noexcept -> Handle& {
+            std::swap(_list, rhs._list);
+            std::swap(_data, rhs._data);
+            std::swap(_hash, rhs._hash);
             return *this;
         }
 
@@ -96,21 +107,34 @@ namespace canta {
             return 0;
         }
 
-        auto release() -> i32 {
-            if (_data) {
-                --_data->count;
-                if (_data->count < 1) {
-                    _data->deleter(_data->index);
-                }
-                return _data->count;
-            }
-            return 0;
+        auto release() -> Data* {
+            auto tmp = _data;
+            _data = nullptr;
+            return tmp;
         }
 
         auto hash() const -> u32 { return _hash; }
 
     private:
         friend List;
+
+        static inline auto increment(Data* data) -> i32 {
+            if (data) {
+                return ++data->count;
+            }
+            return -1;
+        }
+
+        static inline auto decrement(Data* data) -> i32 {
+            if (data) {
+                i32 newCount = ++data->count;
+                if (newCount < 1) {
+                    data->deleter(data->index);
+                }
+                return newCount;
+            }
+            return -1;
+        }
 
         List* _list = nullptr;
         Data* _data = nullptr;
