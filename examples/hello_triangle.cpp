@@ -1,6 +1,7 @@
 #include <Canta/Device.h>
 #include <Canta/SDLWindow.h>
 #include <Canta/util.h>
+#include <Canta/PipelineManager.h>
 
 int main() {
 
@@ -72,39 +73,26 @@ void main() {
 }
 )";
 
-    auto vertexSpirv = canta::util::compileGLSLToSpirv("triangleVertex", vertexGLSL, canta::ShaderStage::VERTEX).transform_error([](const auto& error) {
-        std::printf("%s", error.c_str());
-        return error;
-    }).value();
-    auto fragmentSpirv = canta::util::compileGLSLToSpirv("triangleFragment", fragmentGLSL, canta::ShaderStage::FRAGMENT).value();
-
-    auto vertexShader = device->createShaderModule({
-        .spirv = vertexSpirv,
-        .stage = canta::ShaderStage::VERTEX
-    });
-
-    auto fragmentShader = device->createShaderModule({
-        .spirv = fragmentSpirv,
-        .stage = canta::ShaderStage::FRAGMENT
-    });
-
-    auto pipelineShaders = std::to_array({
-        canta::ShaderInfo{
-            .module = vertexShader,
-            .entryPoint = "main"
-        },
-        canta::ShaderInfo{
-            .module = fragmentShader,
-            .entryPoint = "main"
-        }
+    auto pipelineManager = canta::PipelineManager::create({
+        .device = device.get()
     });
 
     auto colourFormat = swapchain->format();
 
-    auto pipeline = device->createPipeline({
-        .vertex = { .module = vertexShader },
-        .fragment = { .module = fragmentShader },
-        .colourFormats = {&colourFormat, 1},
+    auto pipeline = pipelineManager.getPipeline({
+        .vertex = {
+                .module = pipelineManager.getShader({
+                    .glsl = vertexGLSL,
+                    .stage = canta::ShaderStage::VERTEX
+                })
+        },
+        .fragment = {
+                .module = pipelineManager.getShader({
+                    .glsl = fragmentGLSL,
+                    .stage = canta::ShaderStage::FRAGMENT
+                })
+        },
+        .colourFormats = std::vector{ colourFormat }
     });
 
     auto sampler = device->createSampler({});

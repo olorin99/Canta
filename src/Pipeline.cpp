@@ -13,6 +13,9 @@ canta::Pipeline::Pipeline(canta::Pipeline &&rhs) noexcept {
     std::swap(_pipeline, rhs._pipeline);
     std::swap(_layout, rhs._layout);
     std::swap(_mode, rhs._mode);
+    std::swap(_interface, rhs._interface);
+    std::swap(_name, rhs._name);
+    std::swap(_info, rhs._info);
 }
 
 auto canta::Pipeline::operator=(canta::Pipeline &&rhs) noexcept -> Pipeline & {
@@ -20,5 +23,8 @@ auto canta::Pipeline::operator=(canta::Pipeline &&rhs) noexcept -> Pipeline & {
     std::swap(_pipeline, rhs._pipeline);
     std::swap(_layout, rhs._layout);
     std::swap(_mode, rhs._mode);
+    std::swap(_interface, rhs._interface);
+    std::swap(_name, rhs._name);
+    std::swap(_info, rhs._info);
     return *this;
 }
