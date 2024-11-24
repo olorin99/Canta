@@ -8,6 +8,7 @@
 #include <atomic>
 #include <cassert>
 #include <mutex>
+#include <spdlog/spdlog.h>
 
 namespace canta {
 
@@ -150,10 +151,14 @@ namespace canta {
         using ResourceHandle =  Handle<T, ResourceList<T>>;
         using ResourceData = ResourceHandle::Data;
 
-        static auto create(i32 destroyDelay) -> ResourceList<T> {
+        static auto create(i32 destroyDelay, spdlog::logger* logger = nullptr) -> ResourceList<T> {
             ResourceList<T> list = {};
             list._destroyDelay = destroyDelay;
             return list;
+        }
+
+        void setLogger(spdlog::logger* logger) {
+            _logger = logger;
         }
 
         auto allocate() -> ResourceHandle {
@@ -167,6 +172,7 @@ namespace canta {
                 _resources[index]->second.deleter = [this](i32 index) {
                     std::unique_lock lock(_mutex);
                     _destroyQueue.push_back(std::make_pair(_destroyDelay, index));
+                    if (_logger) _logger->info("Resource {} at index {} destroyed", typeid(T).name(), index);
                 };
             } else {
                 index = _resources.size();
@@ -175,6 +181,7 @@ namespace canta {
                 _resources.back()->second.deleter = [this](i32 index) {
                     std::unique_lock lock(_mutex);
                     _destroyQueue.push_back(std::make_pair(_destroyDelay, index));
+                    if (_logger) _logger->info("Resource {} at index {} destroyed", typeid(T).name(), index);
                 };
             }
             return getHandle(index);
@@ -237,6 +244,7 @@ namespace canta {
         std::vector<std::pair<i32, i32>> _destroyQueue = {};
         i32 _destroyDelay = 3;
         std::mutex _mutex = {};
+        spdlog::logger* _logger = nullptr;
 
     };
 

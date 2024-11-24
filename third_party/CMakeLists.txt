@@ -27,7 +27,7 @@ FetchContent_Declare(
 FetchContent_Declare(
     spdlog
     GIT_REPOSITORY  https://github.com/gabime/spdlog
-    GIT_TAG         1ef8d3ce348daf5d580e27fc68e91628ce42c1f4
+    GIT_TAG         "v1.x"
     FIND_PACKAGE_ARGS NAMES spdlog
 )
 

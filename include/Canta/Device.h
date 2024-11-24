@@ -23,6 +23,7 @@
 #include <Canta/Queue.h>
 #include <Ende/time/StopWatch.h>
 #include <Canta/util.h>
+#include <spdlog/spdlog.h>
 
 #define VMA_STATIC_VULKAN_FUNCTIONS 0
 #define VMA_DYNAMIC_VULKAN_FUNCTIONS 0
@@ -236,6 +237,8 @@ namespace canta {
             return _markerCommands[frame];
         }
 
+        auto logger() -> spdlog::logger& { return _logger; }
+
     private:
         friend CommandBuffer;
 
@@ -250,6 +253,8 @@ namespace canta {
         VkDevice _logicalDevice = VK_NULL_HANDLE;
 
         VkDebugUtilsMessengerEXT _debugMessenger = VK_NULL_HANDLE;
+
+        spdlog::logger _logger = spdlog::logger("logger");
 
         Properties _properties = {};
         std::vector<std::string> _enabledExtensions = {};

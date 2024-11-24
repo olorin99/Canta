@@ -1,5 +1,6 @@
 #include "Canta/Device.h"
-#include <spdlog/spdlog.h>
+#include <spdlog/sinks/stdout_color_sinks.h>
+#include <spdlog/sinks/basic_file_sink.h>
 
 #define VMA_IMPLEMENTATION
 #define VMA_STATIC_VULKAN_FUNCTIONS 0
@@ -28,18 +29,23 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
 ) {
     if (messageSeverity == VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT)
         return VK_FALSE;
+    canta::Device* device = reinterpret_cast<canta::Device*>(pUserData);
     switch (messageSeverity) {
         case VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT:
-            spdlog::info("{}", pCallbackData->pMessage);
+//            spdlog::info("{}", pCallbackData->pMessage);
+            device->logger().info("{}", pCallbackData->pMessage);
             break;
         case VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT:
-            spdlog::info("{}", pCallbackData->pMessage);
+//            spdlog::info("{}", pCallbackData->pMessage);
+            device->logger().info("{}", pCallbackData->pMessage);
             break;
         case VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT:
-            spdlog::warn("{}", pCallbackData->pMessage);
+//            spdlog::warn("{}", pCallbackData->pMessage);
+            device->logger().warn("{}", pCallbackData->pMessage);
             break;
         case VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT:
-            spdlog::error("{}", pCallbackData->pMessage);
+//            spdlog::error("{}", pCallbackData->pMessage);
+            device->logger().error("{}", pCallbackData->pMessage);
             break;
         default:
             break;
@@ -162,6 +168,12 @@ auto canta::Device::create(canta::Device::CreateInfo info) noexcept -> std::expe
 
     std::unique_ptr<Device> device(new Device());
 
+    auto consoleSink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
+    auto fileSink = std::make_shared<spdlog::sinks::basic_file_sink_mt>("logs/canta.log");
+    std::vector<spdlog::sink_ptr> sinks{ consoleSink, fileSink };
+    device->_logger = spdlog::logger("Canta Logger", sinks.begin(), sinks.end());
+
+    device->logger().info("Beginning Init");
     // init instance
     VK_TRY(volkInitialize());
 
@@ -198,7 +210,7 @@ auto canta::Device::create(canta::Device::CreateInfo info) noexcept -> std::expe
     debugInfo.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT;
     debugInfo.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT;
     debugInfo.pfnUserCallback = debugCallback;
-    debugInfo.pUserData = nullptr;
+    debugInfo.pUserData = device.get();
 
     auto createDebugUtils = (PFN_vkCreateDebugUtilsMessengerEXT)vkGetInstanceProcAddr(device->_instance, "vkCreateDebugUtilsMessengerEXT");
     VK_TRY(createDebugUtils(device->_instance, &debugInfo, nullptr, &device->_debugMessenger));
@@ -408,6 +420,8 @@ auto canta::Device::create(canta::Device::CreateInfo info) noexcept -> std::expe
 
     volkLoadDevice(device->_logicalDevice);
 
+    device->logger().info("Logical device creation successful");
+
     // get queues
     {
         VkQueue graphicsQueue;
@@ -581,6 +595,15 @@ auto canta::Device::create(canta::Device::CreateInfo info) noexcept -> std::expe
         .queueType = QueueType::GRAPHICS
     }).value();
 
+    device->_shaderList.setLogger(&device->_logger);
+    device->_pipelineList.setLogger(&device->_logger);
+    device->_imageList.setLogger(&device->_logger);
+    device->_imageViewList.setLogger(&device->_logger);
+    device->_bufferList.setLogger(&device->_logger);
+    device->_samplerList.setLogger(&device->_logger);
+
+    device->logger().info("Device creation complete");
+
     return device;
 }
 
@@ -621,6 +644,7 @@ canta::Device::~Device() {
 
     vkDestroyDevice(_logicalDevice, nullptr);
     vkDestroyInstance(_instance, nullptr);
+    logger().info("Device destroyed");
 }
 
 canta::Device::Device(canta::Device &&rhs) noexcept {
@@ -726,6 +750,8 @@ auto canta::Device::createSwapchain(Swapchain::CreateInfo info) -> std::expected
     swapchain.createSwapchain();
     swapchain.createSemaphores();
 
+    logger().info("Swapchain created");
+
     return swapchain;
 }
 
@@ -752,6 +778,9 @@ auto canta::Device::createSemaphore(Semaphore::CreateInfo info) -> std::expected
 
     if (!info.name.empty())
         setDebugName(VK_OBJECT_TYPE_SEMAPHORE, (u64)semaphore._semaphore, info.name);
+
+    logger().info("Semaphore created");
+
     return semaphore;
 }
 
@@ -780,6 +809,9 @@ auto canta::Device::createCommandPool(CommandPool::CreateInfo info) -> std::expe
 
     if (!info.name.empty())
         setDebugName(VK_OBJECT_TYPE_COMMAND_POOL, (u64)pool._pool, info.name);
+
+    logger().info("Command pool created");
+
     return pool;
 }
 
@@ -809,6 +841,8 @@ auto canta::Device::createShaderModule(ShaderModule::CreateInfo info, ShaderHand
     auto ar = std::to_array({ ShaderInterface::CreateInfo{ info.spirv, info.stage } });
     handle->_interface = ShaderInterface::create(ar);
     handle->_name = info.name;
+
+    logger().info("Shader module created");
 
     return handle;
 }
@@ -1108,6 +1142,8 @@ auto canta::Device::createPipeline(Pipeline::CreateInfo info, PipelineHandle old
     handle->_name = info.name;
 //    handle->_info = info;
 
+    logger().info("{} pipeline created", mode == PipelineMode::GRAPHICS ? "Graphics" : "Compute");
+
     return handle;
 }
 
@@ -1198,6 +1234,8 @@ auto canta::Device::createImage(Image::CreateInfo info, ImageHandle oldHandle) -
         }
     }
 
+    logger().info("Image created");
+
     return handle;
 }
 
@@ -1243,6 +1281,8 @@ auto canta::Device::registerImage(Image::CreateInfo info, VkImage image, VkImage
     bool isStorage = (info.usage & ImageUsage::STORAGE) == ImageUsage::STORAGE;
 
     updateBindlessImage(handle->defaultView().index(), *handle->defaultView(), isSampled, isStorage);
+
+    logger().info("Image registered to {} binding", handle->defaultView().index());
 
     return handle;
 }
@@ -1304,6 +1344,8 @@ auto canta::Device::createImageView(ImageView::CreateInfo info, canta::ImageView
     handle->_device = this;
     handle->_view = view;
     handle->_image = info.image;
+
+    logger().info("Image view created");
 
     return handle;
 }
@@ -1378,6 +1420,8 @@ auto canta::Device::createBuffer(Buffer::CreateInfo info, BufferHandle oldHandle
 
     updateBindlessBuffer(handle.index(), *handle);
 
+    logger().info("Buffer created");
+
     return handle;
 }
 
@@ -1414,6 +1458,8 @@ auto canta::Device::createSampler(Sampler::CreateInfo info, SamplerHandle oldHan
     handle->_sampler = sampler;
 
     updateBindlessSampler(handle.index(), *handle);
+
+    logger().info("Sampler created");
 
     return handle;
 }
@@ -1475,6 +1521,8 @@ void canta::Device::updateBindlessImage(u32 index, const ImageView &image, bool 
     }
 
     vkUpdateDescriptorSets(logicalDevice(), writeNum, descriptorWrite, 0, nullptr);
+
+    logger().info("Image {} bound to index {}", image._image->name(), index);
 }
 
 void canta::Device::updateBindlessBuffer(u32 index, const canta::Buffer &buffer) {
@@ -1494,6 +1542,8 @@ void canta::Device::updateBindlessBuffer(u32 index, const canta::Buffer &buffer)
     descriptorWrite.pBufferInfo = &bufferInfo;
 
     vkUpdateDescriptorSets(logicalDevice(), 1, &descriptorWrite, 0, nullptr);
+
+    logger().info("Buffer {} bound to index {}", buffer.name(), index);
 }
 
 void canta::Device::updateBindlessSampler(u32 index, const canta::Sampler &sampler) {
@@ -1511,6 +1561,9 @@ void canta::Device::updateBindlessSampler(u32 index, const canta::Sampler &sampl
     descriptorWrite.pImageInfo = &samplerInfo;
 
     vkUpdateDescriptorSets(logicalDevice(), 1, &descriptorWrite, 0, nullptr);
+
+
+    logger().info("Sampler bound to index {}", index);
 }
 
 auto canta::Device::createTimer() -> Timer {
@@ -1547,6 +1600,9 @@ auto canta::Device::createTimer() -> Timer {
     timer._index = queryIndex;
     timer._value = 0;
 
+
+    logger().info("Timer created in pool {}, index {}", poolIndex, queryIndex);
+
     return timer;
 }
 
@@ -1555,6 +1611,7 @@ void canta::Device::destroyTimer(u32 poolIndex, u32 queryIndex) {
         .poolIndex = poolIndex,
         .queryIndex = queryIndex
     });
+    logger().info("Timer in pool {}, index {} destroyed", poolIndex, queryIndex);
 }
 
 auto canta::Device::createPipelineStatistics() -> PipelineStatistics {
@@ -1603,6 +1660,8 @@ auto canta::Device::createPipelineStatistics() -> PipelineStatistics {
     stats._index = queryIndex;
     stats._queryCount = 11;
 
+    logger().info("Pipeline statistics created in pool {}, index {}", poolIndex, queryIndex);
+
     return stats;
 }
 
@@ -1611,6 +1670,7 @@ void canta::Device::destroyPipelineStatistics(u32 poolIndex, u32 queryIndex) {
         .poolIndex = poolIndex,
         .queryIndex = queryIndex
     });
+    logger().info("Pipeline statistics destroyed");
 }
 
 auto canta::Device::resourceStats() const -> ResourceStats {
