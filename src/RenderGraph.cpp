@@ -554,8 +554,10 @@ auto canta::RenderGraph::compile() -> std::expected<bool, RenderGraphError> {
     };
 
     for (auto& pass : outputs[_backbufferId]) {
-        if (!dfs(pass))
+        if (!dfs(pass)) {
+            _device->logger().error("circular dependencies found in rendergraph");
             return std::unexpected(RenderGraphError::CYCLICAL_GRAPH);
+        }
     }
 
     buildBarriers();
@@ -840,6 +842,10 @@ void canta::RenderGraph::buildResources() {
             auto imageResource = dynamic_cast<ImageResource*>(resource.get());
             if (imageResource->matchesBackbuffer) {
                 auto backbufferImage = getImage({ .index = static_cast<u32>(_backbufferIndex) });
+                if (!backbufferImage) {
+                    _device->logger().error("invalid backbuffer in rendergraph");
+                    return;
+                }
                 imageResource->width = backbufferImage->width();
                 imageResource->height = backbufferImage->height();
                 imageResource->depth = 1;

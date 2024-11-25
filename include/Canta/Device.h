@@ -126,6 +126,7 @@ namespace canta {
             bool enableAsyncTransferQueue = true;
             std::span<const char* const> instanceExtensions = {};
             std::span<const char* const> deviceExtensions = {};
+            spdlog::level::level_enum logLevel = spdlog::level::info;
         };
 
         static auto create(CreateInfo info) noexcept -> std::expected<std::unique_ptr<Device>, Error>;

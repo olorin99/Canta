@@ -172,6 +172,7 @@ auto canta::Device::create(canta::Device::CreateInfo info) noexcept -> std::expe
     auto fileSink = std::make_shared<spdlog::sinks::basic_file_sink_mt>("logs/canta.log");
     std::vector<spdlog::sink_ptr> sinks{ consoleSink, fileSink };
     device->_logger = spdlog::logger("Canta Logger", sinks.begin(), sinks.end());
+    device->logger().set_level(info.logLevel);
 
     device->logger().info("Beginning Init");
     // init instance
