@@ -5,6 +5,7 @@ set(CMAKE_CXX_STANDARD 23)
 
 option(CANTA_BUILD_EXAMPLES "enable examples" ON)
 option(CANTA_ENABLE_IMGUI "enable imgui" ON)
+option(CANTA_BUILD_TESTS "build tests" ON)
 
 add_compile_definitions(CANTA_SRC_DIR="${CMAKE_SOURCE_DIR}")
 
@@ -84,4 +85,8 @@ endif ()
 
 if (CANTA_ENABLE_IMGUI)
     target_link_libraries(Canta imgui)
+endif ()
+
+if (CANTA_BUILD_TESTS)
+    add_subdirectory(tests)
 endif ()
