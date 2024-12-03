@@ -205,6 +205,8 @@ namespace canta {
         auto registerImage(Image::CreateInfo info, VkImage image, VkImageView view) -> ImageHandle;
         auto resizeBuffer(BufferHandle handle, u32 newSize) -> BufferHandle;
 
+        auto swapImageBindings(ImageHandle oldHandle, ImageHandle newHandle) -> ImageHandle;
+
         void setDebugName(u32 type, u64 object, std::string_view name) const;
 
         auto timestampPools() -> std::span<VkQueryPool> { return _timestampPools; }

@@ -8,6 +8,7 @@
 TEST_CASE("Resource reference counting", "[refcount]") {
     canta::ResourceList<canta::Buffer> list;
     auto handle = list.allocate();
+    auto handle1 = list.allocate();
 
     SECTION("copy") {
         auto tmp = handle;
@@ -27,6 +28,15 @@ TEST_CASE("Resource reference counting", "[refcount]") {
         handle = {};
 
         REQUIRE(handle.count() == 0);
+    }
+
+    SECTION("swap") {
+        auto oldIndex = handle.index();
+        auto newIndex = handle1.index();
+        auto tmp = list.swap(handle, handle1);
+
+        REQUIRE(handle.index() == newIndex);
+        REQUIRE(handle1.index() == oldIndex);
     }
 
 }
