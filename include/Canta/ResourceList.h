@@ -128,7 +128,7 @@ namespace canta {
 
         static inline auto decrement(Data* data) -> i32 {
             if (data) {
-                i32 newCount = ++data->count;
+                i32 newCount = --data->count;
                 if (newCount < 1) {
                     data->deleter(data->index);
                 }
@@ -206,7 +206,7 @@ namespace canta {
             _resources[newIndex].swap(_resources[oldIndex]);
             std::swap(_resources[oldIndex]->first, _resources[newIndex]->first);
             std::swap(_resources[oldIndex]->second.index, _resources[newIndex]->second.index);
-            return newHandle;
+            return oldHandle;
         }
 
         void clearQueue(std::function<void(T&)> func = [](auto& resource) { resource = {}; }) {
