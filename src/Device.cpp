@@ -1483,32 +1483,29 @@ auto canta::Device::swapImageBindings(canta::ImageHandle oldHandle, canta::Image
     bool isSampled = (handle->usage() & ImageUsage::SAMPLED) == ImageUsage::SAMPLED;
     bool isStorage = (handle->usage() & ImageUsage::STORAGE) == ImageUsage::STORAGE;
 
+    _imageViewList.swap(oldHandle->defaultView(), newHandle->defaultView());
+
     updateBindlessImage(handle->defaultView().index(), *handle->defaultView(), isSampled, isStorage);
-    if (handle->_views.size()) {
-        for (u32 mip = 1; mip < handle->mips(); mip++) {
-            handle->_views.push_back(createImageView({
-                .image = &*handle,
-                .mipLevel = mip,
-                .levelCount = 1
-            }));
-            updateBindlessImage(handle->_views.back().index(), *handle->_views.back(), isSampled, isStorage);
-        }
-    }
+//    if (handle->_views.size()) {
+//        for (u32 mip = 1; mip < handle->mips(); mip++) {
+//            updateBindlessImage(handle->_views.back().index(), *handle->_views.back(), isSampled, isStorage);
+//        }
+//    }
 
     isSampled = (oldHandle->usage() & ImageUsage::SAMPLED) == ImageUsage::SAMPLED;
     isStorage = (oldHandle->usage() & ImageUsage::STORAGE) == ImageUsage::STORAGE;
 
     updateBindlessImage(oldHandle->defaultView().index(), *oldHandle->defaultView(), isSampled, isStorage);
-    if (oldHandle->_views.size()) {
-        for (u32 mip = 1; mip < oldHandle->mips(); mip++) {
-            oldHandle->_views.push_back(createImageView({
-                .image = &*oldHandle,
-                .mipLevel = mip,
-                .levelCount = 1
-            }));
-            updateBindlessImage(oldHandle->_views.back().index(), *oldHandle->_views.back(), isSampled, isStorage);
-        }
-    }
+//    if (oldHandle->_views.size()) {
+//        for (u32 mip = 1; mip < oldHandle->mips(); mip++) {
+//            oldHandle->_views.push_back(createImageView({
+//                .image = &*oldHandle,
+//                .mipLevel = mip,
+//                .levelCount = 1
+//            }));
+//            updateBindlessImage(oldHandle->_views.back().index(), *oldHandle->_views.back(), isSampled, isStorage);
+//        }
+//    }
     return newHandle;
 }
 
