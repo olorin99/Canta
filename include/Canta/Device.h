@@ -181,7 +181,7 @@ namespace canta {
         auto meshShadersEnabled() const -> bool { return _meshShadersEnabled; }
         auto taskShadersEnabled() const -> bool { return _taskShadersEnabled; }
 
-        auto bindlessSet() const -> VkDescriptorSet { return _bindlessSet; }
+        auto bindlessSet() const -> VkDescriptorSet { return _bindlessSets[flyingIndex()]; }
 
         auto queue(QueueType type) -> Queue&;
 
@@ -247,9 +247,9 @@ namespace canta {
 
         Device() = default;
 
-        void updateBindlessImage(u32 index, const ImageView& image, bool sampled, bool storage);
-        void updateBindlessBuffer(u32 index, const Buffer& buffer);
-        void updateBindlessSampler(u32 index, const Sampler& sampler);
+        void updateBindlessImage(u32 index, ImageViewHandle image, bool sampled, bool storage);
+        void updateBindlessBuffer(u32 index, BufferHandle buffer);
+        void updateBindlessSampler(u32 index, SamplerHandle sampler);
 
         VkInstance _instance = VK_NULL_HANDLE;
         VkPhysicalDevice _physicalDevice = VK_NULL_HANDLE;
@@ -304,7 +304,19 @@ namespace canta {
 
         VkDescriptorPool _bindlessPool = VK_NULL_HANDLE;
         VkDescriptorSetLayout _bindlessLayout = VK_NULL_HANDLE;
-        VkDescriptorSet _bindlessSet = VK_NULL_HANDLE;
+        std::array<VkDescriptorSet, FRAMES_IN_FLIGHT> _bindlessSets = {};
+        struct DescriptorUpdate {
+            u32 index = 0;
+            ImageViewHandle imageView = {};
+            bool sampled = false;
+            bool storage = false;
+            BufferHandle buffer = {};
+            SamplerHandle sampler = {};
+            i32 frames = FRAMES_IN_FLIGHT;
+        };
+        std::vector<DescriptorUpdate> _descriptorUpdates = {};
+        std::mutex _descriptorMutex = {};
+        void updateBindlessDescriptors();
 
         ResourceList<ShaderModule> _shaderList = {};
         ResourceList<Pipeline> _pipelineList = {};

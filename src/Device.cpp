@@ -506,16 +506,16 @@ auto canta::Device::create(canta::Device::CreateInfo info) noexcept -> std::expe
     }).value();
 
     VkDescriptorPoolSize poolSizes[] = {
-            { VK_DESCRIPTOR_TYPE_SAMPLER, device->limits().maxBindlessSamplers },
-            { VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, device->limits().maxBindlessSampledImages },
-            { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, device->limits().maxBindlessStorageImages },
-            { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, device->limits().maxBindlessStorageBuffers },
+            { VK_DESCRIPTOR_TYPE_SAMPLER, device->limits().maxBindlessSamplers * FRAMES_IN_FLIGHT },
+            { VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, device->limits().maxBindlessSampledImages * FRAMES_IN_FLIGHT },
+            { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, device->limits().maxBindlessStorageImages * FRAMES_IN_FLIGHT },
+            { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, device->limits().maxBindlessStorageBuffers * FRAMES_IN_FLIGHT },
     };
 
     VkDescriptorPoolCreateInfo bindlessPoolCreateInfo = {};
     bindlessPoolCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
     bindlessPoolCreateInfo.flags = VK_DESCRIPTOR_POOL_CREATE_UPDATE_AFTER_BIND_BIT;
-    bindlessPoolCreateInfo.maxSets = 1;
+    bindlessPoolCreateInfo.maxSets = FRAMES_IN_FLIGHT;
     bindlessPoolCreateInfo.poolSizeCount = 4;
     bindlessPoolCreateInfo.pPoolSizes = poolSizes;
     VK_TRY(vkCreateDescriptorPool(device->logicalDevice(), &bindlessPoolCreateInfo, nullptr, &device->_bindlessPool));
@@ -568,14 +568,19 @@ auto canta::Device::create(canta::Device::CreateInfo info) noexcept -> std::expe
 
     VK_TRY(vkCreateDescriptorSetLayout(device->logicalDevice(), &bindlessLayoutCreateInfo, nullptr, &device->_bindlessLayout));
 
+    VkDescriptorSetLayout layouts[FRAMES_IN_FLIGHT] = {};
+    for (auto& layout : layouts)
+        layout = device->_bindlessLayout;
+
     VkDescriptorSetAllocateInfo bindlessAllocInfo = {};
     bindlessAllocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-    bindlessAllocInfo.descriptorSetCount = 1;
+    bindlessAllocInfo.descriptorSetCount = FRAMES_IN_FLIGHT;
     bindlessAllocInfo.descriptorPool = device->_bindlessPool;
-    bindlessAllocInfo.pSetLayouts = &device->_bindlessLayout;
+    bindlessAllocInfo.pSetLayouts = layouts;
 
-    VK_TRY(vkAllocateDescriptorSets(device->logicalDevice(), &bindlessAllocInfo, &device->_bindlessSet));
-    device->setDebugName(VK_OBJECT_TYPE_DESCRIPTOR_SET, (u64)device->_bindlessSet, "bindless_set");
+    VK_TRY(vkAllocateDescriptorSets(device->logicalDevice(), &bindlessAllocInfo, device->_bindlessSets.data()));
+    for (auto& set : device->_bindlessSets)
+        device->setDebugName(VK_OBJECT_TYPE_DESCRIPTOR_SET, (u64)set, "bindless_set");
 
 #ifndef NDEBUG
     if (device->isExtensionEnabled(VK_AMD_BUFFER_MARKER_EXTENSION_NAME)) {
@@ -702,6 +707,8 @@ void canta::Device::beginFrame() {
     _markerCommands[flyingIndex()].clear();
     std::memset(_markerBuffers[flyingIndex()]->_mapped.address(), 0, _markerBuffers[flyingIndex()]->size());
 #endif
+
+    updateBindlessDescriptors();
 }
 
 auto canta::Device::endFrame() -> f64 {
@@ -1223,7 +1230,7 @@ auto canta::Device::createImage(Image::CreateInfo info, ImageHandle oldHandle) -
     bool isSampled = (info.usage & ImageUsage::SAMPLED) == ImageUsage::SAMPLED;
     bool isStorage = (info.usage & ImageUsage::STORAGE) == ImageUsage::STORAGE;
 
-    updateBindlessImage(handle->defaultView().index(), *handle->defaultView(), isSampled, isStorage);
+    updateBindlessImage(handle->defaultView().index(), handle->defaultView(), isSampled, isStorage);
     if (info.allocateMipViews) {
         for (u32 mip = 1; mip < info.mipLevels; mip++) {
             handle->_views.push_back(createImageView({
@@ -1231,7 +1238,7 @@ auto canta::Device::createImage(Image::CreateInfo info, ImageHandle oldHandle) -
                 .mipLevel = mip,
                 .levelCount = 1
             }));
-            updateBindlessImage(handle->_views.back().index(), *handle->_views.back(), isSampled, isStorage);
+            updateBindlessImage(handle->_views.back().index(), handle->_views.back(), isSampled, isStorage);
         }
     }
 
@@ -1281,7 +1288,7 @@ auto canta::Device::registerImage(Image::CreateInfo info, VkImage image, VkImage
     bool isSampled = (info.usage & ImageUsage::SAMPLED) == ImageUsage::SAMPLED;
     bool isStorage = (info.usage & ImageUsage::STORAGE) == ImageUsage::STORAGE;
 
-    updateBindlessImage(handle->defaultView().index(), *handle->defaultView(), isSampled, isStorage);
+    updateBindlessImage(handle->defaultView().index(), handle->defaultView(), isSampled, isStorage);
 
     logger().info("Image registered to {} binding", handle->defaultView().index());
 
@@ -1419,7 +1426,7 @@ auto canta::Device::createBuffer(Buffer::CreateInfo info, BufferHandle oldHandle
     if (info.persistentlyMapped)
         handle->_mapped = handle->map();
 
-    updateBindlessBuffer(handle.index(), *handle);
+    updateBindlessBuffer(handle.index(), handle);
 
     logger().info("Buffer created");
 
@@ -1458,7 +1465,7 @@ auto canta::Device::createSampler(Sampler::CreateInfo info, SamplerHandle oldHan
     handle->_device = this;
     handle->_sampler = sampler;
 
-    updateBindlessSampler(handle.index(), *handle);
+    updateBindlessSampler(handle.index(), handle);
 
     logger().info("Sampler created");
 
@@ -1485,7 +1492,7 @@ auto canta::Device::swapImageBindings(canta::ImageHandle oldHandle, canta::Image
 
     _imageViewList.swap(oldHandle->defaultView(), newHandle->defaultView());
 
-    updateBindlessImage(handle->defaultView().index(), *handle->defaultView(), isSampled, isStorage);
+    updateBindlessImage(handle->defaultView().index(), handle->defaultView(), isSampled, isStorage);
 //    if (handle->_views.size()) {
 //        for (u32 mip = 1; mip < handle->mips(); mip++) {
 //            updateBindlessImage(handle->_views.back().index(), *handle->_views.back(), isSampled, isStorage);
@@ -1495,7 +1502,7 @@ auto canta::Device::swapImageBindings(canta::ImageHandle oldHandle, canta::Image
     isSampled = (newHandle->usage() & ImageUsage::SAMPLED) == ImageUsage::SAMPLED;
     isStorage = (newHandle->usage() & ImageUsage::STORAGE) == ImageUsage::STORAGE;
 
-    updateBindlessImage(newHandle->defaultView().index(), *newHandle->defaultView(), isSampled, isStorage);
+    updateBindlessImage(newHandle->defaultView().index(), newHandle->defaultView(), isSampled, isStorage);
 //    if (oldHandle->_views.size()) {
 //        for (u32 mip = 1; mip < oldHandle->mips(); mip++) {
 //            oldHandle->_views.push_back(createImageView({
@@ -1520,83 +1527,118 @@ void canta::Device::setDebugName(u32 type, u64 object, std::string_view name) co
 #endif
 }
 
-void canta::Device::updateBindlessImage(u32 index, const ImageView &image, bool sampled, bool storage) {
-    VkWriteDescriptorSet descriptorWrite[2] = {};
-    i32 writeNum = 0;
-
-    VkDescriptorImageInfo sampledImageInfo = {};
-    if (sampled) {
-        sampledImageInfo.imageView = image.view();
-        sampledImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-
-        descriptorWrite[writeNum].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        descriptorWrite[writeNum].descriptorCount = 1;
-        descriptorWrite[writeNum].descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-        descriptorWrite[writeNum].dstArrayElement = index;
-        descriptorWrite[writeNum].dstSet = _bindlessSet;
-        descriptorWrite[writeNum].dstBinding = CANTA_BINDLESS_SAMPLED_IMAGES;
-        descriptorWrite[writeNum].pImageInfo = &sampledImageInfo;
-        writeNum++;
-    }
-    VkDescriptorImageInfo storageImageInfo = {};
-    if (storage) {
-        storageImageInfo.imageView = image.view();
-        storageImageInfo.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
-
-        descriptorWrite[writeNum].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        descriptorWrite[writeNum].descriptorCount = 1;
-        descriptorWrite[writeNum].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-        descriptorWrite[writeNum].dstArrayElement = index;
-        descriptorWrite[writeNum].dstSet = _bindlessSet;
-        descriptorWrite[writeNum].dstBinding = CANTA_BINDLESS_STORAGE_IMAGES;
-        descriptorWrite[writeNum].pImageInfo = &storageImageInfo;
-        writeNum++;
-    }
-
-    vkUpdateDescriptorSets(logicalDevice(), writeNum, descriptorWrite, 0, nullptr);
-
-    logger().info("Image {} bound to index {}", image._image->name(), index);
+void canta::Device::updateBindlessImage(u32 index, ImageViewHandle image, bool sampled, bool storage) {
+    std::unique_lock lock(_descriptorMutex);
+    _descriptorUpdates.push_back({
+        .index = index,
+        .imageView = image,
+        .sampled = sampled,
+        .storage = storage
+    });
 }
 
-void canta::Device::updateBindlessBuffer(u32 index, const canta::Buffer &buffer) {
-    VkWriteDescriptorSet descriptorWrite = {};
-
-    VkDescriptorBufferInfo bufferInfo = {};
-    bufferInfo.buffer = buffer.buffer();
-    bufferInfo.offset = 0;
-    bufferInfo.range = buffer.size();
-
-    descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-    descriptorWrite.descriptorCount = 1;
-    descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-    descriptorWrite.dstArrayElement = index;
-    descriptorWrite.dstSet = _bindlessSet;
-    descriptorWrite.dstBinding = CANTA_BINDLESS_STORAGE_BUFFERS;
-    descriptorWrite.pBufferInfo = &bufferInfo;
-
-    vkUpdateDescriptorSets(logicalDevice(), 1, &descriptorWrite, 0, nullptr);
-
-    logger().info("Buffer {} bound to index {}", buffer.name(), index);
+void canta::Device::updateBindlessBuffer(u32 index, canta::BufferHandle buffer) {
+    std::unique_lock lock(_descriptorMutex);
+    _descriptorUpdates.push_back({
+        .index = index,
+        .buffer = buffer
+    });
 }
 
-void canta::Device::updateBindlessSampler(u32 index, const canta::Sampler &sampler) {
-    VkWriteDescriptorSet descriptorWrite = {};
+void canta::Device::updateBindlessSampler(u32 index, canta::SamplerHandle sampler) {
+    std::unique_lock lock(_descriptorMutex);
+    _descriptorUpdates.push_back({
+        .index = index,
+        .sampler = sampler
+    });
+}
 
-    VkDescriptorImageInfo samplerInfo = {};
-    samplerInfo.sampler = sampler.sampler();
+void canta::Device::updateBindlessDescriptors() {
+    std::unique_lock lock(_descriptorMutex);
 
-    descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-    descriptorWrite.descriptorCount = 1;
-    descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
-    descriptorWrite.dstArrayElement = index;
-    descriptorWrite.dstSet = _bindlessSet;
-    descriptorWrite.dstBinding = CANTA_BINDLESS_SAMPLERS;
-    descriptorWrite.pImageInfo = &samplerInfo;
+    auto frameIndex = flyingIndex();
 
-    vkUpdateDescriptorSets(logicalDevice(), 1, &descriptorWrite, 0, nullptr);
+    for (auto it = _descriptorUpdates.begin(); it != _descriptorUpdates.end(); it++) {
+        auto& update = *it;
+        if (update.imageView) {
+            VkWriteDescriptorSet descriptorWrite[2] = {};
+            i32 writeNum = 0;
+
+            VkDescriptorImageInfo sampledImageInfo = {};
+            if (update.sampled) {
+                sampledImageInfo.imageView = update.imageView->view();
+                sampledImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
+                descriptorWrite[writeNum].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+                descriptorWrite[writeNum].descriptorCount = 1;
+                descriptorWrite[writeNum].descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+                descriptorWrite[writeNum].dstArrayElement = update.index;
+                descriptorWrite[writeNum].dstSet = bindlessSet();
+                descriptorWrite[writeNum].dstBinding = CANTA_BINDLESS_SAMPLED_IMAGES;
+                descriptorWrite[writeNum].pImageInfo = &sampledImageInfo;
+                writeNum++;
+            }
+            VkDescriptorImageInfo storageImageInfo = {};
+            if (update.storage) {
+                storageImageInfo.imageView = update.imageView->view();
+                storageImageInfo.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
+
+                descriptorWrite[writeNum].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+                descriptorWrite[writeNum].descriptorCount = 1;
+                descriptorWrite[writeNum].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+                descriptorWrite[writeNum].dstArrayElement = update.index;
+                descriptorWrite[writeNum].dstSet = bindlessSet();
+                descriptorWrite[writeNum].dstBinding = CANTA_BINDLESS_STORAGE_IMAGES;
+                descriptorWrite[writeNum].pImageInfo = &storageImageInfo;
+                writeNum++;
+            }
+
+            vkUpdateDescriptorSets(logicalDevice(), writeNum, descriptorWrite, 0, nullptr);
+
+            logger().info("FrameIndex({}): Image {} bound to index {}", flyingIndex(), update.imageView->_image->name(), update.index);
+        } else if (update.buffer) {
+            VkWriteDescriptorSet descriptorWrite = {};
+
+            VkDescriptorBufferInfo bufferInfo = {};
+            bufferInfo.buffer = update.buffer->buffer();
+            bufferInfo.offset = 0;
+            bufferInfo.range = update.buffer->size();
+
+            descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+            descriptorWrite.descriptorCount = 1;
+            descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+            descriptorWrite.dstArrayElement = update.index;
+            descriptorWrite.dstSet = bindlessSet();
+            descriptorWrite.dstBinding = CANTA_BINDLESS_STORAGE_BUFFERS;
+            descriptorWrite.pBufferInfo = &bufferInfo;
+
+            vkUpdateDescriptorSets(logicalDevice(), 1, &descriptorWrite, 0, nullptr);
+
+            logger().info("FrameIndex({}): Buffer {} bound to index {}", flyingIndex(), update.buffer->name(), update.index);
+        } else if (update.sampler) {
+            VkWriteDescriptorSet descriptorWrite = {};
+
+            VkDescriptorImageInfo samplerInfo = {};
+            samplerInfo.sampler = update.sampler->sampler();
+
+            descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+            descriptorWrite.descriptorCount = 1;
+            descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
+            descriptorWrite.dstArrayElement = update.index;
+            descriptorWrite.dstSet = bindlessSet();
+            descriptorWrite.dstBinding = CANTA_BINDLESS_SAMPLERS;
+            descriptorWrite.pImageInfo = &samplerInfo;
+
+            vkUpdateDescriptorSets(logicalDevice(), 1, &descriptorWrite, 0, nullptr);
 
 
-    logger().info("Sampler bound to index {}", index);
+            logger().info("FrameIndex({}): Sampler bound to index {}", flyingIndex(), update.index);
+        }
+        update.frames--;
+        if (update.frames <= 0) {
+            _descriptorUpdates.erase(it--);
+        }
+    }
 }
 
 auto canta::Device::createTimer() -> Timer {
