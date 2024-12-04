@@ -86,6 +86,17 @@ auto canta::UploadBuffer::upload(canta::BufferHandle dstHandle, std::span<const 
     return data.size();
 }
 
+u32 roundUp(u32 num, u32 multiple) {
+    if (multiple == 0)
+        return num;
+
+    u32 remainder = num % multiple;
+    if (remainder == 0)
+        return num;
+
+    return num + multiple - remainder;
+}
+
 auto canta::UploadBuffer::upload(canta::ImageHandle dstHandle, std::span<const u8> data, canta::UploadBuffer::ImageInfo info) -> u32 {
     u32 uploadOffset = 0;
     u32 uploadSizeRemaining = data.size() - uploadOffset;
@@ -95,6 +106,8 @@ auto canta::UploadBuffer::upload(canta::ImageHandle dstHandle, std::span<const u
 
     while (uploadSizeRemaining > 0) {
         std::unique_lock lock(*_mutex);
+        auto roundedOffset = roundUp(_offset, info.format == Format::BC7_SRGB ? 16 : 0);
+        _offset = roundedOffset;
         u32 availableSize = _buffer->size() - _offset;
         u32 allocationSize = std::min(availableSize, uploadSizeRemaining);
 

@@ -204,7 +204,6 @@ namespace canta {
             i32 newIndex = newHandle.index();
             std::unique_lock lock(_mutex);
             _resources[newIndex].swap(_resources[oldIndex]);
-            std::swap(_resources[oldIndex]->first, _resources[newIndex]->first);
             std::swap(_resources[oldIndex]->second.index, _resources[newIndex]->second.index);
             return oldHandle;
         }
