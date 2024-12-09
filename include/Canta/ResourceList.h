@@ -230,6 +230,15 @@ namespace canta {
             _freeResources.clear();
         }
 
+        // destroys the resources but not the handle itself
+        // use for cyclic dependencies
+        void destroyAll(std::function<void(T&)> func = [](auto& resource) { resource = {}; }) {
+            std::unique_lock lock(_mutex);
+            for (auto& resource : _resources) {
+                func(resource->first);
+            }
+        }
+
         auto getHandle(i32 index) -> ResourceHandle {
             if (index >= _resources.size())
                 return {};
