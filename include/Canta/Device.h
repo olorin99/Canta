@@ -235,6 +235,13 @@ namespace canta {
         };
         auto resourceStats() const -> ResourceStats;
 
+        struct MemoryUsage {
+            u64 budget = 0;
+            u64 usage = 0;
+        };
+
+        auto memoryUsage() const -> MemoryUsage;
+
         auto getFrameDebugMarkers(u8 frame) const -> const std::vector<std::array<u8, util::debugMarkerSize>>& {
             assert(frame < FRAMES_IN_FLIGHT);
             return _markerCommands[frame];
@@ -272,6 +279,7 @@ namespace canta {
         std::vector<u32> _enabledQueueFamilies = {};
 
         VmaAllocator _allocator = VK_NULL_HANDLE;
+        VkPhysicalDeviceMemoryProperties2 _memoryProperties = {};
 
         ende::time::StopWatch _frameClock = {};
         std::chrono::high_resolution_clock::duration _lastFrameDuration = {};

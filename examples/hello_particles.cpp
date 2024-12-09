@@ -233,6 +233,11 @@ void main() {
                 }
             }
 
+            auto memoryUsage = device->memoryUsage();
+            ImGui::Text("VRAM Budget: %lu mb", memoryUsage.budget / 1000000);
+            ImGui::Text("VRAM Usage: %lu mb", memoryUsage.usage / 1000000);
+            ImGui::Text("VRAM Usage: %f%%", static_cast<f64>(memoryUsage.usage) / static_cast<f64>(memoryUsage.budget));
+
             auto resourceStats = device->resourceStats();
             ImGui::Text("Shader Count %d", resourceStats.shaderCount);
             ImGui::Text("Shader Allocated %d", resourceStats.shaderAllocated);

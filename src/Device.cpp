@@ -454,6 +454,9 @@ auto canta::Device::create(canta::Device::CreateInfo info) noexcept -> std::expe
     }
 
 
+    device->_memoryProperties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_PROPERTIES_2;
+    vkGetPhysicalDeviceMemoryProperties2(device->_physicalDevice, &device->_memoryProperties);
+
     // init VMA
     VmaAllocatorCreateInfo allocatorCreateInfo{};
     allocatorCreateInfo.vulkanApiVersion = applicationInfo.apiVersion;
@@ -1485,35 +1488,18 @@ auto canta::Device::resizeBuffer(canta::BufferHandle handle, u32 newSize) -> Buf
 }
 
 auto canta::Device::swapImageBindings(canta::ImageHandle oldHandle, canta::ImageHandle newHandle) -> ImageHandle {
-    auto handle = _imageList.swap(oldHandle, newHandle);
-
-    bool isSampled = (handle->usage() & ImageUsage::SAMPLED) == ImageUsage::SAMPLED;
-    bool isStorage = (handle->usage() & ImageUsage::STORAGE) == ImageUsage::STORAGE;
-
     _imageViewList.swap(oldHandle->defaultView(), newHandle->defaultView());
 
-    updateBindlessImage(handle->defaultView().index(), handle->defaultView(), isSampled, isStorage);
-//    if (handle->_views.size()) {
-//        for (u32 mip = 1; mip < handle->mips(); mip++) {
-//            updateBindlessImage(handle->_views.back().index(), *handle->_views.back(), isSampled, isStorage);
-//        }
-//    }
+    bool isSampled = (oldHandle->usage() & ImageUsage::SAMPLED) == ImageUsage::SAMPLED;
+    bool isStorage = (oldHandle->usage() & ImageUsage::STORAGE) == ImageUsage::STORAGE;
+
+    updateBindlessImage(oldHandle->defaultView().index(), oldHandle->defaultView(), isSampled, isStorage);
 
     isSampled = (newHandle->usage() & ImageUsage::SAMPLED) == ImageUsage::SAMPLED;
     isStorage = (newHandle->usage() & ImageUsage::STORAGE) == ImageUsage::STORAGE;
 
     updateBindlessImage(newHandle->defaultView().index(), newHandle->defaultView(), isSampled, isStorage);
-//    if (oldHandle->_views.size()) {
-//        for (u32 mip = 1; mip < oldHandle->mips(); mip++) {
-//            oldHandle->_views.push_back(createImageView({
-//                .image = &*oldHandle,
-//                .mipLevel = mip,
-//                .levelCount = 1
-//            }));
-//            updateBindlessImage(oldHandle->_views.back().index(), *oldHandle->_views.back(), isSampled, isStorage);
-//        }
-//    }
-    return handle;
+    return newHandle;
 }
 
 void canta::Device::setDebugName(u32 type, u64 object, std::string_view name) const {
@@ -1763,4 +1749,19 @@ auto canta::Device::resourceStats() const -> ResourceStats {
         .timestampQueryPools = static_cast<u32>(_timestampPools.size()),
         .pipelineStatsPools = static_cast<u32>(_pipelineStatisticsPools.size())
     };
+}
+
+auto canta::Device::memoryUsage() const -> MemoryUsage {
+    MemoryUsage usage = {};
+    VmaBudget budgets[_memoryProperties.memoryProperties.memoryHeapCount];
+    vmaGetHeapBudgets(_allocator, budgets);
+
+    for (u32 i = 0; auto& budget : budgets) {
+        if (_memoryProperties.memoryProperties.memoryHeaps[i++].flags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) {
+            usage.budget += budget.budget;
+            usage.usage += budget.usage;
+        }
+    }
+
+    return usage;
 }
