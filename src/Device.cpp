@@ -627,8 +627,9 @@ canta::Device::~Device() {
 
     _shaderList.clearAll();
     _pipelineList.clearAll();
-    _imageViewList.clearAll();
+    _imageViewList.destroyAll();
     _imageList.clearAll();
+    _imageViewList.clearAll();
     _bufferList.clearAll();
     _samplerList.clearAll();
 
