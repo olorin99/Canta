@@ -238,6 +238,11 @@ void main() {
             ImGui::Text("VRAM Usage: %lu mb", memoryUsage.usage / 1000000);
             ImGui::Text("VRAM Usage: %f%%", static_cast<f64>(memoryUsage.usage) / static_cast<f64>(memoryUsage.budget));
 
+            auto softMemoryUsage = device->softMemoryUsage();
+            ImGui::Text("VRAM Budget: %lu mb", softMemoryUsage.budget / 1000000);
+            ImGui::Text("VRAM Usage: %lu mb", softMemoryUsage.usage / 1000000);
+            ImGui::Text("VRAM Usage: %f%%", static_cast<f64>(softMemoryUsage.usage) / static_cast<f64>(softMemoryUsage.budget));
+
             auto resourceStats = device->resourceStats();
             ImGui::Text("Shader Count %d", resourceStats.shaderCount);
             ImGui::Text("Shader Allocated %d", resourceStats.shaderAllocated);

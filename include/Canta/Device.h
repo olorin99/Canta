@@ -124,6 +124,7 @@ namespace canta {
             bool enableTaskShading = false;
             bool enableAsyncComputeQueue = true;
             bool enableAsyncTransferQueue = true;
+            u64 memoryLimit = 1000000000;
             std::span<const char* const> instanceExtensions = {};
             std::span<const char* const> deviceExtensions = {};
             spdlog::level::level_enum logLevel = spdlog::level::info;
@@ -240,7 +241,12 @@ namespace canta {
             u64 usage = 0;
         };
 
+        // memory info retrieved by vma
         auto memoryUsage() const -> MemoryUsage;
+        // memory info tracked by engine. less accurate
+        auto softMemoryUsage() const -> MemoryUsage;
+
+        void setMemoryLimit(u64 limit) { _memoryLimit = limit; }
 
         auto getFrameDebugMarkers(u8 frame) const -> const std::vector<std::array<u8, util::debugMarkerSize>>& {
             assert(frame < FRAMES_IN_FLIGHT);
@@ -280,6 +286,8 @@ namespace canta {
 
         VmaAllocator _allocator = VK_NULL_HANDLE;
         VkPhysicalDeviceMemoryProperties2 _memoryProperties = {};
+        u64 _memoryLimit = 1000000000;
+        u64 _memoryUsage = 0;
 
         ende::time::StopWatch _frameClock = {};
         std::chrono::high_resolution_clock::duration _lastFrameDuration = {};

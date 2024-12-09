@@ -344,6 +344,7 @@ auto canta::Device::create(canta::Device::CreateInfo info) noexcept -> std::expe
         REQUIRE_EXTENSION(extension, deviceExtensions);
     }
     REQUIRE_EXTENSION(VK_KHR_SWAPCHAIN_EXTENSION_NAME, deviceExtensions);
+    REQUIRE_EXTENSION(VK_EXT_MEMORY_BUDGET_EXTENSION_NAME, deviceExtensions);
     if (info.enableMeshShading) {
         REQUIRE_EXTENSION(VK_EXT_MESH_SHADER_EXTENSION_NAME, deviceExtensions);
     }
@@ -694,8 +695,14 @@ void canta::Device::gc() {
     _shaderList.clearQueue();
     _pipelineList.clearQueue();
     _imageViewList.clearQueue();
-    _imageList.clearQueue();
-    _bufferList.clearQueue();
+    _imageList.clearQueue([this](auto& resource) {
+        _memoryUsage -= (resource.width() * resource.height() * resource.depth() * formatSize(resource.format()));
+        resource = {};
+    });
+    _bufferList.clearQueue([this](auto& resource) {
+        _memoryUsage -= resource.size();
+        resource = {};
+    });
     _samplerList.clearQueue();
 }
 
@@ -1207,6 +1214,8 @@ auto canta::Device::createImage(Image::CreateInfo info, ImageHandle oldHandle) -
     if (!info.name.empty())
         setDebugName(VK_OBJECT_TYPE_IMAGE, (u64)image, info.name);
 
+    _memoryUsage += (info.width * info.height * info.depth * formatSize(info.format));
+
     ImageHandle handle = {};
     if (oldHandle)
         handle = _imageList.reallocate(oldHandle);
@@ -1400,6 +1409,8 @@ auto canta::Device::createBuffer(Buffer::CreateInfo info, BufferHandle oldHandle
     }
 
     VK_TRY(vmaCreateBuffer(_allocator, &createInfo, &allocInfo, &buffer, &allocation, nullptr));
+
+    _memoryUsage += info.size;
 
     if (!info.name.empty())
         setDebugName(VK_OBJECT_TYPE_BUFFER, (u64)buffer, info.name);
@@ -1764,4 +1775,11 @@ auto canta::Device::memoryUsage() const -> MemoryUsage {
     }
 
     return usage;
+}
+
+auto canta::Device::softMemoryUsage() const -> MemoryUsage {
+    return {
+        .budget = _memoryLimit,
+        .usage = _memoryUsage
+    };
 }
