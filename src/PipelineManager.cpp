@@ -221,6 +221,43 @@ struct RWImage3D<T : __BuiltinRealType, let N : uint> {
     }
 }
 
+// matrix and vec multiplication overload
+float2 operator*(float2x2 matrix, float2 vec) {
+    return mul(matrix, vec);
+}
+
+float2 operator*(float2 vec, float2x2 matrix) {
+    return mul(vec, matrix);
+}
+
+float2x2 operator*(float2x2 lhs, float2x2 rhs) {
+    return mul(lhs, rhs);
+}
+
+float3 operator*(float3x3 matrix, float3 vec) {
+    return mul(matrix, vec);
+}
+
+float3 operator*(float3 vec, float3x3 matrix) {
+    return mul(vec, matrix);
+}
+
+float3x3 operator*(float3x3 lhs, float3x3 rhs) {
+    return mul(lhs, rhs);
+}
+
+float4 operator*(float4x4 matrix, float4 vec) {
+    return mul(matrix, vec);
+}
+
+float4 operator*(float4 vec, float4x4 matrix) {
+    return mul(vec, matrix);
+}
+
+float4x4 operator*(float4x4 lhs, float4x4 rhs) {
+    return mul(lhs, rhs);
+}
+
 
 )";
     slang::createGlobalSession(manager._slangGlobalSession.writeRef());
@@ -473,6 +510,10 @@ auto canta::PipelineManager::createShader(canta::ShaderDescription info, ShaderH
     std::vector<u32> spirv = {};
     if (!info.path.empty()) {
         auto shaderFile = ende::fs::File::open(_rootPath / info.path);
+        if (!shaderFile) {
+            _device->logger().error("Invalid shader path: {}", (_rootPath / info.path).string());
+            return {};
+        }
         auto source = shaderFile->read();
         auto compilationResult = (info.path.extension() != ".slang" ?
                 compileGLSL(info.path.stem().string(), source, info.stage, info.macros) :

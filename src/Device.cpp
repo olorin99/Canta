@@ -915,8 +915,10 @@ auto canta::Device::createPipeline(Pipeline::CreateInfo info, PipelineHandle old
     if (info.mesh.module)
         attachShader(info.mesh);
 
-    if (shaderStages.empty()) //TODO: log
+    if (shaderStages.empty()) {
+        logger().error("No valid shader modueles attach to pipeline: {}", info.name);
         return {};
+    }
 
     std::vector<VkDescriptorSetLayout> setLayouts = {};
     setLayouts.push_back(_bindlessLayout);
