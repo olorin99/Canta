@@ -6,6 +6,8 @@
 #include <tsl/robin_map.h>
 #include <filesystem>
 #include <Ende/filesystem/FileWatcher.h>
+#include <slang.h>
+#include <slang-com-ptr.h>
 
 namespace canta {
 
@@ -18,6 +20,7 @@ namespace canta {
         std::filesystem::path path = {};
         std::vector<u32> spirv = {};
         std::string_view glsl = {};
+        std::string_view slang = {};
         std::vector<Macro> macros = {};
         ShaderStage stage = ShaderStage::NONE;
         std::string_view name = {};
@@ -76,6 +79,7 @@ namespace canta {
         auto createShader(ShaderDescription info, ShaderHandle handle = {}) -> ShaderHandle;
 
         auto compileGLSL(std::string_view name, std::string_view glsl, ShaderStage stage, std::span<const Macro> macros = {}) -> std::expected<std::vector<u32>, std::string>;
+        auto compileSlang(std::string_view name, std::string_view slang, ShaderStage stage, std::span<const Macro> macros = {}) -> std::expected<std::vector<u32>, std::string>;
 
         Device* _device = nullptr;
         std::filesystem::path _rootPath = {};
@@ -86,6 +90,8 @@ namespace canta {
         tsl::robin_map<std::filesystem::path, std::pair<ShaderDescription, std::vector<Pipeline::CreateInfo>>> _watchedPipelines;
 
         std::vector<std::pair<std::string, std::string>> _virtualFiles = {};
+
+        Slang::ComPtr<slang::IGlobalSession> _slangGlobalSession = {};
 
     };
 

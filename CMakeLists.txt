@@ -3,13 +3,19 @@ project(Canta)
 
 set(CMAKE_CXX_STANDARD 23)
 
+#add_compile_options(-fsanitize=address)
+#add_link_options(-fsanitize=address)
+
 option(CANTA_BUILD_EXAMPLES "enable examples" ON)
 option(CANTA_ENABLE_IMGUI "enable imgui" ON)
 option(CANTA_BUILD_TESTS "build tests" ON)
+option(CANTA_USE_SLANG "use slang shaders" ON)
 
 add_compile_definitions(CANTA_SRC_DIR="${CMAKE_SOURCE_DIR}")
 
 find_package(SDL2 REQUIRED)
+find_package(Threads REQUIRED)
+find_package(slang REQUIRED)
 
 add_library(Canta
         src/Device.cpp
@@ -66,6 +72,7 @@ target_include_directories(Canta
     PRIVATE
     src
     third_party
+    slang::slang
 )
 
 target_link_libraries(Canta
@@ -77,6 +84,8 @@ target_link_libraries(Canta
     spirv-cross-cpp
     shaderc_combined
     tsl::robin_map
+    Threads::Threads
+    slang::slang
 )
 
 if (CANTA_BUILD_EXAMPLES)

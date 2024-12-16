@@ -101,7 +101,108 @@ auto canta::PipelineManager::create(canta::PipelineManager::CreateInfo info) -> 
     PipelineManager manager = {};
     manager._device = info.device;
     manager._rootPath = info.rootPath;
-    const char* cantaFile = R"(
+    const char* cantaSlangFile = R"(
+
+#define CANTA_BINDLESS_SAMPLERS 0
+#define CANTA_BINDLESS_SAMPLED_IMAGES 1
+#define CANTA_BINDLESS_STORAGE_IMAGES 2
+#define CANTA_BINDLESS_STORAGE_BUFFERS 3
+
+[[vk::binding(0, CANTA_BINDLESS_SAMPLERS)]] uniform SamplerState samplers[];
+
+[[vk::binding(CANTA_BINDLESS_SAMPLED_IMAGES, 0)]] __DynamicResource g_sampledImages[];
+[[vk::binding(CANTA_BINDLESS_STORAGE_IMAGES, 0)]] __DynamicResource g_storageImages[];
+
+struct Image1D<T : __BuiltinRealType, let N : uint> {
+
+    uint index;
+
+    __init(uint imageIndex) {
+        index = imageIndex;
+    }
+
+    __subscript(uint pos) -> vector<T, N> {
+        get { return Texture1D<vector<T, N>>(g_sampledImages[NonUniformResourceIndex(index)])[pos]; }
+        set { static_assert(false, "attempted to write to read only texture"); }
+    }
+}
+
+struct RWImage1D<T : __BuiltinRealType, let N : uint> {
+
+    uint index;
+
+    __init(uint imageIndex) {
+        index = imageIndex;
+    }
+
+    __subscript(uint pos) -> vector<T, N> {
+        get { return RWTexture1D<vector<T, N>>(g_storageImages[NonUniformResourceIndex(index)])[pos]; }
+        set { RWTexture1D<vector<T, N>>(g_storageImages[NonUniformResourceIndex(index)])[pos] = newValue; }
+    }
+}
+
+struct Image2D<T : __BuiltinRealType, let N : uint> {
+
+    uint index;
+
+    __init(uint imageIndex) {
+        index = imageIndex;
+    }
+
+    __subscript(uint2 pos) -> vector<T, N> {
+        get { return Texture2D<vector<T, N>>(g_sampledImages[NonUniformResourceIndex(index)])[pos]; }
+        set { static_assert(false, "attempted to write to read only texture"); }
+    }
+}
+
+struct RWImage2D<T : __BuiltinRealType, let N : uint> {
+
+    uint index;
+
+    __init(uint imageIndex) {
+        index = imageIndex;
+    }
+
+    __subscript(uint2 pos) -> vector<T, N> {
+        get { return RWTexture2D<vector<T, N>>(g_storageImages[NonUniformResourceIndex(index)])[pos]; }
+        set { RWTexture2D<vector<T, N>>(g_storageImages[NonUniformResourceIndex(index)])[pos] = newValue; }
+    }
+}
+
+struct Image3D<T : __BuiltinRealType, let N : uint> {
+
+    uint index;
+
+    __init(uint imageIndex) {
+        index = imageIndex;
+    }
+
+    __subscript(uint3 pos) -> vector<T, N> {
+        get { return Texture3D<vector<T, N>>(g_sampledImages[NonUniformResourceIndex(index)])[pos]; }
+        set { static_assert(false, "attempted to write to read only texture"); }
+    }
+}
+
+struct RWImage3D<T : __BuiltinRealType, let N : uint> {
+
+    uint index;
+
+    __init(uint imageIndex) {
+        index = imageIndex;
+    }
+
+    __subscript(uint3 pos) -> vector<T, N> {
+        get { return RWTexture3D<vector<T, N>>(g_storageImages[NonUniformResourceIndex(index)])[pos]; }
+        set { RWTexture3D<vector<T, N>>(g_storageImages[NonUniformResourceIndex(index)])[pos] = newValue; }
+    }
+}
+
+
+)";
+    slang::createGlobalSession(manager._slangGlobalSession.writeRef());
+    manager.addVirtualFile("canta.slang", cantaSlangFile);
+
+    const char* cantaGLSLFile = R"(
 #ifndef CANTA_INCLUDE_GLSL
 #define CANTA_INCLUDE_GLSL
 
@@ -152,8 +253,8 @@ layout (set = 0, binding = CANTA_BINDLESS_SAMPLERS) uniform sampler samplers[];
 
 #endif
 )";
-    manager.addVirtualFile("canta.glsl", cantaFile);
-    manager.addVirtualFile("Canta/canta.glsl", cantaFile);
+    manager.addVirtualFile("canta.glsl", cantaGLSLFile);
+    manager.addVirtualFile("Canta/canta.glsl", cantaGLSLFile);
     return manager;
 }
 
@@ -165,6 +266,7 @@ canta::PipelineManager::PipelineManager(canta::PipelineManager &&rhs) noexcept {
     std::swap(_fileWatcher, rhs._fileWatcher);
     std::swap(_watchedPipelines, rhs._watchedPipelines);
     std::swap(_virtualFiles, rhs._virtualFiles);
+    std::swap(_slangGlobalSession, rhs._slangGlobalSession);
 }
 
 auto canta::PipelineManager::operator=(canta::PipelineManager &&rhs) noexcept -> PipelineManager & {
@@ -175,6 +277,7 @@ auto canta::PipelineManager::operator=(canta::PipelineManager &&rhs) noexcept ->
     std::swap(_fileWatcher, rhs._fileWatcher);
     std::swap(_watchedPipelines, rhs._watchedPipelines);
     std::swap(_virtualFiles, rhs._virtualFiles);
+    std::swap(_slangGlobalSession, rhs._slangGlobalSession);
     return *this;
 }
 
@@ -346,9 +449,12 @@ auto canta::PipelineManager::createShader(canta::ShaderDescription info, ShaderH
     std::vector<u32> spirv = {};
     if (!info.path.empty()) {
         auto shaderFile = ende::fs::File::open(_rootPath / info.path);
-        auto glsl = shaderFile->read();
-        auto compilationResult = compileGLSL(info.path.string(), glsl, info.stage, info.macros).transform_error([](const auto& error) {
-            std::printf("%s", error.c_str());
+        auto source = shaderFile->read();
+        auto compilationResult = (info.path.extension() != ".slang" ?
+                compileGLSL(info.path.stem().string(), source, info.stage, info.macros) :
+                compileSlang(info.path.stem().string(), source, info.stage, info.macros)
+        ).transform_error([this](const auto& error) {
+            _device->logger().error("Shader Error: {}", error.c_str());
             return error;
         });
         if (!compilationResult)
@@ -360,8 +466,16 @@ auto canta::PipelineManager::createShader(canta::ShaderDescription info, ShaderH
                 _fileWatcher.addWatch(_rootPath / info.path);
         }
     } else if (!info.glsl.empty()) {
-        auto compilationResult = compileGLSL(info.path.string(), info.glsl, info.stage).transform_error([](const auto& error) {
-            std::printf("%s", error.c_str());
+        auto compilationResult = compileGLSL(info.name, info.glsl, info.stage).transform_error([this](const auto& error) {
+            _device->logger().error("Shader Error: {}", error.c_str());
+            return error;
+        });
+        if (!compilationResult)
+            return {};
+        spirv = compilationResult.value();
+    } else if (!info.slang.empty()) {
+        auto compilationResult = compileSlang(info.name, info.slang, info.stage).transform_error([this](const auto& error) {
+            _device->logger().error("Shader Error: {}", error.c_str());
             return error;
         });
         if (!compilationResult)
@@ -370,7 +484,6 @@ auto canta::PipelineManager::createShader(canta::ShaderDescription info, ShaderH
     }
     if (!spirv.empty())
         createInfo.spirv = spirv;
-
 
     auto h = _device->createShaderModule(createInfo, handle);
     if (!handle) {
@@ -584,6 +697,71 @@ auto canta::PipelineManager::compileGLSL(std::string_view name, std::string_view
     return std::vector<u32>(result.cbegin(), result.cend());
 }
 
+auto canta::PipelineManager::compileSlang(std::string_view name, std::string_view slang, canta::ShaderStage stage, std::span<const Macro> macros) -> std::expected<std::vector<u32>, std::string> {
+    slang::SessionDesc sessionDesc = {};
+    const auto rootPath = _rootPath.string();
+    const char* searchPaths[] = { rootPath.c_str() };
+    sessionDesc.searchPaths = searchPaths;
+    sessionDesc.searchPathCount = 1;
+    std::vector<slang::PreprocessorMacroDesc> slangMacros = {};
+    for (auto& macro : macros) {
+        slang::PreprocessorMacroDesc macroDesc = {};
+        macroDesc.name = macro.name.c_str();
+        macroDesc.value = macro.value.c_str();
+        slangMacros.push_back(macroDesc);
+    }
+    sessionDesc.preprocessorMacros = slangMacros.data();
+    sessionDesc.preprocessorMacroCount = slangMacros.size();
+    slang::TargetDesc targetDesc = {};
+    targetDesc.format = SLANG_SPIRV;
+    targetDesc.profile = _slangGlobalSession->findProfile("spirv_latest");
+    targetDesc.flags = SLANG_TARGET_FLAG_GENERATE_SPIRV_DIRECTLY;
+    sessionDesc.targets = &targetDesc;
+    sessionDesc.targetCount = 1;
+    std::vector<slang::CompilerOptionEntry> options = {};
+    options.push_back({ slang::CompilerOptionName::EmitSpirvDirectly, { slang::CompilerOptionValueKind::Int, 1, 0, nullptr, nullptr }});
+    sessionDesc.compilerOptionEntries = options.data();
+    sessionDesc.compilerOptionEntryCount = options.size();
+
+    Slang::ComPtr<slang::ISession> session = {};
+    auto res = _slangGlobalSession->createSession(sessionDesc, session.writeRef());
+    if (0 != res)
+        return std::unexpected("Could not create slang session");
+
+    Slang::ComPtr<SlangCompileRequest> slangRequest = {};
+    res = session->createCompileRequest(slangRequest.writeRef());
+    if (0 != res)
+        return std::unexpected(slangRequest->getDiagnosticOutput());
+
+    std::array<char const*, 1> cmdArgs = {
+            "-O0",
+    };
+    slangRequest->processCommandLineArguments(cmdArgs.data(), cmdArgs.size());
+    for (auto& file : _virtualFiles) {
+        if (file.first == "canta.slang") {
+            auto cantaIndex = slangRequest->addTranslationUnit(SLANG_SOURCE_LANGUAGE_SLANG, "canta");
+            slangRequest->addTranslationUnitSourceString(cantaIndex, file.first.c_str(), file.second.data());
+            break;
+        }
+    }
+
+    auto index = slangRequest->addTranslationUnit(SLANG_SOURCE_LANGUAGE_SLANG, name.data());
+    slangRequest->addTranslationUnitSourceString(index, name.data(), slang.data());
+
+    res = slangRequest->compile();
+    if (0 != res)
+        return std::unexpected(slangRequest->getDiagnosticOutput());
+
+    Slang::ComPtr<slang::IBlob> kernelBlob = {};
+    res = slangRequest->getEntryPointCodeBlob(0, 0, kernelBlob.writeRef());
+    if (0 != res)
+        return std::unexpected(slangRequest->getDiagnosticOutput());
+
+    std::vector<u32> spirv = {};
+    spirv.insert(spirv.begin(), (u32*)kernelBlob->getBufferPointer(), (u32*)((u8*)kernelBlob->getBufferPointer() + kernelBlob->getBufferSize()));
+    return spirv;
+}
+
 
 auto loadShaderDescription(canta::PipelineManager& manager, rapidjson::Value& node, std::span<const canta::Macro> additionalMacros = {}) -> canta::ShaderDescription {
     canta::ShaderDescription description = {};
@@ -597,6 +775,10 @@ auto loadShaderDescription(canta::PipelineManager& manager, rapidjson::Value& no
     if (node.HasMember("glsl")) {
         assert(node["glsl"].IsString());
         description.glsl = node["glsl"].GetString();
+    }
+    if (node.HasMember("slang")) {
+        assert(node["slang"].IsString());
+        description.slang = node["slang"].GetString();
     }
     if (node.HasMember("macros")) {
         assert(node["macros"].IsArray());
