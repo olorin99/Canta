@@ -125,6 +125,10 @@ struct Image1D<T : __BuiltinRealType, let N : uint> {
         get { return Texture1D<vector<T, N>>(g_sampledImages[NonUniformResourceIndex(index)])[pos]; }
         set { static_assert(false, "attempted to write to read only texture"); }
     }
+
+    func get() -> Texture1D<vector<T, N>> {
+        return Texture1D<vector<T, N>>(g_sampledImages[NonUniformResourceIndex(index)]);
+    }
 }
 
 struct RWImage1D<T : __BuiltinRealType, let N : uint> {
@@ -138,6 +142,10 @@ struct RWImage1D<T : __BuiltinRealType, let N : uint> {
     __subscript(uint pos) -> vector<T, N> {
         get { return RWTexture1D<vector<T, N>>(g_storageImages[NonUniformResourceIndex(index)])[pos]; }
         set { RWTexture1D<vector<T, N>>(g_storageImages[NonUniformResourceIndex(index)])[pos] = newValue; }
+    }
+
+    func get() -> RWTexture1D<vector<T, N>> {
+        return RWTexture1D<vector<T, N>>(g_storageImages[NonUniformResourceIndex(index)]);
     }
 }
 
@@ -153,6 +161,10 @@ struct Image2D<T : __BuiltinRealType, let N : uint> {
         get { return Texture2D<vector<T, N>>(g_sampledImages[NonUniformResourceIndex(index)])[pos]; }
         set { static_assert(false, "attempted to write to read only texture"); }
     }
+
+    func get() -> Texture2D<vector<T, N>> {
+        return Texture2D<vector<T, N>>(g_sampledImages[NonUniformResourceIndex(index)]);
+    }
 }
 
 struct RWImage2D<T : __BuiltinRealType, let N : uint> {
@@ -166,6 +178,10 @@ struct RWImage2D<T : __BuiltinRealType, let N : uint> {
     __subscript(uint2 pos) -> vector<T, N> {
         get { return RWTexture2D<vector<T, N>>(g_storageImages[NonUniformResourceIndex(index)])[pos]; }
         set { RWTexture2D<vector<T, N>>(g_storageImages[NonUniformResourceIndex(index)])[pos] = newValue; }
+    }
+
+    func get() -> RWTexture2D<vector<T, N>> {
+        return RWTexture2D<vector<T, N>>(g_storageImages[NonUniformResourceIndex(index)]);
     }
 }
 
@@ -181,6 +197,10 @@ struct Image3D<T : __BuiltinRealType, let N : uint> {
         get { return Texture3D<vector<T, N>>(g_sampledImages[NonUniformResourceIndex(index)])[pos]; }
         set { static_assert(false, "attempted to write to read only texture"); }
     }
+
+    func get() -> Texture3D<vector<T, N>> {
+        return Texture3D<vector<T, N>>(g_sampledImages[NonUniformResourceIndex(index)]);
+    }
 }
 
 struct RWImage3D<T : __BuiltinRealType, let N : uint> {
@@ -194,6 +214,10 @@ struct RWImage3D<T : __BuiltinRealType, let N : uint> {
     __subscript(uint3 pos) -> vector<T, N> {
         get { return RWTexture3D<vector<T, N>>(g_storageImages[NonUniformResourceIndex(index)])[pos]; }
         set { RWTexture3D<vector<T, N>>(g_storageImages[NonUniformResourceIndex(index)])[pos] = newValue; }
+    }
+
+    func get() -> RWTexture3D<vector<T, N>> {
+        return RWTexture3D<vector<T, N>>(g_storageImages[NonUniformResourceIndex(index)]);
     }
 }
 
