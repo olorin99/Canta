@@ -25,7 +25,7 @@ namespace canta::util {
         return _maxSize;
     };
 
-#ifndef NDEBUG
+//#ifndef NDEBUG
 
 #define STRINGIFY(str) #str
 #define TO_STRING_ENUM(e) case e: return STRINGIFY(e);
@@ -190,8 +190,11 @@ namespace canta::util {
     static auto getMarkerStage(const std::array<u8, debugMarkerSize>& data) -> PipelineStage {
         return reinterpret_cast<const Marker*>(&data)->stage;
     }
-
-#endif
+//#else
+//
+//    constexpr const size_t debugMarkerSize = 0;
+//
+//#endif
 
 }
 
