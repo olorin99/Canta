@@ -129,6 +129,12 @@ struct Image1D<T : __BuiltinRealType, let N : uint> {
     func get() -> Texture1D<vector<T, N>> {
         return Texture1D<vector<T, N>>(g_sampledImages[NonUniformResourceIndex(index)]);
     }
+
+    func size() -> uint {
+        uint value = 0;
+        get().GetDimensions(value);
+        return value;
+    }
 }
 
 struct RWImage1D<T : __BuiltinRealType, let N : uint> {
@@ -146,6 +152,12 @@ struct RWImage1D<T : __BuiltinRealType, let N : uint> {
 
     func get() -> RWTexture1D<vector<T, N>> {
         return RWTexture1D<vector<T, N>>(g_storageImages[NonUniformResourceIndex(index)]);
+    }
+
+    func size() -> uint {
+        uint value = 0;
+        get().GetDimensions(value);
+        return value;
     }
 }
 
@@ -165,6 +177,12 @@ struct Image2D<T : __BuiltinRealType, let N : uint> {
     func get() -> Texture2D<vector<T, N>> {
         return Texture2D<vector<T, N>>(g_sampledImages[NonUniformResourceIndex(index)]);
     }
+
+    func size() -> uint2 {
+        uint2 value = 0;
+        get().GetDimensions(value.x, value.y);
+        return value;
+    }
 }
 
 struct RWImage2D<T : __BuiltinRealType, let N : uint> {
@@ -182,6 +200,12 @@ struct RWImage2D<T : __BuiltinRealType, let N : uint> {
 
     func get() -> RWTexture2D<vector<T, N>> {
         return RWTexture2D<vector<T, N>>(g_storageImages[NonUniformResourceIndex(index)]);
+    }
+
+    func size() -> uint2 {
+        uint2 value = 0;
+        get().GetDimensions(value.x, value.y);
+        return value;
     }
 }
 
@@ -201,6 +225,12 @@ struct Image3D<T : __BuiltinRealType, let N : uint> {
     func get() -> Texture3D<vector<T, N>> {
         return Texture3D<vector<T, N>>(g_sampledImages[NonUniformResourceIndex(index)]);
     }
+
+    func size() -> uint3 {
+        uint3 value = 0;
+        get().GetDimensions(value.x, value.y, value.z);
+        return value;
+    }
 }
 
 struct RWImage3D<T : __BuiltinRealType, let N : uint> {
@@ -218,6 +248,12 @@ struct RWImage3D<T : __BuiltinRealType, let N : uint> {
 
     func get() -> RWTexture3D<vector<T, N>> {
         return RWTexture3D<vector<T, N>>(g_storageImages[NonUniformResourceIndex(index)]);
+    }
+
+    func size() -> uint3 {
+        uint3 value = 0;
+        get().GetDimensions(value.x, value.y, value.z);
+        return value;
     }
 }
 
