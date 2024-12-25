@@ -837,14 +837,18 @@ auto canta::PipelineManager::compileSlang(std::string_view name, std::string_vie
     }
     sessionDesc.preprocessorMacros = slangMacros.data();
     sessionDesc.preprocessorMacroCount = slangMacros.size();
+    sessionDesc.defaultMatrixLayoutMode = SLANG_MATRIX_LAYOUT_COLUMN_MAJOR;
     slang::TargetDesc targetDesc = {};
     targetDesc.format = SLANG_SPIRV;
-    targetDesc.profile = _slangGlobalSession->findProfile("spirv_latest");
+    targetDesc.profile = _slangGlobalSession->findProfile("spirv_1_6");
     targetDesc.flags = SLANG_TARGET_FLAG_GENERATE_SPIRV_DIRECTLY;
+    targetDesc.forceGLSLScalarBufferLayout = true;
     sessionDesc.targets = &targetDesc;
     sessionDesc.targetCount = 1;
     std::vector<slang::CompilerOptionEntry> options = {};
     options.push_back({ slang::CompilerOptionName::EmitSpirvDirectly, { slang::CompilerOptionValueKind::Int, 1, 0, nullptr, nullptr }});
+    options.push_back({ slang::CompilerOptionName::GLSLForceScalarLayout, { slang::CompilerOptionValueKind::Int, 1, 0, nullptr, nullptr }});
+    options.push_back({ slang::CompilerOptionName::MatrixLayoutColumn, { slang::CompilerOptionValueKind::Int, 1, 0, nullptr, nullptr }});
     sessionDesc.compilerOptionEntries = options.data();
     sessionDesc.compilerOptionEntryCount = options.size();
 
@@ -858,8 +862,9 @@ auto canta::PipelineManager::compileSlang(std::string_view name, std::string_vie
     if (0 != res)
         return std::unexpected(slangRequest->getDiagnosticOutput());
 
-    std::array<char const*, 1> cmdArgs = {
+    std::array<char const*, 2> cmdArgs = {
             "-O0",
+            "-fvk-use-entrypoint-name"
     };
     slangRequest->processCommandLineArguments(cmdArgs.data(), cmdArgs.size());
     for (auto& file : _virtualFiles) {
@@ -879,6 +884,7 @@ auto canta::PipelineManager::compileSlang(std::string_view name, std::string_vie
 
     Slang::ComPtr<slang::IBlob> kernelBlob = {};
     res = slangRequest->getEntryPointCodeBlob(0, 0, kernelBlob.writeRef());
+//    res = slangRequest->getTargetCodeBlob(0, kernelBlob.writeRef());
     if (0 != res)
         return std::unexpected(slangRequest->getDiagnosticOutput());
 

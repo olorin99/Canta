@@ -382,6 +382,7 @@ auto canta::Device::create(canta::Device::CreateInfo info) noexcept -> std::expe
     vulkan12Features.descriptorBindingStorageImageUpdateAfterBind = true;
     vulkan12Features.descriptorBindingStorageBufferUpdateAfterBind = true;
     vulkan12Features.shaderSampledImageArrayNonUniformIndexing = true;
+    vulkan12Features.shaderInt8 = true;
 
     VkPhysicalDeviceVulkan13Features vulkan13Features = {};
     vulkan13Features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
@@ -389,6 +390,7 @@ auto canta::Device::create(canta::Device::CreateInfo info) noexcept -> std::expe
     vulkan13Features.maintenance4 = true;
     vulkan13Features.synchronization2 = true;
     vulkan13Features.dynamicRendering = true;
+    vulkan13Features.shaderDemoteToHelperInvocation = true;
 
     VkPhysicalDeviceMeshShaderFeaturesEXT meshShaderFeatures = {};
     meshShaderFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_EXT;
@@ -798,7 +800,7 @@ auto canta::Device::createSemaphore(Semaphore::CreateInfo info) -> std::expected
     if (!info.name.empty())
         setDebugName(VK_OBJECT_TYPE_SEMAPHORE, (u64)semaphore._semaphore, info.name);
 
-    logger().info("Semaphore created");
+    logger().info("Semaphore {} created", info.name);
 
     return semaphore;
 }
@@ -861,7 +863,7 @@ auto canta::Device::createShaderModule(ShaderModule::CreateInfo info, ShaderHand
     handle->_interface = ShaderInterface::create(ar);
     handle->_name = info.name;
 
-    logger().info("Shader module created");
+    logger().info("Shader module {} created", info.name);
 
     return handle;
 }
@@ -1163,7 +1165,7 @@ auto canta::Device::createPipeline(Pipeline::CreateInfo info, PipelineHandle old
     handle->_name = info.name;
 //    handle->_info = info;
 
-    logger().info("{} pipeline created", mode == PipelineMode::GRAPHICS ? "Graphics" : "Compute");
+    logger().info("{} pipeline {} created", mode == PipelineMode::GRAPHICS ? "Graphics" : "Compute", info.name);
 
     return handle;
 }
@@ -1257,7 +1259,7 @@ auto canta::Device::createImage(Image::CreateInfo info, ImageHandle oldHandle) -
         }
     }
 
-    logger().info("Image created");
+    logger().info("Image {} created", info.name);
 
     return handle;
 }
@@ -1445,7 +1447,7 @@ auto canta::Device::createBuffer(Buffer::CreateInfo info, BufferHandle oldHandle
 
     updateBindlessBuffer(handle.index(), handle);
 
-    logger().info("Buffer created");
+    logger().info("Buffer {} created", info.name);
 
     return handle;
 }
