@@ -113,7 +113,7 @@ auto canta::PipelineManager::create(canta::PipelineManager::CreateInfo info) -> 
 [[vk::binding(CANTA_BINDLESS_SAMPLED_IMAGES, 0)]] __DynamicResource g_sampledImages[];
 [[vk::binding(CANTA_BINDLESS_STORAGE_IMAGES, 0)]] __DynamicResource g_storageImages[];
 
-struct Image1D<T : __BuiltinRealType, let N : uint> {
+struct Image1D<T : __BuiltinArithmeticType, let N : uint> {
 
     int index;
 
@@ -141,7 +141,7 @@ struct Image1D<T : __BuiltinRealType, let N : uint> {
     }
 }
 
-struct RWImage1D<T : __BuiltinRealType, let N : uint> {
+struct RWImage1D<T : __BuiltinArithmeticType, let N : uint> {
 
     int index;
 
@@ -169,7 +169,7 @@ struct RWImage1D<T : __BuiltinRealType, let N : uint> {
     }
 }
 
-struct Image2D<T : __BuiltinRealType, let N : uint> {
+struct Image2D<T : __BuiltinArithmeticType, let N : uint> {
 
     int index;
 
@@ -197,7 +197,7 @@ struct Image2D<T : __BuiltinRealType, let N : uint> {
     }
 }
 
-struct RWImage2D<T : __BuiltinRealType, let N : uint> {
+struct RWImage2D<T : __BuiltinArithmeticType, let N : uint> {
 
     int index;
 
@@ -225,7 +225,7 @@ struct RWImage2D<T : __BuiltinRealType, let N : uint> {
     }
 }
 
-struct Image3D<T : __BuiltinRealType, let N : uint> {
+struct Image3D<T : __BuiltinArithmeticType, let N : uint> {
 
     int index;
 
@@ -253,7 +253,7 @@ struct Image3D<T : __BuiltinRealType, let N : uint> {
     }
 }
 
-struct RWImage3D<T : __BuiltinRealType, let N : uint> {
+struct RWImage3D<T : __BuiltinArithmeticType, let N : uint> {
 
     int index;
 

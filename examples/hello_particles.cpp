@@ -158,6 +158,12 @@ void main() {
         }
     });
 
+    auto testModule = pipelineManager.getShader({
+        .path = CANTA_SRC_DIR"/examples/hello.slang",
+        .stage = canta::ShaderStage::COMPUTE,
+        .name = "hello"
+    });
+
     constexpr const u32 numParticles = 1000;
 
     struct Particle {

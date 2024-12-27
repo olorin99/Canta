@@ -69,9 +69,10 @@ std::vector<canta::ShaderInterface::Member> getStructMembers(const spirv_cross::
     return members;
 }
 
-void getStruct(tsl::robin_map<std::string, canta::ShaderInterface::Member>& types, std::vector<std::string>& members, const spirv_cross::SPIRType& type, spirv_cross::Compiler& compiler, u32 depth) {
+auto getStruct(tsl::robin_map<std::string, canta::ShaderInterface::Member>& types, std::vector<std::string>& members, const spirv_cross::SPIRType& type, spirv_cross::Compiler& compiler, u32 depth) -> u32 {
     if (depth > 3)
-        return;
+        return 0;
+    u32 structSize = 0;
     for (u32 memberIndex = 0; memberIndex < type.member_types.size(); memberIndex++) {
         auto& memberType = compiler.get_type(type.member_types[memberIndex]);
         const std::string& name = compiler.get_member_name(type.self, memberIndex);
@@ -85,7 +86,9 @@ void getStruct(tsl::robin_map<std::string, canta::ShaderInterface::Member>& type
             getStruct(types, member.members, memberType, compiler, depth + 1);
         types[name] = member;
         members.push_back(name);
+        structSize += memberSize;
     }
+    return structSize;
 }
 
 auto canta::ShaderInterface::create(std::span<CreateInfo> infos) -> ShaderInterface {
@@ -125,7 +128,10 @@ auto canta::ShaderInterface::create(std::span<CreateInfo> infos) -> ShaderInterf
 //                        members.push_back(name);
 //                        interface._types[name] = { name, memberSize, memberOffset, typeToMemberType(memberType) };
 //                    }
-                    getStruct(interface._types, members, memberType, compiler, 0);
+                    auto structSize = getStruct(interface._types, members, memberType, compiler, 0);
+                    if (memberType.op == spv::OpTypePointer)
+                        memberSize = structSize;
+                    interface._types[name] = { name, memberSize, memberOffset, typeToMemberType(memberType) };
                 } else {
                     members.push_back(name);
                     interface._types[name] = { name, memberSize, memberOffset, typeToMemberType(memberType) };
