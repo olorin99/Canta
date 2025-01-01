@@ -148,13 +148,14 @@ void canta::CommandBuffer::setScissor(const ende::math::Vec<2, u32> &size, const
     vkCmdSetScissor(_buffer, 0, 1, &scissor);
 }
 
-void canta::CommandBuffer::bindPipeline(PipelineHandle pipeline) {
+auto canta::CommandBuffer::bindPipeline(PipelineHandle pipeline) -> bool {
     if (!pipeline)
-        return;
+        return false;
     vkCmdBindPipeline(_buffer, pipeline->mode() == PipelineMode::GRAPHICS ? VK_PIPELINE_BIND_POINT_GRAPHICS : VK_PIPELINE_BIND_POINT_COMPUTE, pipeline->pipeline());
     _currentPipeline = pipeline;
     auto set = _device->bindlessSet();
     vkCmdBindDescriptorSets(_buffer, pipeline->mode() == PipelineMode::GRAPHICS ? VK_PIPELINE_BIND_POINT_GRAPHICS : VK_PIPELINE_BIND_POINT_COMPUTE, _currentPipeline->layout(), 0, 1, &set, 0, nullptr);
+    return true;
 }
 
 void canta::CommandBuffer::bindVertexBuffer(canta::BufferHandle handle) {

@@ -275,13 +275,14 @@ auto canta::RenderGraph::create(canta::RenderGraph::CreateInfo info) -> RenderGr
     return graph;
 }
 
-auto canta::RenderGraph::addPass(std::string_view name, PassType type, RenderGroup group) -> RenderPass & {
+auto canta::RenderGraph::addPass(std::string_view name, PassType type, RenderGroup group, bool manualPipeline) -> RenderPass & {
     u32 index = _passes.size();
     _passes.emplace_back();
     _passes.back()._graph = this;
     _passes.back()._name = name;
     _passes.back()._type = type;
     _passes.back().setGroup(group);
+    _passes.back().setManualPipeline(manualPipeline);
     if (_timingEnabled && _timingMode != TimingMode::SINGLE) {
         if (_timers[_device->flyingIndex()].size() <= index) {
             _timers[_device->flyingIndex()].emplace_back(std::make_pair(name, _device->createTimer()));
@@ -317,7 +318,7 @@ auto canta::RenderGraph::addPass(canta::RenderPass &&pass) -> RenderPass & {
 }
 
 auto canta::RenderGraph::addClearPass(std::string_view name, canta::ImageIndex index, const ClearValue& value, RenderGroup group) -> RenderPass & {
-    auto& clearPass = addPass(name, PassType::TRANSFER, group);
+    auto& clearPass = addPass(name, PassType::TRANSFER, group, true);
     clearPass.addTransferWrite(index);
     clearPass.setExecuteFunction([index, value] (CommandBuffer& cmd, RenderGraph& graph) {
         auto image = graph.getImage(index);
@@ -327,7 +328,7 @@ auto canta::RenderGraph::addClearPass(std::string_view name, canta::ImageIndex i
 }
 
 auto canta::RenderGraph::addBlitPass(std::string_view name, canta::ImageIndex src, canta::ImageIndex dst, Filter filter, RenderGroup group) -> RenderPass & {
-    auto& blitPass = addPass(name, PassType::TRANSFER, group);
+    auto& blitPass = addPass(name, PassType::TRANSFER, group, true);
     blitPass.addTransferRead(src);
     blitPass.addTransferWrite(dst);
     blitPass.setExecuteFunction([src, dst, filter] (CommandBuffer& cmd, RenderGraph& graph) {
@@ -678,6 +679,8 @@ auto canta::RenderGraph::execute(std::span<Semaphore::Pair> waits, std::span<Sem
             info.size = { static_cast<u32>(width), static_cast<u32>(height) };
             cmd.beginRendering(info);
         }
+        if (!pass->_manualPipeline && !cmd.bindPipeline(pass->_pipeline))
+            return std::unexpected(RenderGraphError::INVALID_PIPELINE);
         pass->_execute(cmd, *this);
         if (pass->_type == PassType::GRAPHICS) {
             cmd.endRendering();

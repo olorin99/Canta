@@ -372,10 +372,10 @@ void main() {
 
         auto& particlesMovePass = renderGraph.addPass("particles_move")
             .setGroup(particleGroup)
+            .setPipeline(pipeline)
             .addStorageBufferWrite(particleBufferIndex, canta::PipelineStage::COMPUTE_SHADER)
-            .setExecuteFunction([pipeline, particleBufferIndex, numParticles, dt](canta::CommandBuffer& cmd, canta::RenderGraph& graph) {
+            .setExecuteFunction([particleBufferIndex, numParticles, dt](canta::CommandBuffer& cmd, canta::RenderGraph& graph) {
             auto buffer = graph.getBuffer(particleBufferIndex);
-            cmd.bindPipeline(pipeline);
             struct Push {
                 u64 address;
                 i32 maxParticles;
@@ -391,12 +391,12 @@ void main() {
 
         auto& particlesDrawPass = renderGraph.addPass("particles_draw")
             .setGroup(particleGroup)
+            .setPipeline(pipelineDraw)
             .addStorageBufferRead(particleBufferIndex, canta::PipelineStage::COMPUTE_SHADER)
             .addStorageImageWrite(imageIndex, canta::PipelineStage::COMPUTE_SHADER)
-            .setExecuteFunction([pipelineDraw, particleBufferIndex, imageIndex, numParticles](canta::CommandBuffer& cmd, canta::RenderGraph& graph) {
+            .setExecuteFunction([particleBufferIndex, imageIndex, numParticles](canta::CommandBuffer& cmd, canta::RenderGraph& graph) {
             auto buffer = graph.getBuffer(particleBufferIndex);
             auto image = graph.getImage(imageIndex);
-            cmd.bindPipeline(pipelineDraw);
             struct Push {
                 u64 address;
                 i32 index;
@@ -413,6 +413,7 @@ void main() {
         auto [uiSwapchainIndex] = renderGraph.addBlitPass("blit_to_swapchain", imageIndex, swapchainIndex).aliasImageOutputs<1>();
 
         auto& uiPass = renderGraph.addPass("ui", canta::PassType::GRAPHICS)
+            .setManualPipeline(true)
             .addColourRead(swapchainIndex)
             .addColourWrite(uiSwapchainIndex)
             .setExecuteFunction([&imguiContext, &swapchain](canta::CommandBuffer& cmd, canta::RenderGraph& graph) {
@@ -421,7 +422,8 @@ void main() {
 
         renderGraph.setBackbuffer(uiSwapchainIndex, canta::ImageLayout::PRESENT);
 //        renderGraph.setBackbuffer(swapchainIndex);
-        renderGraph.compile();
+        if (!renderGraph.compile())
+            return -1;
 
         auto waits = std::to_array({
             { device->frameSemaphore(), device->framePrevValue() },
@@ -432,7 +434,8 @@ void main() {
             device->frameSemaphore()->getPair(),
             swapchain->presentSemaphore()->getPair()
         });
-        renderGraph.execute(waits, signals);
+        if (!renderGraph.execute(waits, signals))
+            return -2;
 
         swapchain->present();
 

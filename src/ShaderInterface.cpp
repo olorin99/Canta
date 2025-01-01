@@ -128,10 +128,11 @@ auto canta::ShaderInterface::create(std::span<CreateInfo> infos) -> ShaderInterf
 //                        members.push_back(name);
 //                        interface._types[name] = { name, memberSize, memberOffset, typeToMemberType(memberType) };
 //                    }
-                    auto structSize = getStruct(interface._types, members, memberType, compiler, 0);
+                    std::vector<std::string> structMembers = {};
+                    auto structSize = getStruct(interface._types, structMembers, memberType, compiler, 0);
                     if (memberType.op == spv::OpTypePointer)
                         memberSize = structSize;
-                    interface._types[name] = { name, memberSize, memberOffset, typeToMemberType(memberType) };
+                    interface._types[name] = { name, memberSize, memberOffset, typeToMemberType(memberType), structMembers };
                 } else {
                     members.push_back(name);
                     interface._types[name] = { name, memberSize, memberOffset, typeToMemberType(memberType) };

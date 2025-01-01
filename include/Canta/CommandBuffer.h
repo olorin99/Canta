@@ -93,7 +93,7 @@ namespace canta {
         void setViewport(const ende::math::Vec<2, f32>& size, const ende::math::Vec<2, f32>& offset = { 0, 0 }, bool setScissor = true);
         void setScissor(const ende::math::Vec<2, u32>& size, const ende::math::Vec<2, i32>& offset = { 0, 0 });
 
-        void bindPipeline(PipelineHandle pipeline);
+        auto bindPipeline(PipelineHandle pipeline) -> bool;
 
         void bindVertexBuffer(BufferHandle handle);
         void bindVertexBuffers(std::span<BufferHandle> handles, u32 first = 0, u32 offset = 0);
