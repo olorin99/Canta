@@ -3,6 +3,9 @@
 
 #include <Ende/platform.h>
 #include <volk.h>
+#include <Canta/CommandBuffer.h>
+#include <Canta/Semaphore.h>
+#include <expected>
 
 namespace canta {
 
@@ -14,6 +17,8 @@ namespace canta {
         auto queue() const -> VkQueue { return _queue; }
         auto familyIndex() const -> u32 { return _familyIndex; }
         auto queueIndex() const -> u32 { return _queueIndex; }
+
+        auto submit(std::span<CommandBuffer> commandBuffers, std::span<Semaphore::Pair> waits = {}, std::span<Semaphore::Pair> signals = {}, VkFence fence = VK_NULL_HANDLE) -> std::expected<bool, Error>;
 
     private:
         friend Device;

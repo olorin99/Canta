@@ -257,7 +257,10 @@ auto canta::UploadBuffer::flushStagedData() -> UploadBuffer& {
         auto signals = std::to_array({
             _timelineSemaphore.getPair()
         });
-        commandBuffer.submit(waits, signals);
+        if (!_device->queue(QueueType::TRANSFER).submit({ &commandBuffer, 1 }, waits, signals)) {
+            _device->logger().error("Failed to submit queue");
+            return *this;
+        }
         _submitted.push_back(_timelineSemaphore.value());
     }
 

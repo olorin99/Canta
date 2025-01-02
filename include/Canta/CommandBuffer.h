@@ -82,8 +82,6 @@ namespace canta {
 
         auto buffer() const -> VkCommandBuffer { return _buffer; }
 
-        auto submit(std::span<Semaphore::Pair> waitSemaphores, std::span<Semaphore::Pair> signalSemaphores, VkFence fence = VK_NULL_HANDLE) -> std::expected<bool, Error>;
-
         auto begin() -> bool;
         auto end() -> bool;
 

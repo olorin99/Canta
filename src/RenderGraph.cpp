@@ -713,9 +713,8 @@ auto canta::RenderGraph::execute(std::span<Semaphore::Pair> waits, std::span<Sem
     if (_timingEnabled && _timingMode == TimingMode::SINGLE)
         _timers[_device->flyingIndex()].front().second.end(cmd);
     cmd.end();
-    cmd.submit(waits, signals);
 
-    return true;
+    return *_device->queue(QueueType::GRAPHICS).submit({ &cmd, 1 }, waits, signals);
 }
 
 void canta::RenderGraph::buildBarriers() {

@@ -144,7 +144,7 @@ namespace canta {
 
         template <typename Func>
         void immediate(Func func, QueueType queueType = QueueType::GRAPHICS) {
-            auto& cmd = _immediatePool.getBuffer();
+            auto& cmd = _immediatePool.getBuffer(); //TODO: allocate from pool associated with queueType
             cmd.begin();
             func(cmd);
             cmd.end();
@@ -155,7 +155,7 @@ namespace canta {
             auto signal = std::to_array({
                 _immediateTimeline.getPair()
             });
-            cmd.submit(wait, signal).and_then([&](auto result) {
+            queue(queueType).submit({ &cmd, 1 }, wait, signal).and_then([&](auto result) {
                 return _immediateTimeline.wait(_immediateTimeline.value());
             });
         }
