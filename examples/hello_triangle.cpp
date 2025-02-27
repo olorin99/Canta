@@ -191,7 +191,7 @@ void main() {
 
         commandBuffer.end();
 
-        commandBuffer.submit(waits, signals);
+        device->queue(canta::QueueType::GRAPHICS).submit({ &commandBuffer, 1 }, waits, signals);
 
         swapchain->present();
 

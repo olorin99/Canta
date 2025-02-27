@@ -822,6 +822,8 @@ auto canta::PipelineManager::compileGLSL(std::string_view name, std::string_view
     return std::vector<u32>(result.cbegin(), result.cend());
 }
 
+#define DIAGNOSE(diagnostics) if (diagnostics != nullptr) return std::unexpected(reinterpret_cast<const char*>(diagnostics->getBufferPointer()));
+
 auto canta::PipelineManager::compileSlang(std::string_view name, std::string_view slang, canta::ShaderStage stage, std::span<const Macro> macros) -> std::expected<std::vector<u32>, std::string> {
     slang::SessionDesc sessionDesc = {};
     const auto rootPath = _rootPath.string();
@@ -849,6 +851,7 @@ auto canta::PipelineManager::compileSlang(std::string_view name, std::string_vie
     options.push_back({ slang::CompilerOptionName::EmitSpirvDirectly, { slang::CompilerOptionValueKind::Int, 1, 0, nullptr, nullptr }});
     options.push_back({ slang::CompilerOptionName::GLSLForceScalarLayout, { slang::CompilerOptionValueKind::Int, 1, 0, nullptr, nullptr }});
     options.push_back({ slang::CompilerOptionName::MatrixLayoutColumn, { slang::CompilerOptionValueKind::Int, 1, 0, nullptr, nullptr }});
+    options.push_back({ slang::CompilerOptionName::VulkanUseEntryPointName, { slang::CompilerOptionValueKind::Int, 1, 0, nullptr, nullptr }});
     sessionDesc.compilerOptionEntries = options.data();
     sessionDesc.compilerOptionEntryCount = options.size();
 
@@ -857,36 +860,55 @@ auto canta::PipelineManager::compileSlang(std::string_view name, std::string_vie
     if (0 != res)
         return std::unexpected("Could not create slang session");
 
-    Slang::ComPtr<SlangCompileRequest> slangRequest = {};
-    res = session->createCompileRequest(slangRequest.writeRef());
-    if (0 != res)
-        return std::unexpected(slangRequest->getDiagnosticOutput());
-
-    std::array<char const*, 2> cmdArgs = {
-            "-O0",
-            "-fvk-use-entrypoint-name"
-    };
-    slangRequest->processCommandLineArguments(cmdArgs.data(), cmdArgs.size());
-    for (auto& file : _virtualFiles) {
-        if (file.first == "canta.slang") {
-            auto cantaIndex = slangRequest->addTranslationUnit(SLANG_SOURCE_LANGUAGE_SLANG, "canta");
-            slangRequest->addTranslationUnitSourceString(cantaIndex, file.first.c_str(), file.second.data());
-            break;
+    Slang::ComPtr<slang::IModule> cantaModule = {};
+    {
+        Slang::ComPtr<slang::IBlob> diagnostics = {};
+        for (auto& file : _virtualFiles) {
+            if (file.first == "canta.slang") {
+                cantaModule = session->loadModuleFromSourceString("canta", file.first.c_str(), file.second.c_str(), diagnostics.writeRef());
+                DIAGNOSE(diagnostics);
+                break;
+            }
         }
     }
 
-    auto index = slangRequest->addTranslationUnit(SLANG_SOURCE_LANGUAGE_SLANG, name.data());
-    slangRequest->addTranslationUnitSourceString(index, name.data(), slang.data());
+    Slang::ComPtr<slang::IModule> slangModule = {};
+    {
+        Slang::ComPtr<slang::IBlob> diagnostics = {};
+        slangModule = session->loadModuleFromSourceString(name.data(), name.data(), slang.data(), diagnostics.writeRef());
+        DIAGNOSE(diagnostics);
+    }
 
-    res = slangRequest->compile();
-    if (0 != res)
-        return std::unexpected(slangRequest->getDiagnosticOutput());
+    std::array<slang::IComponentType*, 2> componentTypes = {
+            cantaModule,
+            slangModule,
+    };
 
-    Slang::ComPtr<slang::IBlob> kernelBlob = {};
-    res = slangRequest->getEntryPointCodeBlob(0, 0, kernelBlob.writeRef());
-//    res = slangRequest->getTargetCodeBlob(0, kernelBlob.writeRef());
-    if (0 != res)
-        return std::unexpected(slangRequest->getDiagnosticOutput());
+    Slang::ComPtr<slang::IComponentType> composedProgram;
+    {
+        Slang::ComPtr<slang::IBlob> diagnostics;
+        SlangResult result = session->createCompositeComponentType(
+            componentTypes.data(),
+            componentTypes.size(),
+            composedProgram.writeRef(),
+            diagnostics.writeRef()
+        );
+        DIAGNOSE(diagnostics);
+    }
+
+    Slang::ComPtr<slang::IComponentType> linkedProgram;
+    {
+        Slang::ComPtr<slang::IBlob> diagnostics;
+        SlangResult result = composedProgram->link(linkedProgram.writeRef(), diagnostics.writeRef());
+        DIAGNOSE(diagnostics);
+    }
+
+    Slang::ComPtr<slang::IBlob> kernelBlob;
+    {
+        Slang::ComPtr<slang::IBlob> diagnostics;
+        SlangResult result = linkedProgram->getTargetCode(0, kernelBlob.writeRef(), diagnostics.writeRef());
+        DIAGNOSE(diagnostics);
+    }
 
     std::vector<u32> spirv = {};
     spirv.insert(spirv.begin(), (u32*)kernelBlob->getBufferPointer(), (u32*)((u8*)kernelBlob->getBufferPointer() + kernelBlob->getBufferSize()));

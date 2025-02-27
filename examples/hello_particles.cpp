@@ -270,17 +270,17 @@ void main() {
             for (auto& pipelineStats : pipelineStatistics) {
                 if (ImGui::TreeNode(pipelineStats.first.c_str())) {
                     auto stats = pipelineStats.second.result().value();
-                    ImGui::Text("Input Assembly Vertices: %d", stats.inputAssemblyVertices);
-                    ImGui::Text("Input Assembly Primitives: %d", stats.inputAssemblyPrimitives);
-                    ImGui::Text("Vertex Shader Invocations: %d", stats.vertexShaderInvocations);
-                    ImGui::Text("Geometry Shader Invocations: %d", stats.geometryShaderInvocations);
-                    ImGui::Text("Geometry Shader Primitives: %d", stats.geometryShaderPrimitives);
-                    ImGui::Text("Clipping Invocations: %d", stats.clippingInvocations);
-                    ImGui::Text("Clipping Primitives: %d", stats.clippingPrimitives);
-                    ImGui::Text("Fragment Shader Invocations: %d", stats.fragmentShaderInvocations);
-                    ImGui::Text("Tessellation Control Shader Patches: %d", stats.tessellationControlShaderPatches);
-                    ImGui::Text("Tessellation Evaluation Shader Invocations: %d", stats.tessellationEvaluationShaderInvocations);
-                    ImGui::Text("Compute Shader Invocations: %d", stats.computeShaderInvocations);
+                    ImGui::Text("Input Assembly Vertices: %lu", stats.inputAssemblyVertices);
+                    ImGui::Text("Input Assembly Primitives: %lu", stats.inputAssemblyPrimitives);
+                    ImGui::Text("Vertex Shader Invocations: %lu", stats.vertexShaderInvocations);
+                    ImGui::Text("Geometry Shader Invocations: %lu", stats.geometryShaderInvocations);
+                    ImGui::Text("Geometry Shader Primitives: %lu", stats.geometryShaderPrimitives);
+                    ImGui::Text("Clipping Invocations: %lu", stats.clippingInvocations);
+                    ImGui::Text("Clipping Primitives: %lu", stats.clippingPrimitives);
+                    ImGui::Text("Fragment Shader Invocations: %lu", stats.fragmentShaderInvocations);
+                    ImGui::Text("Tessellation Control Shader Patches: %lu", stats.tessellationControlShaderPatches);
+                    ImGui::Text("Tessellation Evaluation Shader Invocations: %lu", stats.tessellationEvaluationShaderInvocations);
+                    ImGui::Text("Compute Shader Invocations: %lu", stats.computeShaderInvocations);
                     ImGui::TreePop();
                 }
             }
