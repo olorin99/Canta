@@ -56,15 +56,15 @@ namespace canta {
 
         PipelineManager() = default;
 
-        auto getShader(ShaderDescription info) -> ShaderHandle;
+        auto getShader(ShaderDescription info) -> std::expected<ShaderHandle, std::string>;
         auto getPipeline(Pipeline::CreateInfo info) -> PipelineHandle;
         auto getPipeline(const Pipeline& old, Pipeline::CreateInfo overrideInfo) -> PipelineHandle;
         auto getPipeline(const std::filesystem::path& path, std::span<const Macro> additionalMacros = {}) -> PipelineHandle;
 
-        auto reload(ShaderHandle shader) -> ShaderHandle;
+        auto reload(ShaderHandle shader) -> std::expected<ShaderHandle, std::string>;
         auto reload(PipelineHandle pipeline) -> PipelineHandle;
 
-        auto reload(ShaderDescription description) -> ShaderHandle;
+        auto reload(ShaderDescription description) -> std::expected<ShaderHandle, std::string>;
         auto reload(Pipeline::CreateInfo info) -> PipelineHandle;
 
         void reloadAll(bool force = false);
@@ -76,7 +76,7 @@ namespace canta {
 
     private:
 
-        auto createShader(ShaderDescription info, ShaderHandle handle = {}) -> ShaderHandle;
+        auto createShader(ShaderDescription info, ShaderHandle handle = {}) -> std::expected<ShaderHandle, std::string>;
 
         auto compileGLSL(std::string_view name, std::string_view glsl, ShaderStage stage, std::span<const Macro> macros = {}) -> std::expected<std::vector<u32>, std::string>;
         auto compileSlang(std::string_view name, std::string_view slang, ShaderStage stage, std::span<const Macro> macros = {}) -> std::expected<std::vector<u32>, std::string>;

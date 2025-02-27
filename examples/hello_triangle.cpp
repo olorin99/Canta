@@ -81,16 +81,18 @@ void main() {
 
     auto pipeline = pipelineManager.getPipeline({
         .vertex = {
-                .module = pipelineManager.getShader({
-                    .glsl = vertexGLSL,
-                    .stage = canta::ShaderStage::VERTEX
-                })
+            .module = pipelineManager.getShader({
+                .glsl = vertexGLSL,
+                .stage = canta::ShaderStage::VERTEX,
+                .name = "vertex_shader"
+            }).value()
         },
         .fragment = {
-                .module = pipelineManager.getShader({
-                    .glsl = fragmentGLSL,
-                    .stage = canta::ShaderStage::FRAGMENT
-                })
+            .module = pipelineManager.getShader({
+                .glsl = fragmentGLSL,
+                .stage = canta::ShaderStage::FRAGMENT,
+                .name = "vertex_shader"
+            }).value()
         },
         .colourFormats = std::vector{ colourFormat }
     });

@@ -402,7 +402,7 @@ auto canta::PipelineManager::operator=(canta::PipelineManager &&rhs) noexcept ->
     return *this;
 }
 
-auto canta::PipelineManager::getShader(canta::ShaderDescription info) -> ShaderHandle {
+auto canta::PipelineManager::getShader(canta::ShaderDescription info) -> std::expected<ShaderHandle, std::string> {
     auto it = _shaders.find(info);
     if (it != _shaders.end())
         return it->second;
@@ -504,7 +504,7 @@ auto canta::PipelineManager::getPipeline(const std::filesystem::path &path, std:
     return getPipeline(createInfo);
 }
 
-auto canta::PipelineManager::reload(canta::ShaderHandle shader) -> ShaderHandle {
+auto canta::PipelineManager::reload(canta::ShaderHandle shader) -> std::expected<ShaderHandle, std::string> {
     for (auto& [key, value] : _shaders) {
         if (value == shader) {
             return reload(key);
@@ -541,7 +541,7 @@ void canta::PipelineManager::reloadAll(bool force) {
     }
 }
 
-auto canta::PipelineManager::reload(canta::ShaderDescription description) -> ShaderHandle {
+auto canta::PipelineManager::reload(canta::ShaderDescription description) -> std::expected<ShaderHandle, std::string> {
     auto it = _shaders.find(description);
     ShaderHandle handle = {};
     if (it != _shaders.end())
@@ -557,7 +557,15 @@ auto canta::PipelineManager::reload(Pipeline::CreateInfo info) -> PipelineHandle
     return _device->createPipeline(info, handle);
 }
 
-auto canta::PipelineManager::createShader(canta::ShaderDescription info, ShaderHandle handle) -> ShaderHandle {
+#define TRY(expr)\
+({\
+ auto&& tmp = (expr);\
+ if(!tmp.has_value())\
+   return std::unexpected(tmp.error());\
+ tmp.value();\
+})
+
+auto canta::PipelineManager::createShader(canta::ShaderDescription info, ShaderHandle handle) -> std::expected<ShaderHandle, std::string> {
     ShaderModule::CreateInfo createInfo = {};
     createInfo.spirv = info.spirv;
     createInfo.stage = info.stage;
@@ -572,40 +580,37 @@ auto canta::PipelineManager::createShader(canta::ShaderDescription info, ShaderH
         auto shaderFile = ende::fs::File::open(_rootPath / info.path);
         if (!shaderFile) {
             _device->logger().error("Invalid shader path: {}", (_rootPath / info.path).string());
-            return {};
+            return std::unexpected(std::format("Invalid shader path: {}", (_rootPath / info.path).string()));
         }
         auto source = shaderFile->read();
-        auto compilationResult = (info.path.extension() != ".slang" ?
-                compileGLSL(info.path.stem().string(), source, info.stage, info.macros) :
-                compileSlang(info.path.stem().string(), source, info.stage, info.macros)
-        ).transform_error([this](const auto& error) {
-            _device->logger().error("Shader Error: {}", error.c_str());
-            return error;
-        });
-        if (!compilationResult)
-            return {};
-        spirv = compilationResult.value();
+        if (info.path.extension() == ".slang") {
+            spirv = TRY(compileSlang(info.path.stem().string(), source, info.stage, info.macros)
+                .transform_error([this](const auto& error) {
+                    _device->logger().error("Shader Error: {}", error.c_str());
+                    return error;
+                }));
+        } else {
+            spirv = TRY(compileGLSL(info.path.stem().string(), source, info.stage, info.macros)
+                .transform_error([this](const auto& error) {
+                    _device->logger().error("Shader Error: {}", error.c_str());
+                    return error;
+                }));
+        }
         if (!handle) {
             auto watcher = _watchedPipelines.find(info.path);
             if (watcher == _watchedPipelines.end())
                 _fileWatcher.addWatch(_rootPath / info.path);
         }
     } else if (!info.glsl.empty()) {
-        auto compilationResult = compileGLSL(info.name, info.glsl, info.stage).transform_error([this](const auto& error) {
+        spirv = TRY(compileGLSL(info.name, info.glsl, info.stage).transform_error([this](const auto& error) {
             _device->logger().error("Shader Error: {}", error.c_str());
             return error;
-        });
-        if (!compilationResult)
-            return {};
-        spirv = compilationResult.value();
+        }));
     } else if (!info.slang.empty()) {
-        auto compilationResult = compileSlang(info.name, info.slang, info.stage).transform_error([this](const auto& error) {
+        spirv = TRY(compileSlang(info.name, info.slang, info.stage).transform_error([this](const auto& error) {
             _device->logger().error("Shader Error: {}", error.c_str());
             return error;
-        });
-        if (!compilationResult)
-            return {};
-        spirv = compilationResult.value();
+        }));
     }
     if (!spirv.empty())
         createInfo.spirv = spirv;
@@ -1110,98 +1115,98 @@ auto loadFromFile(canta::PipelineManager& manager, const std::filesystem::path &
         rapidjson::Value& vertexShader = document["vertex"];
         assert(vertexShader.IsObject());
         createInfo.vertex = {
-            .module = manager.getShader(loadShaderDescription(manager, vertexShader, additionalMacros))
+            .module = manager.getShader(loadShaderDescription(manager, vertexShader, additionalMacros)).value()
         };
     }
     if (document.HasMember("tesselationControl")) {
         rapidjson::Value& tesselationControl = document["tesselationControl"];
         assert(tesselationControl.IsObject());
         createInfo.tesselationControl = {
-            .module = manager.getShader(loadShaderDescription(manager, tesselationControl, additionalMacros))
+            .module = manager.getShader(loadShaderDescription(manager, tesselationControl, additionalMacros)).value()
         };
     }
     if (document.HasMember("tesselationEvaluation")) {
         rapidjson::Value& tesselationEvaluation = document["tesselationEvaluation"];
         assert(tesselationEvaluation.IsObject());
         createInfo.tesselationEvaluation = {
-            .module = manager.getShader(loadShaderDescription(manager, tesselationEvaluation, additionalMacros))
+            .module = manager.getShader(loadShaderDescription(manager, tesselationEvaluation, additionalMacros)).value()
         };
     }
     if (document.HasMember("geometry")) {
         rapidjson::Value& geometry = document["geometry"];
         assert(geometry.IsObject());
         createInfo.geometry = {
-            .module = manager.getShader(loadShaderDescription(manager, geometry, additionalMacros))
+            .module = manager.getShader(loadShaderDescription(manager, geometry, additionalMacros)).value()
         };
     }
     if (document.HasMember("fragment")) {
         rapidjson::Value& fragment = document["fragment"];
         assert(fragment.IsObject());
         createInfo.fragment = {
-            .module = manager.getShader(loadShaderDescription(manager, fragment, additionalMacros))
+            .module = manager.getShader(loadShaderDescription(manager, fragment, additionalMacros)).value()
         };
     }
     if (document.HasMember("compute")) {
         rapidjson::Value& compute = document["compute"];
         assert(compute.IsObject());
         createInfo.compute = {
-            .module = manager.getShader(loadShaderDescription(manager, compute, additionalMacros))
+            .module = manager.getShader(loadShaderDescription(manager, compute, additionalMacros)).value()
         };
     }
     if (document.HasMember("rayGen")) {
         rapidjson::Value& rayGen = document["rayGen"];
         assert(rayGen.IsObject());
         createInfo.rayGen = {
-            .module = manager.getShader(loadShaderDescription(manager, rayGen, additionalMacros))
+            .module = manager.getShader(loadShaderDescription(manager, rayGen, additionalMacros)).value()
         };
     }
     if (document.HasMember("rayGen")) {
         rapidjson::Value& anyHit = document["anyHit"];
         assert(anyHit.IsObject());
         createInfo.anyHit = {
-            .module = manager.getShader(loadShaderDescription(manager, anyHit, additionalMacros))
+            .module = manager.getShader(loadShaderDescription(manager, anyHit, additionalMacros)).value()
         };
     }
     if (document.HasMember("rayGen")) {
         rapidjson::Value& closestHit = document["closestHit"];
         assert(closestHit.IsObject());
         createInfo.closestHit = {
-            .module = manager.getShader(loadShaderDescription(manager, closestHit, additionalMacros))
+            .module = manager.getShader(loadShaderDescription(manager, closestHit, additionalMacros)).value()
         };
     }
     if (document.HasMember("rayGen")) {
         rapidjson::Value& miss = document["miss"];
         assert(miss.IsObject());
         createInfo.miss = {
-            .module = manager.getShader(loadShaderDescription(manager, miss, additionalMacros))
+            .module = manager.getShader(loadShaderDescription(manager, miss, additionalMacros)).value()
         };
     }
     if (document.HasMember("rayGen")) {
         rapidjson::Value& intersection = document["intersection"];
         assert(intersection.IsObject());
         createInfo.intersection = {
-            .module = manager.getShader(loadShaderDescription(manager, intersection, additionalMacros))
+            .module = manager.getShader(loadShaderDescription(manager, intersection, additionalMacros)).value()
         };
     }
     if (document.HasMember("rayGen")) {
         rapidjson::Value& callable = document["callable"];
         assert(callable.IsObject());
         createInfo.callable = {
-            .module = manager.getShader(loadShaderDescription(manager, callable, additionalMacros))
+            .module = manager.getShader(loadShaderDescription(manager, callable, additionalMacros)).value()
         };
     }
     if (document.HasMember("rayGen")) {
         rapidjson::Value& task = document["task"];
         assert(task.IsObject());
         createInfo.task = {
-            .module = manager.getShader(loadShaderDescription(manager, task, additionalMacros))
+            .module = manager.getShader(loadShaderDescription(manager, task, additionalMacros)).value()
         };
     }
     if (document.HasMember("rayGen")) {
         rapidjson::Value& mesh = document["mesh"];
         assert(mesh.IsObject());
         createInfo.mesh = {
-            .module = manager.getShader(loadShaderDescription(manager, mesh, additionalMacros))
+            .module = manager.getShader(loadShaderDescription(manager, mesh, additionalMacros)).value()
         };
     }
     if (document.HasMember("rasterState")) {
