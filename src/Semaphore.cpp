@@ -40,6 +40,8 @@ auto canta::Semaphore::wait(u64 value, u64 timeout) -> std::expected<bool, Error
 }
 
 auto canta::Semaphore::signal(u64 value) -> std::expected<bool, Error> {
+    if (!_device || !_semaphore)
+        return std::unexpected(Error::VK_ERROR_UNKNOWN);
     VkSemaphoreSignalInfo signalInfo = {};
     signalInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SIGNAL_INFO;
     signalInfo.semaphore = _semaphore;

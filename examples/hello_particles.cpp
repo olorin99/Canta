@@ -21,6 +21,7 @@ int main() {
 
     auto device = canta::Device::create({
         .applicationName = "hello_triangle",
+        .enableMeshShading = false,
         .instanceExtensions = window.requiredExtensions()
     }).value();
 
@@ -63,7 +64,7 @@ void main(uint3 threadId : SV_DispatchThreadID) {
     Particle particle = push.particles[idx];
     float4 colour = float4(particle.colour, 1);
 
-    var outputImage = RWImage2D<float, 4>(push.imageIndex);
+    var outputImage = RWImage2D<float4>(push.imageIndex);
 
     for (int x = -particle.radius; x < particle.radius; x++) {
         for (int y = -particle.radius; y < particle.radius; y++) {
@@ -123,10 +124,11 @@ void main() {
 )";
 
     auto pipelineManager = canta::PipelineManager::create({
-        .device = device.get()
+        .device = device.get(),
+        .rootPath = CANTA_SRC_DIR
     });
 
-    auto pipeline = pipelineManager.getPipeline("/home/christian/Documents/Projects/Canta/examples/particles_update.pipeline", std::to_array({
+    auto pipeline = pipelineManager.getPipeline(CANTA_SRC_DIR"/examples/particles_update.pipeline", std::to_array({
         canta::Macro{
             .name = "ADDITIONAL",
             .value = "TEST"

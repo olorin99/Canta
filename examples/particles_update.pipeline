@@ -1,6 +1,6 @@
 {
   "compute": {
-    "path": "/home/christian/Documents/Projects/Canta/examples/particles.slang",
+    "path": "./examples/particles.slang",
     "macros": [{
       "name": "CANTA_TEST",
       "value": "HELLO"
