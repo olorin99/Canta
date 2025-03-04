@@ -156,7 +156,7 @@ void main() {
                 .slang = particleDrawCompSlang,
                 .stage = canta::ShaderStage::COMPUTE,
                 .name = "particleDraw"
-            })
+            }).value()
         }
     });
 

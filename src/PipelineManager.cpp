@@ -847,7 +847,7 @@ auto canta::PipelineManager::compileSlang(std::string_view name, std::string_vie
     sessionDesc.defaultMatrixLayoutMode = SLANG_MATRIX_LAYOUT_COLUMN_MAJOR;
     slang::TargetDesc targetDesc = {};
     targetDesc.format = SLANG_SPIRV;
-    targetDesc.profile = _slangGlobalSession->findProfile("spirv_1_6");
+    targetDesc.profile = _slangGlobalSession->findProfile("sm_6_6");
     targetDesc.flags = SLANG_TARGET_FLAG_GENERATE_SPIRV_DIRECTLY;
     targetDesc.forceGLSLScalarBufferLayout = true;
     sessionDesc.targets = &targetDesc;
