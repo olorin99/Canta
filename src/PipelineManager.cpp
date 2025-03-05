@@ -1114,99 +1114,169 @@ auto loadFromFile(canta::PipelineManager& manager, const std::filesystem::path &
     if (document.HasMember("vertex")) {
         rapidjson::Value& vertexShader = document["vertex"];
         assert(vertexShader.IsObject());
+        std::string entryPoint = "main";
+        if (vertexShader.HasMember("entryPoint")) {
+            entryPoint = vertexShader["entryPoint"].GetString();
+        }
         createInfo.vertex = {
-            .module = manager.getShader(loadShaderDescription(manager, vertexShader, additionalMacros)).value()
+            .module = manager.getShader(loadShaderDescription(manager, vertexShader, additionalMacros)).value(),
+            .entryPoint = entryPoint
         };
     }
     if (document.HasMember("tesselationControl")) {
         rapidjson::Value& tesselationControl = document["tesselationControl"];
         assert(tesselationControl.IsObject());
+        std::string entryPoint = "main";
+        if (tesselationControl.HasMember("entryPoint")) {
+            entryPoint = tesselationControl["entryPoint"].GetString();
+        }
         createInfo.tesselationControl = {
-            .module = manager.getShader(loadShaderDescription(manager, tesselationControl, additionalMacros)).value()
+            .module = manager.getShader(loadShaderDescription(manager, tesselationControl, additionalMacros)).value(),
+            .entryPoint = entryPoint
         };
     }
     if (document.HasMember("tesselationEvaluation")) {
         rapidjson::Value& tesselationEvaluation = document["tesselationEvaluation"];
         assert(tesselationEvaluation.IsObject());
+        std::string entryPoint = "main";
+        if (tesselationEvaluation.HasMember("entryPoint")) {
+            entryPoint = tesselationEvaluation["entryPoint"].GetString();
+        }
         createInfo.tesselationEvaluation = {
-            .module = manager.getShader(loadShaderDescription(manager, tesselationEvaluation, additionalMacros)).value()
+            .module = manager.getShader(loadShaderDescription(manager, tesselationEvaluation, additionalMacros)).value(),
+            .entryPoint = entryPoint
         };
     }
     if (document.HasMember("geometry")) {
         rapidjson::Value& geometry = document["geometry"];
         assert(geometry.IsObject());
+        std::string entryPoint = "main";
+        if (geometry.HasMember("entryPoint")) {
+            entryPoint = geometry["entryPoint"].GetString();
+        }
         createInfo.geometry = {
-            .module = manager.getShader(loadShaderDescription(manager, geometry, additionalMacros)).value()
+            .module = manager.getShader(loadShaderDescription(manager, geometry, additionalMacros)).value(),
+            .entryPoint = entryPoint
         };
     }
     if (document.HasMember("fragment")) {
         rapidjson::Value& fragment = document["fragment"];
         assert(fragment.IsObject());
+        std::string entryPoint = "main";
+        if (fragment.HasMember("entryPoint")) {
+            entryPoint = fragment["entryPoint"].GetString();
+        }
         createInfo.fragment = {
-            .module = manager.getShader(loadShaderDescription(manager, fragment, additionalMacros)).value()
+            .module = manager.getShader(loadShaderDescription(manager, fragment, additionalMacros)).value(),
+            .entryPoint = entryPoint
         };
     }
     if (document.HasMember("compute")) {
         rapidjson::Value& compute = document["compute"];
         assert(compute.IsObject());
+        std::string entryPoint = "main";
+        if (compute.HasMember("entryPoint")) {
+            entryPoint = compute["entryPoint"].GetString();
+        }
         createInfo.compute = {
-            .module = manager.getShader(loadShaderDescription(manager, compute, additionalMacros)).value()
+            .module = manager.getShader(loadShaderDescription(manager, compute, additionalMacros)).value(),
+            .entryPoint = entryPoint
         };
     }
     if (document.HasMember("rayGen")) {
         rapidjson::Value& rayGen = document["rayGen"];
         assert(rayGen.IsObject());
+        std::string entryPoint = "main";
+        if (rayGen.HasMember("entryPoint")) {
+            entryPoint = rayGen["entryPoint"].GetString();
+        }
         createInfo.rayGen = {
-            .module = manager.getShader(loadShaderDescription(manager, rayGen, additionalMacros)).value()
+            .module = manager.getShader(loadShaderDescription(manager, rayGen, additionalMacros)).value(),
+            .entryPoint = entryPoint
         };
     }
-    if (document.HasMember("rayGen")) {
+    if (document.HasMember("anyHit")) {
         rapidjson::Value& anyHit = document["anyHit"];
         assert(anyHit.IsObject());
+        std::string entryPoint = "main";
+        if (anyHit.HasMember("entryPoint")) {
+            entryPoint = anyHit["entryPoint"].GetString();
+        }
         createInfo.anyHit = {
-            .module = manager.getShader(loadShaderDescription(manager, anyHit, additionalMacros)).value()
+            .module = manager.getShader(loadShaderDescription(manager, anyHit, additionalMacros)).value(),
+            .entryPoint = entryPoint
         };
     }
-    if (document.HasMember("rayGen")) {
+    if (document.HasMember("closestHit")) {
         rapidjson::Value& closestHit = document["closestHit"];
         assert(closestHit.IsObject());
+        std::string entryPoint = "main";
+        if (closestHit.HasMember("entryPoint")) {
+            entryPoint = closestHit["entryPoint"].GetString();
+        }
         createInfo.closestHit = {
-            .module = manager.getShader(loadShaderDescription(manager, closestHit, additionalMacros)).value()
+            .module = manager.getShader(loadShaderDescription(manager, closestHit, additionalMacros)).value(),
+            .entryPoint = entryPoint
         };
     }
-    if (document.HasMember("rayGen")) {
+    if (document.HasMember("miss")) {
         rapidjson::Value& miss = document["miss"];
         assert(miss.IsObject());
+        std::string entryPoint = "main";
+        if (miss.HasMember("entryPoint")) {
+            entryPoint = miss["entryPoint"].GetString();
+        }
         createInfo.miss = {
-            .module = manager.getShader(loadShaderDescription(manager, miss, additionalMacros)).value()
+            .module = manager.getShader(loadShaderDescription(manager, miss, additionalMacros)).value(),
+            .entryPoint = entryPoint
         };
     }
-    if (document.HasMember("rayGen")) {
+    if (document.HasMember("intersection")) {
         rapidjson::Value& intersection = document["intersection"];
         assert(intersection.IsObject());
+        std::string entryPoint = "main";
+        if (intersection.HasMember("entryPoint")) {
+            entryPoint = intersection["entryPoint"].GetString();
+        }
         createInfo.intersection = {
-            .module = manager.getShader(loadShaderDescription(manager, intersection, additionalMacros)).value()
+            .module = manager.getShader(loadShaderDescription(manager, intersection, additionalMacros)).value(),
+            .entryPoint = entryPoint
         };
     }
-    if (document.HasMember("rayGen")) {
+    if (document.HasMember("callable")) {
         rapidjson::Value& callable = document["callable"];
         assert(callable.IsObject());
+        std::string entryPoint = "main";
+        if (callable.HasMember("entryPoint")) {
+            entryPoint = callable["entryPoint"].GetString();
+        }
         createInfo.callable = {
-            .module = manager.getShader(loadShaderDescription(manager, callable, additionalMacros)).value()
+            .module = manager.getShader(loadShaderDescription(manager, callable, additionalMacros)).value(),
+            .entryPoint = entryPoint
         };
     }
-    if (document.HasMember("rayGen")) {
+    if (document.HasMember("task")) {
         rapidjson::Value& task = document["task"];
         assert(task.IsObject());
+        std::string entryPoint = "main";
+        if (task.HasMember("entryPoint")) {
+            entryPoint = task["entryPoint"].GetString();
+        }
         createInfo.task = {
-            .module = manager.getShader(loadShaderDescription(manager, task, additionalMacros)).value()
+            .module = manager.getShader(loadShaderDescription(manager, task, additionalMacros)).value(),
+            .entryPoint = entryPoint
         };
     }
-    if (document.HasMember("rayGen")) {
+    if (document.HasMember("mesh")) {
         rapidjson::Value& mesh = document["mesh"];
         assert(mesh.IsObject());
+        std::string entryPoint = "main";
+        if (mesh.HasMember("entryPoint")) {
+            entryPoint = mesh["entryPoint"].GetString();
+        }
         createInfo.mesh = {
-            .module = manager.getShader(loadShaderDescription(manager, mesh, additionalMacros)).value()
+            .module = manager.getShader(loadShaderDescription(manager, mesh, additionalMacros)).value(),
+            .entryPoint = entryPoint
         };
     }
     if (document.HasMember("rasterState")) {

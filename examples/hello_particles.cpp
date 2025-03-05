@@ -34,49 +34,6 @@ int main() {
         .window = &window
     });
 
-    std::string particleDrawCompSlang = R"(
-
-import canta;
-
-struct Particle {
-    float2 position;
-    float2 velocity;
-    float3 colour;
-    int radius;
-}
-
-struct Push {
-    Particle* particles;
-    int imageIndex;
-    int maxParticles;
-}
-
-[[vk::push_constant]]
-Push push;
-
-[shader("compute")]
-[numthreads(32, 1, 1)]
-void main(uint3 threadId : SV_DispatchThreadID) {
-    const uint idx = threadId.x;
-    if (idx >= push.maxParticles)
-        return;
-
-    Particle particle = push.particles[idx];
-    float4 colour = float4(particle.colour, 1);
-
-    var outputImage = RWImage2D<float4>(push.imageIndex);
-
-    for (int x = -particle.radius; x < particle.radius; x++) {
-        for (int y = -particle.radius; y < particle.radius; y++) {
-            int2 position = int2(particle.position) + int2(x, y);
-            if (distance(particle.position, position) > particle.radius)
-                continue;
-            outputImage[position] = colour;
-        }
-    }
-}
-)";
-
     std::string particleDrawComp = R"(
 #version 460
 
@@ -139,24 +96,14 @@ void main() {
         std::printf("%s - size: %d\n", type.name.c_str(), type.size);
     }
 
-//    auto pipeline = pipelineManager.getPipeline({
-//        .compute = {
-//            .module = pipelineManager.getShader({
-//                .path = "/home/christian/Documents/Projects/Canta/examples/particles.comp",
-//                .macros = { canta::Macro{"CANTA_TEST", "HELLO"} },
-//                .stage = canta::ShaderStage::COMPUTE
-//            })
-//        }
-//    });
-
     auto pipelineDraw = pipelineManager.getPipeline({
         .compute = {
             .module = pipelineManager.getShader({
-//                .glsl = particleDrawComp,
-                .slang = particleDrawCompSlang,
+                .path = CANTA_SRC_DIR"/examples/particles.slang",
                 .stage = canta::ShaderStage::COMPUTE,
                 .name = "particleDraw"
-            }).value()
+            }).value(),
+            .entryPoint = "drawMain"
         }
     });
 

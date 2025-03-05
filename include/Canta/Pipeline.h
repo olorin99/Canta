@@ -16,7 +16,7 @@ namespace canta {
 
     struct ShaderInfo {
         ShaderHandle module = {};
-        std::string_view entryPoint = "main";
+        std::string entryPoint = "main";
     };
 
     struct RasterState {

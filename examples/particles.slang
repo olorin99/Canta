@@ -1,3 +1,4 @@
+import canta;
 
 struct Particle {
     float2 position;
@@ -19,18 +20,20 @@ struct Push {
     float dt;
 }
 
-[vk::push_constant]
-Push push;
-
 [shader("compute")]
 [numthreads(32, 1, 1)]
-void main(uint3 threadId: SV_DispatchThreadID) {
+void moveMain(
+    uint3 threadId: SV_DispatchThreadID,
+    uniform Particle* particles,
+    uniform int maxParticles,
+    uniform float dt
+) {
     const uint idx = threadId.x;
-    if (idx >= push.maxParticles)
+    if (idx >= maxParticles)
         return;
-    Particle particle = push.particles[idx];
+    Particle particle = particles[idx];
 
-    float2 newPosition = particle.position + particle.velocity * push.dt / 10;
+    float2 newPosition = particle.position + particle.velocity * dt / 10;
     if (outOfBounds(newPosition)) {
         const float2 screenCenter = float2(1920 / 2, 1080 / 2);
 
@@ -40,5 +43,32 @@ void main(uint3 threadId: SV_DispatchThreadID) {
     }
 
     particle.position = newPosition;
-    push.particles[idx] = particle;
+    particles[idx] = particle;
+}
+
+[shader("compute")]
+[numthreads(32, 1, 1)]
+void drawMain(
+    uint3 threadId: SV_DispatchThreadID,
+    uniform Particle* particles,
+    uniform int imageIndex,
+    uniform int maxParticles
+) {
+    const uint idx = threadId.x;
+    if (idx >= maxParticles)
+        return;
+
+    Particle particle = particles[idx];
+    float4 colour = float4(particle.colour, 1);
+
+    var outputImage = RWImage2D<float4>(imageIndex);
+
+    for (int x = -particle.radius; x < particle.radius; x++) {
+        for (int y = -particle.radius; y < particle.radius; y++) {
+            int2 position = int2(particle.position) + int2(x, y);
+            if (distance(particle.position, position) > particle.radius)
+                continue;
+            outputImage[position] = colour;
+        }
+    }
 }
