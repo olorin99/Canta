@@ -90,7 +90,7 @@ void main() {
             .name = "ADDITIONAL",
             .value = "TEST"
         }
-    }));
+    })).value();
 
     for (auto& type : pipeline->interface().getTypeList()) {
         std::printf("%s - size: %d\n", type.name.c_str(), type.size);
@@ -105,7 +105,7 @@ void main() {
             }).value(),
             .entryPoint = "drawMain"
         }
-    });
+    }).value();
 
     auto testModule = pipelineManager.getShader({
         .path = CANTA_SRC_DIR"/examples/hello.slang",

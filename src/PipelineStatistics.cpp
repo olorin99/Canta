@@ -35,7 +35,7 @@ void canta::PipelineStatistics::end(canta::CommandBuffer &commandBuffer) {
     vkCmdEndQuery(commandBuffer.buffer(), pool, _index * _queryCount);
 }
 
-auto canta::PipelineStatistics::result() -> std::expected<Stats, Error> {
+auto canta::PipelineStatistics::result() -> std::expected<Stats, VulkanError> {
     u64 _stats[_queryCount];
     auto pool = _device->pipelineStatisticsPools()[_queryPoolIndex];
     vkGetQueryPoolResults(_device->logicalDevice(), pool, _index * _queryCount, 1, _queryCount * sizeof(u64), _stats, sizeof(u64), VK_QUERY_RESULT_64_BIT);

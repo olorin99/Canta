@@ -12,6 +12,14 @@
 namespace canta {
 
     enum class Error {
+        None,
+        InvalidPath,
+        InvalidShader,
+        InvalidPipeline,
+        InvalidPlatform,
+    };
+
+    enum class VulkanError {
         SUCCESS = VK_SUCCESS,// = 0,
         NOT_READY = VK_NOT_READY,// = 1,
         TIMEOUT = VK_TIMEOUT,// = 2,

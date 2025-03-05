@@ -31,9 +31,9 @@ namespace canta {
         Swapchain(Swapchain&& rhs) noexcept;
         auto operator=(Swapchain&& rhs) noexcept -> Swapchain&;
 
-        auto acquire() -> std::expected<ImageHandle, Error>;
+        auto acquire() -> std::expected<ImageHandle, VulkanError>;
 
-        auto present() -> std::expected<u32, Error>;
+        auto present() -> std::expected<u32, VulkanError>;
 
         auto acquireSemaphore() -> Semaphore* { return &_semaphores[_semaphoreIndex].acquire; }
         auto presentSemaphore() -> Semaphore* { return &_semaphores[_semaphoreIndex].present; }

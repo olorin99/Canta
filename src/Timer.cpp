@@ -34,7 +34,7 @@ void canta::Timer::end(canta::CommandBuffer &commandBuffer, canta::PipelineStage
     vkCmdWriteTimestamp2(commandBuffer.buffer(), static_cast<VkPipelineStageFlagBits>(stage), pool, _index * 2 + 1);
 }
 
-auto canta::Timer::result() -> std::expected<u64, Error> {
+auto canta::Timer::result() -> std::expected<u64, VulkanError> {
     if (_value)
         return _value;
 
@@ -44,7 +44,7 @@ auto canta::Timer::result() -> std::expected<u64, Error> {
     if (res == VK_NOT_READY)
         return 0;
     if (res != VK_SUCCESS)
-        return std::unexpected(static_cast<Error>(res));
+        return std::unexpected(static_cast<VulkanError>(res));
     _value = (buffer[1] - buffer[0]) * static_cast<u64>(_device->limits().timestampPeriod);
     return _value;
 }

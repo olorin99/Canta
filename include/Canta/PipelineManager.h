@@ -56,16 +56,16 @@ namespace canta {
 
         PipelineManager() = default;
 
-        auto getShader(ShaderDescription info) -> std::expected<ShaderHandle, std::string>;
-        auto getPipeline(Pipeline::CreateInfo info) -> PipelineHandle;
-        auto getPipeline(const Pipeline& old, Pipeline::CreateInfo overrideInfo) -> PipelineHandle;
-        auto getPipeline(const std::filesystem::path& path, std::span<const Macro> additionalMacros = {}) -> PipelineHandle;
+        auto getShader(ShaderDescription info) -> std::expected<ShaderHandle, Error>;
+        auto getPipeline(Pipeline::CreateInfo info) -> std::expected<PipelineHandle, Error>;
+        auto getPipeline(const Pipeline& old, Pipeline::CreateInfo overrideInfo) -> std::expected<PipelineHandle, Error>;
+        auto getPipeline(const std::filesystem::path& path, std::span<const Macro> additionalMacros = {}) -> std::expected<PipelineHandle, Error>;
 
-        auto reload(ShaderHandle shader) -> std::expected<ShaderHandle, std::string>;
-        auto reload(PipelineHandle pipeline) -> PipelineHandle;
+        auto reload(ShaderHandle shader) -> std::expected<ShaderHandle, Error>;
+        auto reload(PipelineHandle pipeline) -> std::expected<PipelineHandle, Error>;
 
-        auto reload(ShaderDescription description) -> std::expected<ShaderHandle, std::string>;
-        auto reload(Pipeline::CreateInfo info) -> PipelineHandle;
+        auto reload(ShaderDescription description) -> std::expected<ShaderHandle, Error>;
+        auto reload(Pipeline::CreateInfo info) -> std::expected<PipelineHandle, Error>;
 
         void reloadAll(bool force = false);
 
@@ -76,7 +76,7 @@ namespace canta {
 
     private:
 
-        auto createShader(ShaderDescription info, ShaderHandle handle = {}) -> std::expected<ShaderHandle, std::string>;
+        auto createShader(ShaderDescription info, ShaderHandle handle = {}) -> std::expected<ShaderHandle, Error>;
 
         auto compileGLSL(std::string_view name, std::string_view glsl, ShaderStage stage, std::span<const Macro> macros = {}) -> std::expected<std::vector<u32>, std::string>;
         auto compileSlang(std::string_view name, std::string_view slang, ShaderStage stage, std::span<const Macro> macros = {}) -> std::expected<std::vector<u32>, std::string>;

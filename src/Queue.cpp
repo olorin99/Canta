@@ -1,6 +1,6 @@
 #include "Canta/Queue.h"
 
-auto canta::Queue::submit(std::span<CommandBuffer> commandBuffers, std::span<Semaphore::Pair> waits, std::span<Semaphore::Pair> signals, VkFence fence) -> std::expected<bool, Error> {
+auto canta::Queue::submit(std::span<CommandBuffer> commandBuffers, std::span<Semaphore::Pair> waits, std::span<Semaphore::Pair> signals, VkFence fence) -> std::expected<bool, VulkanError> {
     VkSemaphoreSubmitInfo waitInfos[waits.size()];
     VkSemaphoreSubmitInfo signalInfos[signals.size()];
 
@@ -43,6 +43,6 @@ auto canta::Queue::submit(std::span<CommandBuffer> commandBuffers, std::span<Sem
 
     auto result = vkQueueSubmit2(_queue, 1, &submitInfo, fence);
     if (result != VK_SUCCESS)
-        return std::unexpected(static_cast<Error>(result));
+        return std::unexpected(static_cast<VulkanError>(result));
     return true;
 }

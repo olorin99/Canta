@@ -18,7 +18,7 @@ namespace canta {
         auto familyIndex() const -> u32 { return _familyIndex; }
         auto queueIndex() const -> u32 { return _queueIndex; }
 
-        auto submit(std::span<CommandBuffer> commandBuffers, std::span<Semaphore::Pair> waits = {}, std::span<Semaphore::Pair> signals = {}, VkFence fence = VK_NULL_HANDLE) -> std::expected<bool, Error>;
+        auto submit(std::span<CommandBuffer> commandBuffers, std::span<Semaphore::Pair> waits = {}, std::span<Semaphore::Pair> signals = {}, VkFence fence = VK_NULL_HANDLE) -> std::expected<bool, VulkanError>;
 
     private:
         friend Device;

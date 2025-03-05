@@ -22,7 +22,7 @@ namespace canta {
         void begin(CommandBuffer& commandBuffer, PipelineStage stage = PipelineStage::TOP);
         void end(CommandBuffer& commandBuffer, PipelineStage stage = PipelineStage::BOTTOM);
 
-        auto result() -> std::expected<u64, Error>;
+        auto result() -> std::expected<u64, VulkanError>;
 
     private:
         friend Device;

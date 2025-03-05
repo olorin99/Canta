@@ -402,7 +402,7 @@ auto canta::PipelineManager::operator=(canta::PipelineManager &&rhs) noexcept ->
     return *this;
 }
 
-auto canta::PipelineManager::getShader(canta::ShaderDescription info) -> std::expected<ShaderHandle, std::string> {
+auto canta::PipelineManager::getShader(canta::ShaderDescription info) -> std::expected<ShaderHandle, Error> {
     auto it = _shaders.find(info);
     if (it != _shaders.end())
         return it->second;
@@ -410,7 +410,7 @@ auto canta::PipelineManager::getShader(canta::ShaderDescription info) -> std::ex
     return createShader(info);
 }
 
-auto canta::PipelineManager::getPipeline(Pipeline::CreateInfo info) -> PipelineHandle {
+auto canta::PipelineManager::getPipeline(Pipeline::CreateInfo info) -> std::expected<PipelineHandle, Error> {
     auto it = _pipelines.find(info);
     if (it != _pipelines.end())
         return it->second;
@@ -432,8 +432,9 @@ auto canta::PipelineManager::getPipeline(Pipeline::CreateInfo info) -> PipelineH
         }
     };
 
-    auto it1 = _pipelines.insert(std::make_pair(info, _device->createPipeline(info)));
-
+    auto handle = _device->createPipeline(info);
+    if (!handle) return std::unexpected(Error::InvalidPipeline);
+    auto it1 = _pipelines.insert(std::make_pair(info, handle));
 
     if (info.vertex.module)
         addShaderDependency(info.vertex.module, it1.first->second);
@@ -467,7 +468,7 @@ auto canta::PipelineManager::getPipeline(Pipeline::CreateInfo info) -> PipelineH
     return it1.first->second;
 }
 
-auto canta::PipelineManager::getPipeline(const canta::Pipeline &old, Pipeline::CreateInfo overrideInfo) -> PipelineHandle {
+auto canta::PipelineManager::getPipeline(const canta::Pipeline &old, Pipeline::CreateInfo overrideInfo) -> std::expected<PipelineHandle, Error> {
     Pipeline::CreateInfo info = {
             .vertex = (old.info().vertex.module == ShaderHandle() && old.info().vertex.entryPoint == "main") ? overrideInfo.vertex : old.info().vertex,
             .tesselationControl = (old.info().tesselationControl.module == ShaderHandle() && old.info().tesselationControl.entryPoint == "main") ? overrideInfo.tesselationControl : old.info().tesselationControl,
@@ -499,12 +500,12 @@ auto canta::PipelineManager::getPipeline(const canta::Pipeline &old, Pipeline::C
 }
 
 auto loadFromFile(canta::PipelineManager& manager, const std::filesystem::path &path, std::span<const canta::Macro> additionalMacros = {}) -> canta::Pipeline::CreateInfo;
-auto canta::PipelineManager::getPipeline(const std::filesystem::path &path, std::span<const Macro> additionalMacros) -> PipelineHandle {
+auto canta::PipelineManager::getPipeline(const std::filesystem::path &path, std::span<const Macro> additionalMacros) -> std::expected<PipelineHandle, Error> {
     auto createInfo = loadFromFile(*this, path, additionalMacros);
     return getPipeline(createInfo);
 }
 
-auto canta::PipelineManager::reload(canta::ShaderHandle shader) -> std::expected<ShaderHandle, std::string> {
+auto canta::PipelineManager::reload(canta::ShaderHandle shader) -> std::expected<ShaderHandle, Error> {
     for (auto& [key, value] : _shaders) {
         if (value == shader) {
             return reload(key);
@@ -513,7 +514,7 @@ auto canta::PipelineManager::reload(canta::ShaderHandle shader) -> std::expected
     return {};
 }
 
-auto canta::PipelineManager::reload(canta::PipelineHandle pipeline) -> PipelineHandle {
+auto canta::PipelineManager::reload(canta::PipelineHandle pipeline) -> std::expected<PipelineHandle, Error> {
     for (auto& [key, value]: _pipelines) {
         if (value == pipeline) {
             return _device->createPipeline(key, pipeline);
@@ -541,7 +542,7 @@ void canta::PipelineManager::reloadAll(bool force) {
     }
 }
 
-auto canta::PipelineManager::reload(canta::ShaderDescription description) -> std::expected<ShaderHandle, std::string> {
+auto canta::PipelineManager::reload(canta::ShaderDescription description) -> std::expected<ShaderHandle, Error> {
     auto it = _shaders.find(description);
     ShaderHandle handle = {};
     if (it != _shaders.end())
@@ -549,7 +550,7 @@ auto canta::PipelineManager::reload(canta::ShaderDescription description) -> std
     return createShader(description, handle);
 }
 
-auto canta::PipelineManager::reload(Pipeline::CreateInfo info) -> PipelineHandle {
+auto canta::PipelineManager::reload(Pipeline::CreateInfo info) -> std::expected<PipelineHandle, Error> {
     auto it = _pipelines.find(info);
     PipelineHandle handle = {};
     if (it != _pipelines.end())
@@ -565,7 +566,7 @@ auto canta::PipelineManager::reload(Pipeline::CreateInfo info) -> PipelineHandle
  tmp.value();\
 })
 
-auto canta::PipelineManager::createShader(canta::ShaderDescription info, ShaderHandle handle) -> std::expected<ShaderHandle, std::string> {
+auto canta::PipelineManager::createShader(canta::ShaderDescription info, ShaderHandle handle) -> std::expected<ShaderHandle, Error> {
     ShaderModule::CreateInfo createInfo = {};
     createInfo.spirv = info.spirv;
     createInfo.stage = info.stage;
@@ -580,20 +581,20 @@ auto canta::PipelineManager::createShader(canta::ShaderDescription info, ShaderH
         auto shaderFile = ende::fs::File::open(_rootPath / info.path);
         if (!shaderFile) {
             _device->logger().error("Invalid shader path: {}", (_rootPath / info.path).string());
-            return std::unexpected(std::format("Invalid shader path: {}", (_rootPath / info.path).string()));
+            return std::unexpected(Error::InvalidPath);
         }
         auto source = shaderFile->read();
         if (info.path.extension() == ".slang") {
             spirv = TRY(compileSlang(info.path.stem().string(), source, info.stage, info.macros)
                 .transform_error([this](const auto& error) {
-                    _device->logger().error("Shader Error: {}", error.c_str());
-                    return error;
+                    _device->logger().error("Shader VulkanError: {}", error.c_str());
+                    return Error::InvalidShader;
                 }));
         } else {
             spirv = TRY(compileGLSL(info.path.stem().string(), source, info.stage, info.macros)
                 .transform_error([this](const auto& error) {
-                    _device->logger().error("Shader Error: {}", error.c_str());
-                    return error;
+                    _device->logger().error("Shader VulkanError: {}", error.c_str());
+                    return Error::InvalidShader;
                 }));
         }
         if (!handle) {
@@ -603,13 +604,13 @@ auto canta::PipelineManager::createShader(canta::ShaderDescription info, ShaderH
         }
     } else if (!info.glsl.empty()) {
         spirv = TRY(compileGLSL(info.name, info.glsl, info.stage).transform_error([this](const auto& error) {
-            _device->logger().error("Shader Error: {}", error.c_str());
-            return error;
+            _device->logger().error("Shader VulkanError: {}", error.c_str());
+            return Error::InvalidShader;
         }));
     } else if (!info.slang.empty()) {
         spirv = TRY(compileSlang(info.name, info.slang, info.stage).transform_error([this](const auto& error) {
-            _device->logger().error("Shader Error: {}", error.c_str());
-            return error;
+            _device->logger().error("Shader VulkanError: {}", error.c_str());
+            return Error::InvalidShader;
         }));
     }
     if (!spirv.empty())

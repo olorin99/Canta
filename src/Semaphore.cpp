@@ -27,7 +27,7 @@ auto canta::Semaphore::gpuValue() const -> u64 {
     return value;
 }
 
-auto canta::Semaphore::wait(u64 value, u64 timeout) -> std::expected<bool, Error> {
+auto canta::Semaphore::wait(u64 value, u64 timeout) -> std::expected<bool, VulkanError> {
     VkSemaphoreWaitInfo waitInfo = {};
     waitInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_WAIT_INFO;
     waitInfo.semaphoreCount = 1;
@@ -35,20 +35,20 @@ auto canta::Semaphore::wait(u64 value, u64 timeout) -> std::expected<bool, Error
     waitInfo.pValues = &value;
     auto result = vkWaitSemaphores(_device->logicalDevice(), &waitInfo, timeout);
     if (result != VK_SUCCESS && result != VK_TIMEOUT)
-        return std::unexpected(static_cast<Error>(result));
+        return std::unexpected(static_cast<VulkanError>(result));
     return true;
 }
 
-auto canta::Semaphore::signal(u64 value) -> std::expected<bool, Error> {
+auto canta::Semaphore::signal(u64 value) -> std::expected<bool, VulkanError> {
     if (!_device || !_semaphore)
-        return std::unexpected(Error::VK_ERROR_UNKNOWN);
+        return std::unexpected(VulkanError::VK_ERROR_UNKNOWN);
     VkSemaphoreSignalInfo signalInfo = {};
     signalInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SIGNAL_INFO;
     signalInfo.semaphore = _semaphore;
     signalInfo.value = value;
     auto result = vkSignalSemaphore(_device->logicalDevice(), &signalInfo);
     if (result != VK_SUCCESS && result != VK_TIMEOUT)
-        return std::unexpected(static_cast<Error>(result));
+        return std::unexpected(static_cast<VulkanError>(result));
     if (result != VK_TIMEOUT)
         _value = value;
     return true;

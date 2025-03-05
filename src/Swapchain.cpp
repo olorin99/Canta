@@ -100,7 +100,7 @@ auto canta::Swapchain::operator=(canta::Swapchain &&rhs) noexcept -> Swapchain &
     return *this;
 }
 
-auto canta::Swapchain::acquire() -> std::expected<ImageHandle, Error> {
+auto canta::Swapchain::acquire() -> std::expected<ImageHandle, VulkanError> {
     _semaphoreIndex = (_semaphoreIndex % _semaphores.size());
     auto result = vkAcquireNextImageKHR(_device->logicalDevice(), _swapchain, std::numeric_limits<u64>::max(), _semaphores[_semaphoreIndex].acquire.semaphore(), VK_NULL_HANDLE, &_index);
     switch (result) {
@@ -113,12 +113,12 @@ auto canta::Swapchain::acquire() -> std::expected<ImageHandle, Error> {
 //            recreate();
             break;
         default:
-            return std::unexpected(static_cast<Error>(result));
+            return std::unexpected(static_cast<VulkanError>(result));
     }
     return _imageHandles[_index];
 }
 
-auto canta::Swapchain::present() -> std::expected<u32, Error> {
+auto canta::Swapchain::present() -> std::expected<u32, VulkanError> {
     auto presentSemaphore = _semaphores[_semaphoreIndex].present.semaphore();
     _semaphoreIndex = (_semaphoreIndex + 1 % _semaphores.size());
 
@@ -136,7 +136,7 @@ auto canta::Swapchain::present() -> std::expected<u32, Error> {
 
     auto result = vkQueuePresentKHR(_device->queue(QueueType::GRAPHICS).queue(), &presentInfo);
     if (result != VK_SUCCESS)
-        return std::unexpected(static_cast<Error>(result));
+        return std::unexpected(static_cast<VulkanError>(result));
     return _index;
 }
 

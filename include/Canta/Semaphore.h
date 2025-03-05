@@ -35,9 +35,9 @@ namespace canta {
 
         auto increment() -> u64 { return ++_value; }
 
-        auto wait(u64 value, u64 timeout = 1000000000) -> std::expected<bool, Error>;
+        auto wait(u64 value, u64 timeout = 1000000000) -> std::expected<bool, VulkanError>;
 
-        auto signal(u64 value) -> std::expected<bool, Error>;
+        auto signal(u64 value) -> std::expected<bool, VulkanError>;
 
         struct Pair {
             Semaphore const* semaphore = nullptr;

@@ -130,7 +130,7 @@ namespace canta {
             spdlog::level::level_enum logLevel = spdlog::level::info;
         };
 
-        static auto create(CreateInfo info) noexcept -> std::expected<std::unique_ptr<Device>, Error>;
+        static auto create(CreateInfo info) noexcept -> std::expected<std::unique_ptr<Device>, VulkanError>;
 
         ~Device();
 
@@ -186,14 +186,14 @@ namespace canta {
 
         auto queue(QueueType type) -> Queue&;
 
-        auto waitIdle() const -> std::expected<bool, Error>;
+        auto waitIdle() const -> std::expected<bool, VulkanError>;
 
 
-        auto createSwapchain(Swapchain::CreateInfo info) -> std::expected<Swapchain, Error>;
+        auto createSwapchain(Swapchain::CreateInfo info) -> std::expected<Swapchain, VulkanError>;
 
-        auto createSemaphore(Semaphore::CreateInfo info) -> std::expected<Semaphore, Error>;
+        auto createSemaphore(Semaphore::CreateInfo info) -> std::expected<Semaphore, VulkanError>;
 
-        auto createCommandPool(CommandPool::CreateInfo info) -> std::expected<CommandPool, Error>;
+        auto createCommandPool(CommandPool::CreateInfo info) -> std::expected<CommandPool, VulkanError>;
 
 
         auto createShaderModule(ShaderModule::CreateInfo info, ShaderHandle oldHandle = {}) -> ShaderHandle;

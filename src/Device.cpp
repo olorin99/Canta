@@ -164,7 +164,7 @@ canta::Properties getPhysicalDeviceProperties(VkPhysicalDevice deviceProperties)
 
 
 
-auto canta::Device::create(canta::Device::CreateInfo info) noexcept -> std::expected<std::unique_ptr<Device>, Error> {
+auto canta::Device::create(canta::Device::CreateInfo info) noexcept -> std::expected<std::unique_ptr<Device>, VulkanError> {
 
     std::unique_ptr<Device> device(new Device());
 
@@ -246,7 +246,7 @@ auto canta::Device::create(canta::Device::CreateInfo info) noexcept -> std::expe
     }
     device->_physicalDevice = physicalDevices[maxIndex];
     if (device->_physicalDevice == VK_NULL_HANDLE)
-        return std::unexpected(Error::INVALID_GPU);
+        return std::unexpected(VulkanError::INVALID_GPU);
 
 
     // queue creation infos
@@ -332,7 +332,7 @@ auto canta::Device::create(canta::Device::CreateInfo info) noexcept -> std::expe
     if (isExtensionSupported(extension))                        \
         (extensionList).push_back(extension);                   \
     else                                                        \
-        return std::unexpected(Error::EXTENSION_NOT_PRESENT);
+        return std::unexpected(VulkanError::EXTENSION_NOT_PRESENT);
 
 #define ENABLE_EXTENSION(extension, extensionList) \
     if (isExtensionSupported(extension))           \
@@ -417,7 +417,7 @@ auto canta::Device::create(canta::Device::CreateInfo info) noexcept -> std::expe
 
     auto result = vkCreateDevice(device->_physicalDevice, &deviceCreateInfo, nullptr, &device->_logicalDevice);
     if (result != VK_SUCCESS)
-        return std::unexpected(static_cast<Error>(result));
+        return std::unexpected(static_cast<VulkanError>(result));
 
     device->_enabledExtensions.insert(device->_enabledExtensions.begin(), deviceExtensions.begin(), deviceExtensions.end());
     device->_enabledExtensions.insert(device->_enabledExtensions.begin(), instanceExtensions.begin(), instanceExtensions.end());
@@ -749,19 +749,19 @@ auto canta::Device::queue(canta::QueueType type) -> Queue& {
     return _graphicsQueue;
 }
 
-auto canta::Device::waitIdle() const -> std::expected<bool, Error> {
+auto canta::Device::waitIdle() const -> std::expected<bool, VulkanError> {
     auto result = vkDeviceWaitIdle(logicalDevice());
     if (result != VK_SUCCESS)
-        return std::unexpected(static_cast<Error>(result));
+        return std::unexpected(static_cast<VulkanError>(result));
     return true;
 }
 
-auto canta::Device::createSwapchain(Swapchain::CreateInfo info) -> std::expected<Swapchain, Error> {
+auto canta::Device::createSwapchain(Swapchain::CreateInfo info) -> std::expected<Swapchain, VulkanError> {
     Swapchain swapchain = {};
     swapchain._device = this;
 
     if (!info.window)
-        return std::unexpected(Error::INVALID_PLATFORM);
+        return std::unexpected(VulkanError::INVALID_PLATFORM);
 
     auto platformExtent = info.window->extent();
     swapchain._extent = { platformExtent.x(), platformExtent.y() };
@@ -776,7 +776,7 @@ auto canta::Device::createSwapchain(Swapchain::CreateInfo info) -> std::expected
     return swapchain;
 }
 
-auto canta::Device::createSemaphore(Semaphore::CreateInfo info) -> std::expected<Semaphore, Error> {
+auto canta::Device::createSemaphore(Semaphore::CreateInfo info) -> std::expected<Semaphore, VulkanError> {
     Semaphore semaphore = {};
     semaphore._device = this;
 
@@ -795,7 +795,7 @@ auto canta::Device::createSemaphore(Semaphore::CreateInfo info) -> std::expected
 
     auto result = vkCreateSemaphore(logicalDevice(), &createInfo, nullptr, &semaphore._semaphore);
     if (result != VK_SUCCESS)
-        return std::unexpected(static_cast<Error>(result));
+        return std::unexpected(static_cast<VulkanError>(result));
 
     if (!info.name.empty())
         setDebugName(VK_OBJECT_TYPE_SEMAPHORE, (u64)semaphore._semaphore, info.name);
@@ -805,7 +805,7 @@ auto canta::Device::createSemaphore(Semaphore::CreateInfo info) -> std::expected
     return semaphore;
 }
 
-auto canta::Device::createCommandPool(CommandPool::CreateInfo info) -> std::expected<CommandPool, Error> {
+auto canta::Device::createCommandPool(CommandPool::CreateInfo info) -> std::expected<CommandPool, VulkanError> {
     CommandPool pool = {};
     pool._device = this;
 
@@ -824,7 +824,7 @@ auto canta::Device::createCommandPool(CommandPool::CreateInfo info) -> std::expe
     }
     auto result = vkCreateCommandPool(logicalDevice(), &createInfo, nullptr, &pool._pool);
     if (result != VK_SUCCESS)
-        return std::unexpected(static_cast<Error>(result));
+        return std::unexpected(static_cast<VulkanError>(result));
 
     pool._queueType = info.queueType;
 
