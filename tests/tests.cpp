@@ -3,6 +3,7 @@
 #include <Canta/ResourceList.h>
 #include <Canta/Buffer.h>
 #include <Canta/RenderGraph.h>
+#include <Canta/PipelineManager.h>
 
 
 TEST_CASE("Resource reference counting", "[refcount]") {
@@ -39,6 +40,88 @@ TEST_CASE("Resource reference counting", "[refcount]") {
         REQUIRE(handle1.index() == oldIndex);
     }
 
+}
+
+TEST_CASE("PipelineManager", "[pipelinemanager]") {
+    auto device = canta::Device::create({
+        .applicationName = "tests",
+        .logLevel = spdlog::level::off
+    }).value();
+    auto pipelineManager = canta::PipelineManager::create({
+        .device = device.get(),
+        .rootPath = CANTA_SRC_DIR
+    });
+
+    SECTION("build shader") {
+        auto shader = pipelineManager.getShader({
+            .glsl = R"(
+//GLSL version to use
+#version 460
+
+//size of a workgroup for compute
+layout (local_size_x = 16, local_size_y = 16) in;
+
+//descriptor bindings for the pipeline
+layout(rgba16f,set = 0, binding = 0) uniform image2D image;
+
+
+void main()
+{
+    ivec2 texelCoord = ivec2(gl_GlobalInvocationID.xy);
+	ivec2 size = imageSize(image);
+
+    if(texelCoord.x < size.x && texelCoord.y < size.y)
+    {
+        vec4 color = vec4(0.0, 0.0, 0.0, 1.0);
+
+        if(gl_LocalInvocationID.x != 0 && gl_LocalInvocationID.y != 0)
+        {
+            color.x = float(texelCoord.x)/(size.x);
+            color.y = float(texelCoord.y)/(size.y);
+        }
+
+        imageStore(image, texelCoord, color);
+    }
+}
+
+)",
+            .stage = canta::ShaderStage::COMPUTE,
+            .name = "test"
+        });
+        REQUIRE(shader.has_value());
+    }
+
+#ifdef CANTA_USE_SLANG
+    SECTION("build slang") {
+        auto shader = pipelineManager.getShader({
+            .slang = R"(
+// hello-world.slang
+[[vk::binding(0, 1)]] StructuredBuffer<float> buffer0;
+[[vk::binding(1, 1)]] StructuredBuffer<float> buffer1;
+[[vk::binding(2, 1)]] RWStructuredBuffer<float> result;
+
+[shader("compute")]
+[numthreads(1,1,1)]
+void computeMain(uint3 threadId : SV_DispatchThreadID)
+{
+    uint index = threadId.x;
+    result[index] = buffer0[index] + buffer1[index];
+}
+
+)"
+        });
+        REQUIRE(shader.has_value());
+    }
+#endif
+
+    SECTION("invalid path") {
+        auto shader = pipelineManager.getShader({
+            .path = "alkdfjalkdf",
+            .stage = canta::ShaderStage::COMPUTE,
+            .name = "test"
+        });
+        REQUIRE(!shader.has_value());
+    }
 }
 
 TEST_CASE("RenderGraph", "[rendergraph]") {

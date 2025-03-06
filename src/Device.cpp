@@ -627,6 +627,8 @@ canta::Device::~Device() {
     for (auto& buffer : _markerBuffers)
         buffer = {};
 
+    _descriptorUpdates.clear();
+
     _shaderList.clearAll();
     _pipelineList.clearAll();
     _imageViewList.destroyAll();
