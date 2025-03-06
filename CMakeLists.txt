@@ -28,9 +28,9 @@ function(embed_shaders)
     add_custom_command(
             OUTPUT
             "${CMAKE_CURRENT_BINARY_DIR}/include/embeded_shaders_${PARSED_ARGS_NAME}.h"
-            COMMAND python ${CMAKE_CURRENT_SOURCE_DIR}/embed_files.py ${PARSED_ARGS_NAME} ${CMAKE_CURRENT_BINARY_DIR}/include/embeded_shaders_${PARSED_ARGS_NAME}.h ${PARSED_ARGS_SHADERS}
+            COMMAND python ${CMAKE_CURRENT_FUNCTION_LIST_DIR}/embed_files.py ${PARSED_ARGS_NAME} ${CMAKE_CURRENT_BINARY_DIR}/include/embeded_shaders_${PARSED_ARGS_NAME}.h ${PARSED_ARGS_SHADERS}
             DEPENDS
-                embed_files.py
+                ${CMAKE_CURRENT_FUNCTION_LIST_DIR}/embed_files.py
             WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/include"
     )
     add_custom_target(embeded_files_${PARSED_ARGS_NAME}
@@ -45,7 +45,7 @@ endfunction()
 
 embed_shaders(
         NAME Canta
-        SHADERS "canta.slang:${CMAKE_SOURCE_DIR}/src/canta.slang" "examples/particles.slang:${CMAKE_SOURCE_DIR}/examples/particles.slang"
+        SHADERS "canta.slang:${CMAKE_CURRENT_SOURCE_DIR}/src/canta.slang" "examples/particles.slang:${CMAKE_CURRENT_SOURCE_DIR}/examples/particles.slang"
 )
 
 add_library(Canta
