@@ -33,14 +33,14 @@ function(embed_shaders)
                 embed_files.py
             WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/include"
     )
-    add_custom_target(embeded_files
+    add_custom_target(embeded_files_${PARSED_ARGS_NAME}
             DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/include/embeded_shaders_${PARSED_ARGS_NAME}.h"
     )
     add_library(${PARSED_ARGS_NAME}_SHADERS INTERFACE)
     target_include_directories(${PARSED_ARGS_NAME}_SHADERS
             INTERFACE "${CMAKE_CURRENT_BINARY_DIR}/include"
     )
-    add_dependencies(${PARSED_ARGS_NAME}_SHADERS embeded_files)
+    add_dependencies(${PARSED_ARGS_NAME}_SHADERS embeded_files_${PARSED_ARGS_NAME})
 endfunction()
 
 embed_shaders(
