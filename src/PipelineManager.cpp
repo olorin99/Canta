@@ -105,7 +105,9 @@ auto canta::PipelineManager::create(canta::PipelineManager::CreateInfo info) -> 
 
     registerEmbededShadersCanta(manager);
 
+#ifdef CANTA_USE_SLANG
     slang::createGlobalSession(manager._slangGlobalSession.writeRef());
+#endif
 
     const char* cantaGLSLFile = R"(
 #ifndef CANTA_INCLUDE_GLSL
@@ -613,6 +615,9 @@ auto canta::PipelineManager::compileGLSL(std::string_view name, std::string_view
 #define DIAGNOSE(diagnostics) if (diagnostics != nullptr) return std::unexpected(reinterpret_cast<const char*>(diagnostics->getBufferPointer()));
 
 auto canta::PipelineManager::compileSlang(std::string_view name, std::string_view slang, canta::ShaderStage stage, std::span<const Macro> macros) -> std::expected<std::vector<u32>, std::string> {
+#ifndef CANTA_USE_SLANG
+    return std::unexpected("Attempted to compile slang shader without linking slang");
+#else
     slang::SessionDesc sessionDesc = {};
     const auto rootPath = _rootPath.string();
     const char* searchPaths[] = { rootPath.c_str() };
@@ -701,6 +706,7 @@ auto canta::PipelineManager::compileSlang(std::string_view name, std::string_vie
     std::vector<u32> spirv = {};
     spirv.insert(spirv.begin(), (u32*)kernelBlob->getBufferPointer(), (u32*)((u8*)kernelBlob->getBufferPointer() + kernelBlob->getBufferSize()));
     return spirv;
+#endif
 }
 
 auto canta::PipelineManager::findVirtualFile(const std::filesystem::path &path) -> std::expected<std::string, Error> {
