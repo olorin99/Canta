@@ -17,6 +17,37 @@ find_package(SDL2 REQUIRED)
 find_package(Threads REQUIRED)
 find_package(slang REQUIRED)
 
+function(embed_shaders)
+    cmake_parse_arguments(
+            PARSED_ARGS
+            ""
+            "NAME"
+            "SHADERS"
+            ${ARGN}
+    )
+    add_custom_command(
+            OUTPUT
+            "${CMAKE_CURRENT_BINARY_DIR}/include/embeded_shaders_${PARSED_ARGS_NAME}.h"
+            COMMAND python ${CMAKE_CURRENT_SOURCE_DIR}/embed_files.py ${PARSED_ARGS_NAME} ${CMAKE_CURRENT_BINARY_DIR}/include/embeded_shaders_${PARSED_ARGS_NAME}.h ${PARSED_ARGS_SHADERS}
+            DEPENDS
+                embed_files.py
+            WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/include"
+    )
+    add_custom_target(embeded_files
+            DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/include/embeded_shaders_${PARSED_ARGS_NAME}.h"
+    )
+    add_library(${PARSED_ARGS_NAME}_SHADERS INTERFACE)
+    target_include_directories(${PARSED_ARGS_NAME}_SHADERS
+            INTERFACE "${CMAKE_CURRENT_BINARY_DIR}/include"
+    )
+    add_dependencies(${PARSED_ARGS_NAME}_SHADERS embeded_files)
+endfunction()
+
+embed_shaders(
+        NAME Canta
+        SHADERS "canta.slang:${CMAKE_SOURCE_DIR}/src/canta.slang" "examples/particles.slang:${CMAKE_SOURCE_DIR}/examples/particles.slang"
+)
+
 add_library(Canta
         src/Device.cpp
         include/Canta/Device.h
@@ -86,7 +117,10 @@ target_link_libraries(Canta
     tsl::robin_map
     Threads::Threads
     slang::slang
+    Canta_SHADERS
 )
+
+
 
 if (CANTA_BUILD_EXAMPLES)
     add_subdirectory(examples)

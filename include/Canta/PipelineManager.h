@@ -81,6 +81,8 @@ namespace canta {
         auto compileGLSL(std::string_view name, std::string_view glsl, ShaderStage stage, std::span<const Macro> macros = {}) -> std::expected<std::vector<u32>, std::string>;
         auto compileSlang(std::string_view name, std::string_view slang, ShaderStage stage, std::span<const Macro> macros = {}) -> std::expected<std::vector<u32>, std::string>;
 
+        auto findVirtualFile(const std::filesystem::path& path) -> std::expected<std::string, Error>;
+
         Device* _device = nullptr;
         std::filesystem::path _rootPath = {};
         tsl::robin_map<ShaderDescription, ShaderHandle> _shaders;

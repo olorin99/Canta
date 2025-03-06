@@ -99,7 +99,7 @@ void main() {
     auto pipelineDraw = pipelineManager.getPipeline({
         .compute = {
             .module = pipelineManager.getShader({
-                .path = CANTA_SRC_DIR"/examples/particles.slang",
+                .path = "examples/particles.slang",
                 .stage = canta::ShaderStage::COMPUTE,
                 .name = "particleDraw"
             }).value(),

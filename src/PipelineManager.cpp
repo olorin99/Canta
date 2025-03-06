@@ -7,6 +7,7 @@
 #include <shaderc/shaderc.hpp>
 #include <rapidjson/document.h>
 #include <Ende/filesystem/File.h>
+#include "embeded_shaders_Canta.h"
 
 size_t std::hash<canta::Pipeline::CreateInfo>::operator()(const canta::Pipeline::CreateInfo &object) const {
     u64 hash = 0;
@@ -101,227 +102,10 @@ auto canta::PipelineManager::create(canta::PipelineManager::CreateInfo info) -> 
     PipelineManager manager = {};
     manager._device = info.device;
     manager._rootPath = info.rootPath;
-    const char* cantaSlangFile = R"(
 
-#define CANTA_BINDLESS_SAMPLERS 0
-#define CANTA_BINDLESS_SAMPLED_IMAGES 1
-#define CANTA_BINDLESS_STORAGE_IMAGES 2
-#define CANTA_BINDLESS_STORAGE_BUFFERS 3
+    registerEmbededShadersCanta(manager);
 
-[[vk::binding(0, CANTA_BINDLESS_SAMPLERS)]] uniform SamplerState samplers[];
-
-[[vk::binding(CANTA_BINDLESS_SAMPLED_IMAGES, 0)]] __DynamicResource g_sampledImages[];
-[[vk::binding(CANTA_BINDLESS_STORAGE_IMAGES, 0)]] __DynamicResource g_storageImages[];
-
-struct Image1D<T : ITexelElement> {
-
-    int index;
-
-    __init(uint imageIndex) {
-        index = imageIndex;
-    }
-
-    __subscript(uint pos) -> T {
-        get { return Texture1D<T>(g_sampledImages[NonUniformResourceIndex(index)])[pos]; }
-        set { static_assert(false, "attempted to write to read only texture"); }
-    }
-
-    func isValid() -> bool {
-        return index >= 0;
-    }
-
-    func get() -> Texture1D<T> {
-        return Texture1D<T>(g_sampledImages[NonUniformResourceIndex(index)]);
-    }
-
-    func size() -> uint {
-        uint value = 0;
-        get().GetDimensions(value);
-        return value;
-    }
-}
-
-struct RWImage1D<T : ITexelElement> {
-
-    int index;
-
-    __init(uint imageIndex) {
-        index = imageIndex;
-    }
-
-    __subscript(uint pos) -> T {
-        get { return RWTexture1D<T>(g_storageImages[NonUniformResourceIndex(index)])[pos]; }
-        set { RWTexture1D<T>(g_storageImages[NonUniformResourceIndex(index)])[pos] = newValue; }
-    }
-
-    func isValid() -> bool {
-        return index >= 0;
-    }
-
-    func get() -> RWTexture1D<T> {
-        return RWTexture1D<T>(g_storageImages[NonUniformResourceIndex(index)]);
-    }
-
-    func size() -> uint {
-        uint value = 0;
-        get().GetDimensions(value);
-        return value;
-    }
-}
-
-struct Image2D<T : ITexelElement> {
-
-    int index;
-
-    __init(uint imageIndex) {
-        index = imageIndex;
-    }
-
-    __subscript(uint2 pos) -> T {
-        get { return Texture2D<T>(g_sampledImages[NonUniformResourceIndex(index)])[pos]; }
-        set { static_assert(false, "attempted to write to read only texture"); }
-    }
-
-    func isValid() -> bool {
-        return index >= 0;
-    }
-
-    func get() -> Texture2D<T> {
-        return Texture2D<T>(g_sampledImages[NonUniformResourceIndex(index)]);
-    }
-
-    func size() -> uint2 {
-        uint2 value = 0;
-        get().GetDimensions(value.x, value.y);
-        return value;
-    }
-}
-
-struct RWImage2D<T : ITexelElement> {
-
-    int index;
-
-    __init(uint imageIndex) {
-        index = imageIndex;
-    }
-
-    __subscript(uint2 pos) -> T {
-        get { return RWTexture2D<T>(g_storageImages[NonUniformResourceIndex(index)])[pos]; }
-        set { RWTexture2D<T>(g_storageImages[NonUniformResourceIndex(index)])[pos] = newValue; }
-    }
-
-    func isValid() -> bool {
-        return index >= 0;
-    }
-
-    func get() -> RWTexture2D<T> {
-        return RWTexture2D<T>(g_storageImages[NonUniformResourceIndex(index)]);
-    }
-
-    func size() -> uint2 {
-        uint2 value = 0;
-        get().GetDimensions(value.x, value.y);
-        return value;
-    }
-}
-
-struct Image3D<T : ITexelElement> {
-
-    int index;
-
-    __init(uint imageIndex) {
-        index = imageIndex;
-    }
-
-    __subscript(uint3 pos) -> T {
-        get { return Texture3D<T>(g_sampledImages[NonUniformResourceIndex(index)])[pos]; }
-        set { static_assert(false, "attempted to write to read only texture"); }
-    }
-
-    func isValid() -> bool {
-        return index >= 0;
-    }
-
-    func get() -> Texture3D<T> {
-        return Texture3D<T>(g_sampledImages[NonUniformResourceIndex(index)]);
-    }
-
-    func size() -> uint3 {
-        uint3 value = 0;
-        get().GetDimensions(value.x, value.y, value.z);
-        return value;
-    }
-}
-
-struct RWImage3D<T : ITexelElement> {
-
-    int index;
-
-    __init(uint imageIndex) {
-        index = imageIndex;
-    }
-
-    __subscript(uint3 pos) -> T {
-        get { return RWTexture3D<T>(g_storageImages[NonUniformResourceIndex(index)])[pos]; }
-        set { RWTexture3D<T>(g_storageImages[NonUniformResourceIndex(index)])[pos] = newValue; }
-    }
-
-    func isValid() -> bool {
-        return index >= 0;
-    }
-
-    func get() -> RWTexture3D<T> {
-        return RWTexture3D<T>(g_storageImages[NonUniformResourceIndex(index)]);
-    }
-
-    func size() -> uint3 {
-        uint3 value = 0;
-        get().GetDimensions(value.x, value.y, value.z);
-        return value;
-    }
-}
-
-// matrix and vec multiplication overload
-float2 operator*(float2x2 matrix, float2 vec) {
-    return mul(matrix, vec);
-}
-
-float2 operator*(float2 vec, float2x2 matrix) {
-    return mul(vec, matrix);
-}
-
-float2x2 operator*(float2x2 lhs, float2x2 rhs) {
-    return mul(lhs, rhs);
-}
-
-float3 operator*(float3x3 matrix, float3 vec) {
-    return mul(matrix, vec);
-}
-
-float3 operator*(float3 vec, float3x3 matrix) {
-    return mul(vec, matrix);
-}
-
-float3x3 operator*(float3x3 lhs, float3x3 rhs) {
-    return mul(lhs, rhs);
-}
-
-float4 operator*(float4x4 matrix, float4 vec) {
-    return mul(matrix, vec);
-}
-
-float4 operator*(float4 vec, float4x4 matrix) {
-    return mul(vec, matrix);
-}
-
-float4x4 operator*(float4x4 lhs, float4x4 rhs) {
-    return mul(lhs, rhs);
-}
-
-
-)";
     slang::createGlobalSession(manager._slangGlobalSession.writeRef());
-    manager.addVirtualFile("canta.slang", cantaSlangFile);
 
     const char* cantaGLSLFile = R"(
 #ifndef CANTA_INCLUDE_GLSL
@@ -558,14 +342,6 @@ auto canta::PipelineManager::reload(Pipeline::CreateInfo info) -> std::expected<
     return _device->createPipeline(info, handle);
 }
 
-#define TRY(expr)\
-({\
- auto&& tmp = (expr);\
- if(!tmp.has_value())\
-   return std::unexpected(tmp.error());\
- tmp.value();\
-})
-
 auto canta::PipelineManager::createShader(canta::ShaderDescription info, ShaderHandle handle) -> std::expected<ShaderHandle, Error> {
     ShaderModule::CreateInfo createInfo = {};
     createInfo.spirv = info.spirv;
@@ -578,12 +354,18 @@ auto canta::PipelineManager::createShader(canta::ShaderDescription info, ShaderH
 
     std::vector<u32> spirv = {};
     if (!info.path.empty()) {
-        auto shaderFile = ende::fs::File::open(_rootPath / info.path);
-        if (!shaderFile) {
-            _device->logger().error("Invalid shader path: {}", (_rootPath / info.path).string());
-            return std::unexpected(Error::InvalidPath);
+        auto virtualFile = findVirtualFile(info.path);
+        std::string source;
+        if (virtualFile)
+            source = virtualFile.value();
+        else {
+            auto shaderFile = ende::fs::File::open(_rootPath / info.path);
+            if (!shaderFile) {
+                _device->logger().error("Invalid shader path: {}", (_rootPath / info.path).string());
+                return std::unexpected(Error::InvalidPath);
+            }
+            source = shaderFile->read();
         }
-        auto source = shaderFile->read();
         if (info.path.extension() == ".slang") {
             spirv = TRY(compileSlang(info.path.stem().string(), source, info.stage, info.macros)
                 .transform_error([this](const auto& error) {
@@ -921,6 +703,14 @@ auto canta::PipelineManager::compileSlang(std::string_view name, std::string_vie
     return spirv;
 }
 
+auto canta::PipelineManager::findVirtualFile(const std::filesystem::path &path) -> std::expected<std::string, Error> {
+    for (auto& file : _virtualFiles) {
+        if (file.first == path.string()) {
+            return file.second;
+        }
+    }
+    return std::unexpected(Error::InvalidPath);
+}
 
 auto loadShaderDescription(canta::PipelineManager& manager, rapidjson::Value& node, std::span<const canta::Macro> additionalMacros = {}) -> canta::ShaderDescription {
     canta::ShaderDescription description = {};
