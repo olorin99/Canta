@@ -85,6 +85,8 @@ namespace canta {
         auto begin() -> bool;
         auto end() -> bool;
 
+        auto isActive() -> bool { return _active; }
+
         void beginRendering(RenderingInfo info);
         void endRendering();
 
@@ -185,6 +187,7 @@ namespace canta {
         Device* _device = nullptr;
         VkCommandBuffer _buffer = VK_NULL_HANDLE;
         QueueType _queueType = QueueType::NONE;
+        bool _active = false;
 
         PipelineHandle _currentPipeline = {};
 

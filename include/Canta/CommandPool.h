@@ -34,6 +34,8 @@ namespace canta {
 
         auto bufferCount() const -> u32 { return _buffers.size(); }
 
+        auto index() const -> u32 { return _index; }
+
     private:
         friend Device;
 

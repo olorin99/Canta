@@ -20,6 +20,7 @@ auto canta::CommandBuffer::operator=(canta::CommandBuffer &&rhs) noexcept -> Com
 
 auto canta::CommandBuffer::begin() -> bool {
     _stats = {};
+    _active = true;
     VkCommandBufferBeginInfo beginInfo = {};
     beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
     beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
@@ -27,6 +28,8 @@ auto canta::CommandBuffer::begin() -> bool {
 }
 
 auto canta::CommandBuffer::end() -> bool {
+    if (!isActive()) return true;
+    _active = false;
     return vkEndCommandBuffer(_buffer);
 }
 

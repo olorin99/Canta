@@ -32,6 +32,7 @@ auto canta::Queue::submit(std::span<CommandBuffer> commandBuffers, std::span<Sem
     VkCommandBufferSubmitInfo commandInfos[commandBuffers.size()];
     for (u32 i = 0; i < commandBuffers.size(); i++) {
         auto& commandBuffer = commandBuffers[i];
+        commandBuffer.end();
         commandInfos[i].sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO;
         commandInfos[i].commandBuffer = commandBuffer.buffer();
         commandInfos[i].deviceMask = 0;

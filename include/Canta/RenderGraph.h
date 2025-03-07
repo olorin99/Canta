@@ -11,7 +11,8 @@ namespace canta {
 
     enum class RenderGraphError {
         CYCLICAL_GRAPH,
-        INVALID_PIPELINE
+        INVALID_PIPELINE,
+        INVALID_SUBMISSION,
     };
 
     enum ResourceType {
@@ -246,6 +247,7 @@ namespace canta {
             TimingMode timingMode = TimingMode::PER_PASS;
             bool enablePipelineStatistics = true;
             bool individualPipelineStatistics = false;
+            bool multiQueue = true;
             std::string_view name = {};
         };
 
@@ -293,6 +295,9 @@ namespace canta {
             return std::span(_pipelineStats[_device->flyingIndex()].data(), count);
         }
 
+        auto multiQueueEnabled() const -> bool { return _multiQueue; }
+        void setMultiQueueEnabled(bool enabled) { _multiQueue = enabled; }
+
         auto timingEnabled() const -> bool { return _timingEnabled; }
         auto pipelineStatisticsEnabled() const -> bool { return _pipelineStatisticsEnabled; }
 
@@ -324,6 +329,7 @@ namespace canta {
         friend RenderPass;
 
         // helpers for execution function
+//        auto selectCommandBuffer(RenderPass& pass) -> CommandBuffer*;
         void submitBarriers(CommandBuffer& commandBuffer, const std::vector<RenderPass::Barrier>& barriers);
         void startQueries(CommandBuffer& commandBuffer, u32 passIndex, RenderPass& pass, RenderGroup& currentGroup);
         void endQueries(CommandBuffer& commandBuffer, u32 passIndex, RenderPass& pass);
@@ -335,6 +341,7 @@ namespace canta {
 
         Device* _device = nullptr;
         std::string _name = {};
+        bool _multiQueue = true;
 
         i32 _backbufferId = -1;
         i32 _backbufferIndex = -1;

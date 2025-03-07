@@ -447,7 +447,7 @@ auto canta::Device::create(canta::Device::CreateInfo info) noexcept -> std::expe
         device->_computeQueue._queue = computeQueue;
         device->_computeQueue._familyIndex = computeFamilyIndex;
         device->_computeQueue._queueIndex = computeQueueIndex;
-        device->_graphicsQueue._timeline = device->createSemaphore({
+        device->_computeQueue._timeline = device->createSemaphore({
             .initialValue = 0,
             .name = "compute_timeline"
         }).value();
@@ -461,7 +461,7 @@ auto canta::Device::create(canta::Device::CreateInfo info) noexcept -> std::expe
         device->_transferQueue._queue = transferQueue;
         device->_transferQueue._familyIndex = transferFamilyIndex;
         device->_transferQueue._queueIndex = transferQueueIndex;
-        device->_graphicsQueue._timeline = device->createSemaphore({
+        device->_transferQueue._timeline = device->createSemaphore({
             .initialValue = 0,
             .name = "transfer_timeline"
         }).value();

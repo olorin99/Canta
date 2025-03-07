@@ -184,6 +184,38 @@ void main() {
 
             ImGui::Text("Delta Time: %f", dt);
 
+            const char* refreshModes[] = { "FIFO", "MAILBOX", "IMMEDIATE" };
+            i32 refreshModeIndex = 0;
+            switch (swapchain->getPresentMode()) {
+                case canta::PresentMode::FIFO:
+                    refreshModeIndex = 0;
+                    break;
+                case canta::PresentMode::MAILBOX:
+                    refreshModeIndex = 1;
+                    break;
+                case canta::PresentMode::IMMEDIATE:
+                    refreshModeIndex = 2;
+                    break;
+            }
+            if (ImGui::Combo("PresentMode", &refreshModeIndex, refreshModes, 3)) {
+                device->waitIdle();
+                switch (refreshModeIndex) {
+                    case 0:
+                        swapchain->setPresentMode(canta::PresentMode::FIFO);
+                        break;
+                    case 1:
+                        swapchain->setPresentMode(canta::PresentMode::MAILBOX);
+                        break;
+                    case 2:
+                        swapchain->setPresentMode(canta::PresentMode::IMMEDIATE);
+                        break;
+                }
+            }
+
+            auto multiQueue = renderGraph.multiQueueEnabled();
+            if (ImGui::Checkbox("MultiQueue", &multiQueue))
+                renderGraph.setMultiQueueEnabled(multiQueue);
+
             auto timingEnabled = renderGraph.timingEnabled();
             if (ImGui::Checkbox("RenderGraph Timing", &timingEnabled))
                 renderGraph.setTimingEnabled(timingEnabled);
