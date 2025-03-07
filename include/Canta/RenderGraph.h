@@ -187,6 +187,8 @@ namespace canta {
         std::string _name = {};
         PassType _type = PassType::COMPUTE;
         QueueType _queue = QueueType::GRAPHICS;
+        i32 _waitSemaphoreIndex = -1;
+        i32 _signalSemaphoreIndex = -1;
 
         PipelineHandle _pipeline = {};
         bool _manualPipeline = false;
@@ -274,7 +276,7 @@ namespace canta {
 
         void reset();
         auto compile() -> std::expected<bool, RenderGraphError>;
-        auto execute(std::span<Semaphore::Pair> waits, std::span<Semaphore::Pair> signals, std::span<ImageBarrier> imagesToAcquire = {}) -> std::expected<bool, RenderGraphError>;
+        auto execute(std::span<SemaphorePair> waits, std::span<SemaphorePair> signals, std::span<ImageBarrier> imagesToAcquire = {}) -> std::expected<bool, RenderGraphError>;
 
         auto timers() -> std::span<std::pair<std::string, Timer>> {
             std::size_t count = _timerCount;
@@ -360,7 +362,7 @@ namespace canta {
         std::vector<ImageHandle> _images = {};
         std::vector<BufferHandle> _buffers = {};
 
-        std::array<CommandPool, FRAMES_IN_FLIGHT> _commandPools = {};
+        std::array<std::array<CommandPool, 2>, FRAMES_IN_FLIGHT> _commandPools = {};
 
     };
 

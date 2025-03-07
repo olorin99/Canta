@@ -47,6 +47,7 @@ namespace canta {
     using ImageViewHandle = Handle<ImageView, ResourceList<ImageView>>;
     using BufferHandle = Handle<Buffer, ResourceList<Buffer>>;
     using SamplerHandle = Handle<Sampler, ResourceList<Sampler>>;
+    using SemaphoreHandle = Handle<Semaphore, ResourceList<Semaphore>>;
 
     struct Limits {
         u32 maxImageDimensions1D = 0;
@@ -111,6 +112,21 @@ namespace canta {
         Limits limits;
     };
 
+    struct SemaphorePair {
+        explicit SemaphorePair(SemaphoreHandle handle)
+            : semaphore(handle),
+            value(handle->value())
+        {}
+
+        SemaphorePair(SemaphoreHandle handle, u64 val)
+            : semaphore(handle),
+            value(val)
+        {}
+
+        SemaphoreHandle semaphore = {};
+        u64 value = 0;
+    };
+
     constexpr const u32 FRAMES_IN_FLIGHT = 2;
 
     class Device {
@@ -149,14 +165,14 @@ namespace canta {
             func(cmd);
             cmd.end();
             auto wait = std::to_array({
-                _immediateTimeline.getPair()
+                SemaphorePair(_immediateTimeline)
             });
-            _immediateTimeline.increment();
+            _immediateTimeline->increment();
             auto signal = std::to_array({
-                _immediateTimeline.getPair()
+                SemaphorePair(_immediateTimeline)
             });
             queue(queueType).submit({ &cmd, 1 }, wait, signal).and_then([&](auto result) {
-                return _immediateTimeline.wait(_immediateTimeline.value());
+                return _immediateTimeline->wait(_immediateTimeline->value());
             });
         }
 
@@ -165,10 +181,10 @@ namespace canta {
             _deferredCommands.push_back(func);
         }
 
-        auto frameSemaphore() -> Semaphore* { return &_frameTimeline; }
-        auto frameValue() const -> u64 { return _frameTimeline.value(); }
-        auto framePrevValue() const -> u64 { return std::max(0l, static_cast<i64>(_frameTimeline.value()) - 1); }
-        auto flyingIndex() const -> u32 { return _frameTimeline.value() % FRAMES_IN_FLIGHT; }
+        auto frameSemaphore() -> SemaphoreHandle { return _frameTimeline; }
+        auto frameValue() const -> u64 { return _frameTimeline->value(); }
+        auto framePrevValue() const -> u64 { return std::max(0l, static_cast<i64>(_frameTimeline->value()) - 1); }
+        auto flyingIndex() const -> u32 { return _frameTimeline->value() % FRAMES_IN_FLIGHT; }
 
         auto instance() const -> VkInstance { return _instance; }
         auto physicalDevice() const -> VkPhysicalDevice { return _physicalDevice; }
@@ -191,7 +207,7 @@ namespace canta {
 
         auto createSwapchain(Swapchain::CreateInfo info) -> std::expected<Swapchain, VulkanError>;
 
-        auto createSemaphore(Semaphore::CreateInfo info) -> std::expected<Semaphore, VulkanError>;
+        auto createSemaphore(Semaphore::CreateInfo info) -> std::expected<SemaphoreHandle, VulkanError>;
 
         auto createCommandPool(CommandPool::CreateInfo info) -> std::expected<CommandPool, VulkanError>;
 
@@ -315,8 +331,8 @@ namespace canta {
         u32 _markerOffset = 0;
         u32 _marker = 0;
 
-        Semaphore _frameTimeline = {};
-        Semaphore _immediateTimeline = {};
+        SemaphoreHandle _frameTimeline = {};
+        SemaphoreHandle _immediateTimeline = {};
 
         VkDescriptorPool _bindlessPool = VK_NULL_HANDLE;
         VkDescriptorSetLayout _bindlessLayout = VK_NULL_HANDLE;
@@ -340,6 +356,7 @@ namespace canta {
         ResourceList<ImageView> _imageViewList = {};
         ResourceList<Buffer> _bufferList = {};
         ResourceList<Sampler> _samplerList = {};
+        ResourceList<Semaphore> _semaphoreList = {};
 
         std::vector<std::function<void(CommandBuffer&)>> _deferredCommands = {};
 

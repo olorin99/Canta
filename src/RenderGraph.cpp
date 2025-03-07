@@ -251,10 +251,12 @@ auto canta::RenderGraph::create(canta::RenderGraph::CreateInfo info) -> RenderGr
 
     graph._device = info.device;
     graph._name = info.name;
-    for (auto& pool : graph._commandPools) {
-        pool = info.device->createCommandPool({
-            .queueType = QueueType::GRAPHICS
-        }).value();
+    for (auto& poolGroup : graph._commandPools) {
+        for (auto& pool : poolGroup) {
+            pool = info.device->createCommandPool({
+                .queueType = QueueType::GRAPHICS
+            }).value();
+        }
     }
     graph._timingEnabled = info.enableTiming;
     graph._timingMode = info.timingMode;
@@ -609,12 +611,12 @@ auto canta::RenderGraph::compile() -> std::expected<bool, RenderGraphError> {
     return true;
 }
 
-auto canta::RenderGraph::execute(std::span<Semaphore::Pair> waits, std::span<Semaphore::Pair> signals, std::span<ImageBarrier> imagesToAcquire) -> std::expected<bool, RenderGraphError> {
+auto canta::RenderGraph::execute(std::span<SemaphorePair> waits, std::span<SemaphorePair> signals, std::span<ImageBarrier> imagesToAcquire) -> std::expected<bool, RenderGraphError> {
     _timerCount = 0;
     RenderGroup currentGroup = {};
-//    bool groupChanged = false;
-    _commandPools[_device->flyingIndex()].reset();
-    auto& cmd = _commandPools[_device->flyingIndex()].getBuffer();
+    for (auto& pool : _commandPools[_device->flyingIndex()])
+        pool.reset();
+    auto& cmd = _commandPools[_device->flyingIndex()][0].getBuffer();
     cmd.begin();
     if (_timingEnabled && _timingMode == TimingMode::SINGLE) {
         _timers[_device->flyingIndex()].front().first = _name;
@@ -821,6 +823,9 @@ void canta::RenderGraph::buildBarriers() {
         return false;
     };
 
+    i32 graphicsSemaphoreIndex = 0;
+    i32 computeSemaphoreIndex = 0;
+
     // for each pass for each input/output find next pass that access that resource and add barrier to next pass
     for (i32 passIndex = 0; passIndex < _orderedPasses.size(); passIndex++) {
         auto& pass = _orderedPasses[passIndex];
@@ -845,6 +850,23 @@ void canta::RenderGraph::buildBarriers() {
             accessPass->_barriers.push_back(barrier);
             if (pass->getQueue() != accessPass->getQueue()) {
                 pass->_releaseBarriers.push_back(barrier);
+                switch (pass->getQueue()) {
+                    case QueueType::NONE:
+                        break;
+                    case QueueType::GRAPHICS:
+                        pass->_signalSemaphoreIndex = graphicsSemaphoreIndex;
+                        accessPass->_waitSemaphoreIndex = graphicsSemaphoreIndex++;
+                        break;
+                    case QueueType::COMPUTE:
+                        pass->_signalSemaphoreIndex = computeSemaphoreIndex;
+                        accessPass->_waitSemaphoreIndex = computeSemaphoreIndex++;
+                    case QueueType::TRANSFER:
+                        break;
+                    case QueueType::SPARSE_BINDING:
+                        break;
+                    case QueueType::PRESENT:
+                        break;
+                }
             }
         }
         for (i32 inputIndex = 0; inputIndex < pass->_inputs.size(); inputIndex++) {
@@ -870,6 +892,23 @@ void canta::RenderGraph::buildBarriers() {
             accessPass->_barriers.push_back(barrier);
             if (pass->getQueue() != accessPass->getQueue()) {
                 pass->_releaseBarriers.push_back(barrier);
+                switch (pass->getQueue()) {
+                    case QueueType::NONE:
+                        break;
+                    case QueueType::GRAPHICS:
+                        pass->_signalSemaphoreIndex = graphicsSemaphoreIndex;
+                        accessPass->_waitSemaphoreIndex = graphicsSemaphoreIndex++;
+                        break;
+                    case QueueType::COMPUTE:
+                        pass->_signalSemaphoreIndex = computeSemaphoreIndex;
+                        accessPass->_waitSemaphoreIndex = computeSemaphoreIndex++;
+                    case QueueType::TRANSFER:
+                        break;
+                    case QueueType::SPARSE_BINDING:
+                        break;
+                    case QueueType::PRESENT:
+                        break;
+                }
             }
         }
     }
@@ -1045,6 +1084,6 @@ auto canta::RenderGraph::statistics() const -> Statistics {
         .resources = static_cast<u32>(_resources.size()),
         .images = static_cast<u32>(_images.size()),
         .buffers = static_cast<u32>(_buffers.size()),
-        .commandBuffers = _commandPools[_device->flyingIndex()].bufferCount()
+        .commandBuffers = _commandPools[_device->flyingIndex()][0].bufferCount()
     };
 }

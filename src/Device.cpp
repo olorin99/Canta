@@ -13,6 +13,7 @@ template<> u32 canta::ImageHandle::s_hash = 0;
 template<> u32 canta::ImageViewHandle::s_hash = 0;
 template<> u32 canta::BufferHandle::s_hash = 0;
 template<> u32 canta::SamplerHandle::s_hash = 0;
+template<> u32 canta::SemaphoreHandle ::s_hash = 0;
 
 template <typename T, typename U>
 void appendFeatureChain(T* start, U* next) {
@@ -434,6 +435,10 @@ auto canta::Device::create(canta::Device::CreateInfo info) noexcept -> std::expe
         device->_graphicsQueue._queue = graphicsQueue;
         device->_graphicsQueue._familyIndex = graphicsFamilyIndex;
         device->_graphicsQueue._queueIndex = graphicsQueueIndex;
+        device->_graphicsQueue._timeline = device->createSemaphore({
+            .initialValue = 0,
+            .name = "graphics_timeline"
+        }).value();
     }
     if (info.enableAsyncComputeQueue) {
         VkQueue computeQueue;
@@ -442,6 +447,10 @@ auto canta::Device::create(canta::Device::CreateInfo info) noexcept -> std::expe
         device->_computeQueue._queue = computeQueue;
         device->_computeQueue._familyIndex = computeFamilyIndex;
         device->_computeQueue._queueIndex = computeQueueIndex;
+        device->_graphicsQueue._timeline = device->createSemaphore({
+            .initialValue = 0,
+            .name = "compute_timeline"
+        }).value();
     } else {
         device->_computeQueue = device->_graphicsQueue;
     }
@@ -452,6 +461,10 @@ auto canta::Device::create(canta::Device::CreateInfo info) noexcept -> std::expe
         device->_transferQueue._queue = transferQueue;
         device->_transferQueue._familyIndex = transferFamilyIndex;
         device->_transferQueue._queueIndex = transferQueueIndex;
+        device->_graphicsQueue._timeline = device->createSemaphore({
+            .initialValue = 0,
+            .name = "transfer_timeline"
+        }).value();
     } else {
         device->_transferQueue = device->_graphicsQueue;
     }
@@ -620,8 +633,18 @@ auto canta::Device::create(canta::Device::CreateInfo info) noexcept -> std::expe
 }
 
 canta::Device::~Device() {
-    _immediateTimeline.signal(std::numeric_limits<u64>::max());
-    _frameTimeline.signal(std::numeric_limits<u64>::max());
+    _immediateTimeline->signal(std::numeric_limits<u64>::max());
+    _frameTimeline->signal(std::numeric_limits<u64>::max());
+    _immediateTimeline = {};
+    _frameTimeline = {};
+    _graphicsQueue._timeline = {};
+    _computeQueue._timeline = {};
+    _transferQueue._timeline = {};
+    _semaphoreList.clearAll([](auto& resource) {
+        if (resource.isTimeline())
+            resource.signal(std::numeric_limits<u64>::max());
+        resource = {};
+    });
     vkDeviceWaitIdle(_logicalDevice);
 
     for (auto& buffer : _markerBuffers)
@@ -642,9 +665,6 @@ canta::Device::~Device() {
 #endif
 
     _immediatePool = {};
-
-    _immediateTimeline = {};
-    _frameTimeline = {};
 
     for (auto& queryPool : _pipelineStatisticsPools)
         vkDestroyQueryPool(_logicalDevice, queryPool, nullptr);
@@ -712,9 +732,9 @@ void canta::Device::gc() {
 }
 
 void canta::Device::beginFrame() {
-    u64 frameValue = std::max(0l, static_cast<i64>(_frameTimeline.value()) - (FRAMES_IN_FLIGHT - 1));
-    _frameTimeline.wait(frameValue);
-    _frameTimeline.increment();
+    u64 frameValue = std::max(0l, static_cast<i64>(_frameTimeline->value()) - (FRAMES_IN_FLIGHT - 1));
+    _frameTimeline->wait(frameValue);
+    _frameTimeline->increment();
 
 #ifndef NDEBUG
     _markerOffset = 0;
@@ -778,7 +798,7 @@ auto canta::Device::createSwapchain(Swapchain::CreateInfo info) -> std::expected
     return swapchain;
 }
 
-auto canta::Device::createSemaphore(Semaphore::CreateInfo info) -> std::expected<Semaphore, VulkanError> {
+auto canta::Device::createSemaphore(Semaphore::CreateInfo info) -> std::expected<SemaphoreHandle, VulkanError> {
     Semaphore semaphore = {};
     semaphore._device = this;
 
@@ -802,9 +822,13 @@ auto canta::Device::createSemaphore(Semaphore::CreateInfo info) -> std::expected
     if (!info.name.empty())
         setDebugName(VK_OBJECT_TYPE_SEMAPHORE, (u64)semaphore._semaphore, info.name);
 
+    SemaphoreHandle handle = _semaphoreList.allocate();
+
+    *handle = std::move(semaphore);
+
     logger().info("Semaphore {} created", info.name);
 
-    return semaphore;
+    return handle;
 }
 
 auto canta::Device::createCommandPool(CommandPool::CreateInfo info) -> std::expected<CommandPool, VulkanError> {

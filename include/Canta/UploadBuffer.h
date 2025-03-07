@@ -58,7 +58,7 @@ namespace canta {
 
         auto submitted() const -> std::span<const u64> { return _submitted; }
 
-        auto timeline() const -> const Semaphore& { return _timelineSemaphore; }
+        auto timeline() const -> const SemaphoreHandle { return _timelineSemaphore; }
 
         auto clearSubmitted() -> u32;
 
@@ -68,7 +68,7 @@ namespace canta {
 
         Device* _device = nullptr;
         CommandPool _commandPool = {};
-        Semaphore _timelineSemaphore = {};
+        SemaphoreHandle _timelineSemaphore = {};
 
         BufferHandle _buffer = {};
         u32 _offset = 0;

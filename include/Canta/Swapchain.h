@@ -17,6 +17,7 @@ namespace canta {
 
     class Image;
     using ImageHandle = Handle<Image, ResourceList<Image>>;
+    using SemaphoreHandle = Handle<Semaphore, ResourceList<Semaphore>>;
 
     class Swapchain {
     public:
@@ -35,8 +36,8 @@ namespace canta {
 
         auto present() -> std::expected<u32, VulkanError>;
 
-        auto acquireSemaphore() -> Semaphore* { return &_semaphores[_semaphoreIndex].acquire; }
-        auto presentSemaphore() -> Semaphore* { return &_semaphores[_semaphoreIndex].present; }
+        auto acquireSemaphore() -> SemaphoreHandle { return _semaphores[_semaphoreIndex].acquire; }
+        auto presentSemaphore() -> SemaphoreHandle { return _semaphores[_semaphoreIndex].present; }
 
         void setPresentMode(PresentMode mode);
         auto getPresentMode() const -> PresentMode { return _presentMode; }
@@ -70,8 +71,8 @@ namespace canta {
         std::vector<VkImage> _images = {};
         std::vector<VkImageView> _imageViews = {};
         struct SemaphorePair {
-            Semaphore acquire;
-            Semaphore present;
+            SemaphoreHandle acquire;
+            SemaphoreHandle present;
         };
         std::vector<SemaphorePair> _semaphores = {};
         u32 _semaphoreIndex = 0;

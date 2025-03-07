@@ -251,17 +251,17 @@ auto canta::UploadBuffer::flushStagedData() -> UploadBuffer& {
         }
         commandBuffer.end();
         auto waits = std::to_array({
-            _timelineSemaphore.getPair()
+            SemaphorePair(_timelineSemaphore)
         });
-        _timelineSemaphore.increment();
+        _timelineSemaphore->increment();
         auto signals = std::to_array({
-            _timelineSemaphore.getPair()
+             SemaphorePair(_timelineSemaphore)
         });
         if (!_device->queue(QueueType::TRANSFER).submit({ &commandBuffer, 1 }, waits, signals)) {
             _device->logger().error("Failed to submit queue");
             return *this;
         }
-        _submitted.push_back(_timelineSemaphore.value());
+        _submitted.push_back(_timelineSemaphore->value());
     }
 
     _pendingStagedBufferCopies.clear();
@@ -274,11 +274,11 @@ void canta::UploadBuffer::wait(u64 timeout) {
     if (_submitted.empty())
         return;
     auto maxSignal = std::max_element(_submitted.begin(), _submitted.end());
-    _timelineSemaphore.wait(*maxSignal);
+    _timelineSemaphore->wait(*maxSignal);
 }
 
 auto canta::UploadBuffer::clearSubmitted() -> u32 {
-    auto gpuTimelineValue = _timelineSemaphore.gpuValue();
+    auto gpuTimelineValue = _timelineSemaphore->gpuValue();
     u32 clearedCount = 0;
     std::unique_lock lock(*_mutex);
     for (auto it = _submitted.begin(); it != _submitted.end(); it++) {

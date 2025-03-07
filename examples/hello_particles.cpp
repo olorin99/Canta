@@ -375,13 +375,13 @@ void main() {
             return -1;
 
         auto waits = std::to_array({
-            { device->frameSemaphore(), device->framePrevValue() },
-            swapchain->acquireSemaphore()->getPair(),
-            uploadBuffer.timeline().getPair()
+            canta::SemaphorePair{ device->frameSemaphore(), device->framePrevValue() },
+            canta::SemaphorePair(swapchain->acquireSemaphore()),
+            canta::SemaphorePair(uploadBuffer.timeline())
         });
         auto signals = std::to_array({
-            device->frameSemaphore()->getPair(),
-            swapchain->presentSemaphore()->getPair()
+            canta::SemaphorePair(device->frameSemaphore()),
+            canta::SemaphorePair(swapchain->presentSemaphore())
         });
         if (!renderGraph.execute(waits, signals))
             return -2;

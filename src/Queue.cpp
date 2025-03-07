@@ -1,6 +1,7 @@
 #include "Canta/Queue.h"
+#include <Canta/Device.h>
 
-auto canta::Queue::submit(std::span<CommandBuffer> commandBuffers, std::span<Semaphore::Pair> waits, std::span<Semaphore::Pair> signals, VkFence fence) -> std::expected<bool, VulkanError> {
+auto canta::Queue::submit(std::span<CommandBuffer> commandBuffers, std::span<SemaphorePair> waits, std::span<SemaphorePair> signals, VkFence fence) -> std::expected<bool, VulkanError> {
     VkSemaphoreSubmitInfo waitInfos[waits.size()];
     VkSemaphoreSubmitInfo signalInfos[signals.size()];
 

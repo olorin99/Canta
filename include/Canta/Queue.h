@@ -10,6 +10,7 @@
 namespace canta {
 
     class Device;
+    struct SemaphorePair;
 
     class Queue {
     public:
@@ -18,7 +19,7 @@ namespace canta {
         auto familyIndex() const -> u32 { return _familyIndex; }
         auto queueIndex() const -> u32 { return _queueIndex; }
 
-        auto submit(std::span<CommandBuffer> commandBuffers, std::span<Semaphore::Pair> waits = {}, std::span<Semaphore::Pair> signals = {}, VkFence fence = VK_NULL_HANDLE) -> std::expected<bool, VulkanError>;
+        auto submit(std::span<CommandBuffer> commandBuffers, std::span<SemaphorePair> waits = {}, std::span<SemaphorePair> signals = {}, VkFence fence = VK_NULL_HANDLE) -> std::expected<bool, VulkanError>;
 
     private:
         friend Device;
@@ -29,6 +30,7 @@ namespace canta {
         VkQueue _queue = VK_NULL_HANDLE;
         u32 _familyIndex = 0;
         u32 _queueIndex = 0;
+        SemaphoreHandle _timeline = {};
 
     };
 
