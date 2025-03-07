@@ -675,7 +675,7 @@ auto canta::RenderGraph::execute(std::span<SemaphorePair> waits, std::span<Semap
             currentCommandBuffer = &_commandPools[_device->flyingIndex()][getQueueIndex(pass->getQueue())].getBuffer();
             commandBufferIndices.push_back({getQueueIndex(pass->getQueue()), _commandPools[_device->flyingIndex()][getQueueIndex(pass->getQueue())].index() - 1});
             currentCommandBuffer->begin();
-        } else if (pass->_waitSemaphoreIndex > -1) {
+        } else if (pass->_waitSemaphoreIndex > -1 || !currentCommandBuffer->isActive()) {
             if (_commandPools[_device->flyingIndex()][getQueueIndex(pass->getQueue())].index() == 0) {
                 bufferValues[getQueueIndex(pass->getQueue())].push_back({_commandPools[_device->flyingIndex()][getQueueIndex(pass->getQueue())].index(), { -1, -1, -1 }});
                 currentCommandBuffer = &_commandPools[_device->flyingIndex()][getQueueIndex(pass->getQueue())].getBuffer();
