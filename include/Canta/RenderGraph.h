@@ -93,7 +93,8 @@ namespace canta {
     enum class PassType {
         GRAPHICS,
         COMPUTE,
-        TRANSFER
+        TRANSFER,
+        HOST
     };
     class RenderPass {
     public:
@@ -148,14 +149,16 @@ namespace canta {
             return *this;
         }
 
-        auto getQueue() -> QueueType { return _queue; }
+        auto getQueue() const -> QueueType { return _queue; }
+
+        auto getType() const -> PassType { return _type; }
 
         auto setGroup(RenderGroup group) -> RenderPass& {
             _group = group;
             return *this;
         }
 
-        auto getGroup() -> RenderGroup { return _group; }
+        auto getGroup() const -> RenderGroup { return _group; }
 
         auto setDebugColour(const std::array<f32, 4>& colour = { 0, 1, 0, 1 }) -> RenderPass& {
             _debugColour = colour;
@@ -188,8 +191,8 @@ namespace canta {
         std::string _name = {};
         PassType _type = PassType::COMPUTE;
         QueueType _queue = QueueType::GRAPHICS;
-        i32 _waitSemaphoreIndex = -1;
-        i32 _signalSemaphoreIndex = -1;
+        std::vector<std::pair<u32, QueueType>> _waits = {};
+        bool _signal = false;
 
         PipelineHandle _pipeline = {};
         bool _manualPipeline = false;
@@ -370,6 +373,7 @@ namespace canta {
         std::vector<BufferHandle> _buffers = {};
 
         std::array<std::array<CommandPool, 2>, FRAMES_IN_FLIGHT> _commandPools = {};
+        SemaphoreHandle _cpuTimeline = {};
 
     };
 

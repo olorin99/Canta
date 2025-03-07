@@ -57,7 +57,7 @@ auto canta::RenderPass::addDepthRead(canta::ImageIndex index) -> RenderPass& {
 
 auto canta::RenderPass::addStorageImageWrite(canta::ImageIndex index, canta::PipelineStage stage) -> RenderPass& {
     assert(index.id >= 0);
-    if (auto resource = writes(index, Access::SHADER_WRITE | Access::SHADER_READ,
+    if (auto resource = writes(index, stage == PipelineStage::HOST ? Access::HOST_WRITE | Access::HOST_READ : Access::SHADER_WRITE | Access::SHADER_READ,
                                stage, ImageLayout::GENERAL)) {
         dynamic_cast<ImageResource*>(resource)->usage |= ImageUsage::STORAGE;
     }
@@ -66,7 +66,7 @@ auto canta::RenderPass::addStorageImageWrite(canta::ImageIndex index, canta::Pip
 
 auto canta::RenderPass::addStorageImageRead(canta::ImageIndex index, canta::PipelineStage stage) -> RenderPass& {
     assert(index.id >= 0);
-    if (auto resource = reads(index, Access::SHADER_READ,
+    if (auto resource = reads(index, stage == PipelineStage::HOST ? Access::HOST_READ : Access::SHADER_READ,
                               stage, ImageLayout::GENERAL)) {
         dynamic_cast<ImageResource*>(resource)->usage |= ImageUsage::STORAGE;
     }
@@ -75,7 +75,7 @@ auto canta::RenderPass::addStorageImageRead(canta::ImageIndex index, canta::Pipe
 
 auto canta::RenderPass::addStorageBufferWrite(canta::BufferIndex index, canta::PipelineStage stage) -> RenderPass& {
     assert(index.id >= 0);
-    if (auto resource = writes(index, Access::SHADER_WRITE | Access::SHADER_READ,
+    if (auto resource = writes(index, stage == PipelineStage::HOST ? Access::HOST_WRITE | Access::HOST_READ : Access::SHADER_WRITE | Access::SHADER_READ,
                                stage)) {
         dynamic_cast<BufferResource*>(resource)->usage |= BufferUsage::STORAGE;
     }
@@ -84,7 +84,7 @@ auto canta::RenderPass::addStorageBufferWrite(canta::BufferIndex index, canta::P
 
 auto canta::RenderPass::addStorageBufferRead(canta::BufferIndex index, canta::PipelineStage stage) -> RenderPass& {
     assert(index.id >= 0);
-    if (auto resource = reads(index, Access::SHADER_READ,
+    if (auto resource = reads(index, stage == PipelineStage::HOST ? Access::HOST_READ : Access::SHADER_READ,
                               stage)) {
         dynamic_cast<BufferResource*>(resource)->usage |= BufferUsage::STORAGE;
     }
@@ -281,6 +281,10 @@ auto canta::RenderGraph::create(canta::RenderGraph::CreateInfo info) -> RenderGr
         }
     }
 
+    graph._cpuTimeline = info.device->createSemaphore({
+        .initialValue = 0,
+        .name = "cpu_timeline"
+    }).value();
     return graph;
 }
 
@@ -608,6 +612,9 @@ auto canta::RenderGraph::compile() -> std::expected<bool, RenderGraphError> {
             if (pass->_type == PassType::COMPUTE && onLevelCount == 2) {
                 pass->setQueue(QueueType::COMPUTE);
             }
+            if (pass->_type == PassType::HOST) {
+                pass->setQueue(QueueType::NONE);
+            }
 
             i++;
         }
@@ -623,6 +630,7 @@ auto canta::RenderGraph::compile() -> std::expected<bool, RenderGraphError> {
 inline auto getQueueIndex(canta::QueueType queue) -> u32 {
     switch (queue) {
         case canta::QueueType::NONE:
+            return 2;
             break;
         case canta::QueueType::GRAPHICS:
             return 0;
@@ -643,17 +651,14 @@ auto canta::RenderGraph::execute(std::span<SemaphorePair> waits, std::span<Semap
     RenderGroup currentGroup = {};
     for (auto& pool : _commandPools[_device->flyingIndex()])
         pool.reset();
-    CommandBuffer* currentCommandBuffer = &_commandPools[_device->flyingIndex()][0].getBuffer();
-    QueueType currentQueue = QueueType::GRAPHICS;
-    std::array<std::vector<std::pair<u32, std::tuple<i64, i64, i64>>>, 2> bufferValues; // bufferIndex, gwait, cwait, signal
-    bufferValues[0].push_back({0, { -1, -1, -1 }});
-    std::vector<std::pair<u32, u32>> commandBufferIndices; // queueindex, bufferindex
-    commandBufferIndices.push_back({0, _commandPools[_device->flyingIndex()][0].index() - 1});
+    CommandBuffer* currentCommandBuffer = nullptr;
+    // CommandBuffer* currentCommandBuffer = &_commandPools[_device->flyingIndex()][0].getBuffer();
+    std::vector<std::pair<u32, std::pair<u32, u32>>> commandBufferIndices; // queueindex, bufferindex
+    std::vector<RenderPass*> hostPasses;
+    std::vector<std::vector<SemaphorePair>> commandBufferWaits = {};
 
-    u64 graphicsSemaphoreValue = 0;
-    u64 computeSemaphoreValue = 0;
 
-    currentCommandBuffer->begin();
+    // currentCommandBuffer->begin();
 //    if (_timingEnabled && _timingMode == TimingMode::SINGLE) {
 //        _timers[_device->flyingIndex()].front().first = _name;
 //        _timers[_device->flyingIndex()].front().second.begin(*currentCommandBuffer);
@@ -663,46 +668,61 @@ auto canta::RenderGraph::execute(std::span<SemaphorePair> waits, std::span<Semap
 //        _pipelineStats[_device->flyingIndex()].front().second.begin(*currentCommandBuffer);
 //    }
 
-    for (auto& image : imagesToAcquire) {
-        currentCommandBuffer->barrier(image);
-    }
+    // for (auto& image : imagesToAcquire) {
+    //     currentCommandBuffer->barrier(image);
+    // }
 
     for (u32 i = 0; i < _orderedPasses.size(); i++) {
         auto& pass = _orderedPasses[i];
-
-        if (pass->_waitSemaphoreIndex < 0 && _commandPools[_device->flyingIndex()][getQueueIndex(pass->getQueue())].index() == 0) {
-            bufferValues[getQueueIndex(pass->getQueue())].push_back({_commandPools[_device->flyingIndex()][getQueueIndex(pass->getQueue())].index(), { -1, -1, -1 }});
-            currentCommandBuffer = &_commandPools[_device->flyingIndex()][getQueueIndex(pass->getQueue())].getBuffer();
-            commandBufferIndices.push_back({getQueueIndex(pass->getQueue()), _commandPools[_device->flyingIndex()][getQueueIndex(pass->getQueue())].index() - 1});
-            currentCommandBuffer->begin();
-        } else if (pass->_waitSemaphoreIndex > -1 || !currentCommandBuffer->isActive()) {
-            if (_commandPools[_device->flyingIndex()][getQueueIndex(pass->getQueue())].index() == 0) {
-                bufferValues[getQueueIndex(pass->getQueue())].push_back({_commandPools[_device->flyingIndex()][getQueueIndex(pass->getQueue())].index(), { -1, -1, -1 }});
-                currentCommandBuffer = &_commandPools[_device->flyingIndex()][getQueueIndex(pass->getQueue())].getBuffer();
-                commandBufferIndices.push_back({getQueueIndex(pass->getQueue()), _commandPools[_device->flyingIndex()][getQueueIndex(pass->getQueue())].index() - 1});
-                currentCommandBuffer->begin();
-            } else {
-                _commandPools[_device->flyingIndex()][getQueueIndex(pass->getQueue())].buffers().back().end();
-                if (std::get<2>(bufferValues[getQueueIndex(pass->getQueue())].back().second) < 0) {
-                    switch (pass->getQueue()) {
-                        case QueueType::GRAPHICS:
-                            graphicsSemaphoreValue++;
-                            std::get<2>(bufferValues[getQueueIndex(pass->getQueue())].back().second) = graphicsSemaphoreValue;
-                            break;
-                        case QueueType::COMPUTE:
-                            computeSemaphoreValue++;
-                            std::get<2>(bufferValues[getQueueIndex(pass->getQueue())].back().second) = computeSemaphoreValue;
-                            break;
-                    }
+        if (pass->_type == PassType::HOST) {
+            commandBufferIndices.push_back({getQueueIndex(QueueType::NONE), {commandBufferWaits.size(), hostPasses.size()}});
+            commandBufferWaits.push_back({});
+            for (auto& wait : pass->_waits) {
+                SemaphoreHandle semaphore = {};
+                switch (wait.second) {
+                    case QueueType::NONE:
+                        semaphore = _cpuTimeline;
+                    break;
+                    default:
+                        semaphore = _device->queue(wait.second).timeline();
                 }
-                bufferValues[getQueueIndex(pass->getQueue())].push_back({_commandPools[_device->flyingIndex()][getQueueIndex(pass->getQueue())].index(), { graphicsSemaphoreValue, computeSemaphoreValue, -1 }});
-                currentCommandBuffer = &_commandPools[_device->flyingIndex()][getQueueIndex(pass->getQueue())].getBuffer();
-                commandBufferIndices.push_back({getQueueIndex(pass->getQueue()), _commandPools[_device->flyingIndex()][getQueueIndex(pass->getQueue())].index() - 1});
-                currentCommandBuffer->begin();
-            }
-        }
-        currentQueue = pass->getQueue();
 
+                commandBufferWaits.back().push_back(SemaphorePair(semaphore));
+            }
+            hostPasses.push_back(pass);
+            continue;
+        }
+        if (pass->_waits.empty() && !currentCommandBuffer) {
+            currentCommandBuffer = &_commandPools[_device->flyingIndex()][getQueueIndex(pass->getQueue())].getBuffer();
+            commandBufferIndices.push_back({getQueueIndex(pass->getQueue()), {_commandPools[_device->flyingIndex()][getQueueIndex(pass->getQueue())].index() - 1, 0}});
+            commandBufferWaits.push_back({});
+            currentCommandBuffer->begin();
+        }
+        if (!pass->_waits.empty()) {
+            if (currentCommandBuffer && currentCommandBuffer->isActive())
+                currentCommandBuffer->end();
+
+            currentCommandBuffer = &_commandPools[_device->flyingIndex()][getQueueIndex(pass->getQueue())].getBuffer();
+            commandBufferIndices.push_back({getQueueIndex(pass->getQueue()), {_commandPools[_device->flyingIndex()][getQueueIndex(pass->getQueue())].index() - 1, 0}});
+            commandBufferWaits.push_back({});
+            for (auto& wait : pass->_waits) {
+                SemaphoreHandle semaphore = {};
+                switch (wait.second) {
+                    case QueueType::NONE:
+                        semaphore = _cpuTimeline;
+                        break;
+                    default:
+                        semaphore = _device->queue(wait.second).timeline();
+                }
+
+                commandBufferWaits.back().push_back(SemaphorePair(semaphore));
+            }
+
+            currentCommandBuffer->begin();
+        }
+
+        if (!currentCommandBuffer)
+            return std::unexpected(RenderGraphError::INVALID_SUBMISSION);
 
         submitBarriers(*currentCommandBuffer, pass->_barriers);
         startQueries(*currentCommandBuffer, i, *pass, currentGroup);
@@ -731,9 +751,12 @@ auto canta::RenderGraph::execute(std::span<SemaphorePair> waits, std::span<Semap
             info.size = { static_cast<u32>(width), static_cast<u32>(height) };
             currentCommandBuffer->beginRendering(info);
         }
-        if (!pass->_manualPipeline && !currentCommandBuffer->bindPipeline(pass->_pipeline))
+        if (!pass->_manualPipeline &&
+            !currentCommandBuffer->bindPipeline(pass->_pipeline))
             return std::unexpected(RenderGraphError::INVALID_PIPELINE);
+
         pass->_execute(*currentCommandBuffer, *this);
+
         if (pass->_type == PassType::GRAPHICS) {
             currentCommandBuffer->endRendering();
         }
@@ -743,19 +766,12 @@ auto canta::RenderGraph::execute(std::span<SemaphorePair> waits, std::span<Semap
 
         currentGroup = pass->getGroup();
 
-        if (pass->_signalSemaphoreIndex > -1) {
+        if (pass->_signal) {
             currentCommandBuffer->end();
-            switch (pass->getQueue()) {
-                case QueueType::GRAPHICS:
-                    graphicsSemaphoreValue++;
-                    std::get<2>(bufferValues[getQueueIndex(pass->getQueue())][_commandPools[_device->flyingIndex()][getQueueIndex(pass->getQueue())].index() - 1].second) = graphicsSemaphoreValue;
-                    break;
-                case QueueType::COMPUTE:
-                    computeSemaphoreValue++;
-                    auto index = _commandPools[_device->flyingIndex()][getQueueIndex(pass->getQueue())].index() - 1;
-                    std::get<2>(bufferValues[getQueueIndex(pass->getQueue())][index].second) = computeSemaphoreValue;
-                    break;
-            }
+            currentCommandBuffer = &_commandPools[_device->flyingIndex()][getQueueIndex(pass->getQueue())].getBuffer();
+            commandBufferIndices.push_back({getQueueIndex(pass->getQueue()), {_commandPools[_device->flyingIndex()][getQueueIndex(pass->getQueue())].index() - 1, 0}});
+            commandBufferWaits.push_back({});
+            currentCommandBuffer->begin();
         }
     }
 
@@ -776,52 +792,55 @@ auto canta::RenderGraph::execute(std::span<SemaphorePair> waits, std::span<Semap
 //    if (_timingEnabled && _timingMode == TimingMode::SINGLE)
 //        _timers[_device->flyingIndex()].front().second.end(*currentCommandBuffer);
     currentCommandBuffer->end();
-    if (std::get<2>(bufferValues[getQueueIndex(currentQueue)].back().second) < 0) {
-        switch (currentQueue) {
-            case QueueType::GRAPHICS:
-                graphicsSemaphoreValue++;
-                std::get<2>(bufferValues[getQueueIndex(currentQueue)].back().second) = graphicsSemaphoreValue;
-                break;
-            case QueueType::COMPUTE:
-                computeSemaphoreValue++;
-                std::get<2>(bufferValues[getQueueIndex(currentQueue)].back().second) = computeSemaphoreValue;
-                break;
-        }
-    }
 
     bool result = true;
 
     auto& graphicsQueue = _device->queue(QueueType::GRAPHICS);
     auto& computeQueue = _device->queue(QueueType::COMPUTE);
 
-    u64 graphicsInitialTimelineValue = graphicsQueue.timeline()->value();
-    u64 computeInitialTimelineValue = computeQueue.timeline()->value();
+    u32 firstDevice = 0;
+    for (i32 d = 0; d < commandBufferIndices.size(); d++) {
+        if (commandBufferIndices[d].first != getQueueIndex(QueueType::NONE)) {
+            firstDevice = d;
+            break;
+        }
+    }
+    u32 lastDevice = 0;
+    for (i32 d = commandBufferIndices.size() - 1; d >= 0; --d) {
+        if (commandBufferIndices[d].first != getQueueIndex(QueueType::NONE)) {
+            lastDevice = d;
+            break;
+        }
+    }
 
     for (u32 i = 0; auto& indices : commandBufferIndices) {
-        auto& commandList = _commandPools[_device->flyingIndex()][indices.first].buffers()[indices.second];
+        if (indices.first > 1) { // if host
 
-        auto value = bufferValues[indices.first][indices.second];
+            for (auto& wait : commandBufferWaits[indices.second.first]) {
+                wait.semaphore->wait(wait.value);
+            }
+            hostPasses[indices.second.second]->_execute(*currentCommandBuffer, *this);
 
-        u64 graphicsWait = std::max(std::get<0>(value.second), 0l);
-        u64 computeWait = std::max(std::get<1>(value.second), 0l);
+            _cpuTimeline->signal(_cpuTimeline->value() + 1);
+            _cpuTimeline->increment();
 
-        std::vector<SemaphorePair> internalWaits;
-        if (graphicsWait > 0)
-            internalWaits.push_back(SemaphorePair(graphicsQueue.timeline(), graphicsInitialTimelineValue + graphicsWait));
-        if (computeWait > 0)
-            internalWaits.push_back(SemaphorePair(computeQueue.timeline(), computeInitialTimelineValue + computeWait));
-        if (i == 0)
-            internalWaits.insert(internalWaits.end(), waits.begin(), waits.end());
-        std::vector<SemaphorePair> internalSignals = {
-                SemaphorePair(indices.first == 0 ? graphicsQueue.timeline() : computeQueue.timeline(), (indices.first == 0 ? graphicsInitialTimelineValue : computeInitialTimelineValue) + std::get<2>(value.second))
-        };
-        (indices.first == 0 ? graphicsQueue.timeline() : computeQueue.timeline())->increment();
-        if (i == commandBufferIndices.size() - 1)
-            internalSignals.insert(internalSignals.end(), signals.begin(), signals.end());
+        } else { // if device
+            auto& commandList = _commandPools[_device->flyingIndex()][indices.first].buffers()[indices.second.first];
 
-        result |= (indices.first == 0 ? graphicsQueue : computeQueue).submit({ &commandList, 1 }, internalWaits, internalSignals).value();
-        if (!result)
-            return std::unexpected(RenderGraphError::INVALID_SUBMISSION);
+            std::vector<SemaphorePair> internalWaits = commandBufferWaits[indices.second.first];
+            if (i == 0 || i == firstDevice)
+                internalWaits.insert(internalWaits.end(), waits.begin(), waits.end());
+            std::vector<SemaphorePair> internalSignals = {
+                SemaphorePair(indices.first == 0 ? graphicsQueue.timeline() : computeQueue.timeline(), (indices.first == 0 ? graphicsQueue.timeline()->value() : computeQueue.timeline()->value()) + 1)
+            };
+            (indices.first == 0 ? graphicsQueue.timeline() : computeQueue.timeline())->increment();
+            if (i == commandBufferIndices.size() - 1 || i == lastDevice)
+                internalSignals.insert(internalSignals.end(), signals.begin(), signals.end());
+
+            result |= (indices.first == 0 ? graphicsQueue : computeQueue).submit({ &commandList, 1 }, internalWaits, internalSignals).value();
+            if (!result)
+                return std::unexpected(RenderGraphError::INVALID_SUBMISSION);
+        }
 
         i++;
     }
@@ -955,9 +974,6 @@ void canta::RenderGraph::buildBarriers() {
         return false;
     };
 
-    i32 graphicsSemaphoreIndex = 0;
-    i32 computeSemaphoreIndex = 0;
-
     // for each pass for each input/output find next pass that access that resource and add barrier to next pass
     for (i32 passIndex = 0; passIndex < _orderedPasses.size(); passIndex++) {
         auto& pass = _orderedPasses[passIndex];
@@ -982,23 +998,8 @@ void canta::RenderGraph::buildBarriers() {
             accessPass->_barriers.push_back(barrier);
             if (pass->getQueue() != accessPass->getQueue()) {
                 pass->_releaseBarriers.push_back(barrier);
-                switch (pass->getQueue()) {
-                    case QueueType::NONE:
-                        break;
-                    case QueueType::GRAPHICS:
-                        pass->_signalSemaphoreIndex = graphicsSemaphoreIndex;
-                        accessPass->_waitSemaphoreIndex = graphicsSemaphoreIndex++;
-                        break;
-                    case QueueType::COMPUTE:
-                        pass->_signalSemaphoreIndex = computeSemaphoreIndex;
-                        accessPass->_waitSemaphoreIndex = computeSemaphoreIndex++;
-                    case QueueType::TRANSFER:
-                        break;
-                    case QueueType::SPARSE_BINDING:
-                        break;
-                    case QueueType::PRESENT:
-                        break;
-                }
+                accessPass->_waits.push_back({passIndex, pass->getQueue()});
+                pass->_signal = true;
             }
         }
         for (i32 inputIndex = 0; inputIndex < pass->_inputs.size(); inputIndex++) {
@@ -1022,25 +1023,11 @@ void canta::RenderGraph::buildBarriers() {
                 accessPass->getQueue()
             };
             accessPass->_barriers.push_back(barrier);
+            accessPass->_waits.push_back({passIndex, pass->getQueue()});
             if (pass->getQueue() != accessPass->getQueue()) {
                 pass->_releaseBarriers.push_back(barrier);
-                switch (pass->getQueue()) {
-                    case QueueType::NONE:
-                        break;
-                    case QueueType::GRAPHICS:
-                        pass->_signalSemaphoreIndex = graphicsSemaphoreIndex;
-                        accessPass->_waitSemaphoreIndex = graphicsSemaphoreIndex++;
-                        break;
-                    case QueueType::COMPUTE:
-                        pass->_signalSemaphoreIndex = computeSemaphoreIndex;
-                        accessPass->_waitSemaphoreIndex = computeSemaphoreIndex++;
-                    case QueueType::TRANSFER:
-                        break;
-                    case QueueType::SPARSE_BINDING:
-                        break;
-                    case QueueType::PRESENT:
-                        break;
-                }
+                accessPass->_waits.push_back({passIndex, pass->getQueue()});
+                pass->_signal = true;
             }
         }
     }

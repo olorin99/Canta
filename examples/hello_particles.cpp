@@ -347,7 +347,16 @@ void main() {
             .name = "particles_buffer"
         });
 
-        renderGraph.addClearPass("clear_image", imageIndex);
+        auto imageAlias = renderGraph.addAlias(imageIndex);
+        renderGraph.addPass("cpu_test", canta::PassType::HOST)
+            .addStorageImageWrite(imageIndex, canta::PipelineStage::HOST)
+            // .addStorageImageWrite(imageAlias, canta::PipelineStage::HOST)
+            .setExecuteFunction([](canta::CommandBuffer& cmd, canta::RenderGraph& graph) {
+                printf("run on host\n");
+            });
+
+        renderGraph.addClearPass("clear_image", imageAlias);
+        // renderGraph.addClearPass("clear_image", imageIndex);
 
         auto particleGroup = renderGraph.getGroup("particles");
 
@@ -374,6 +383,7 @@ void main() {
             .setGroup(particleGroup)
             .setPipeline(pipelineDraw)
             .addStorageBufferRead(particleBufferIndex, canta::PipelineStage::COMPUTE_SHADER)
+            .addStorageImageRead(imageAlias, canta::PipelineStage::COMPUTE_SHADER)
             .addStorageImageWrite(imageIndex, canta::PipelineStage::COMPUTE_SHADER)
             .setExecuteFunction([particleBufferIndex, imageIndex, numParticles](canta::CommandBuffer& cmd, canta::RenderGraph& graph) {
             auto buffer = graph.getBuffer(particleBufferIndex);
