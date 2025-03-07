@@ -561,6 +561,47 @@ auto canta::RenderGraph::compile() -> std::expected<bool, RenderGraphError> {
         }
     }
 
+//    std::vector<std::vector<u32>> inputs(_resourceId);
+//    for (u32 i = 0; i < _orderedPasses.size(); i++) {
+//        auto& pass = _orderedPasses[i];
+//        for (auto& input : pass->_inputs)
+//            inputs[input.id].push_back(i);
+//    }
+
+//    i32 dependencyLevelCount = 1;
+//    std::vector<i32> distances(_orderedPasses.size(), 0);
+//    for (i32 i = 0; auto& pass : _orderedPasses) {
+//        for (auto& output : pass->_outputs) {
+//            for (auto& vertex : inputs[output.id]) {
+//                if (distances[vertex] < distances[i] + 1) {
+//                    distances[vertex] = distances[i] + 1;
+//                    dependencyLevelCount = std::max(distances[i] + 2, dependencyLevelCount);
+//                }
+//            }
+//        }
+//        i++;
+//    }
+//
+//    for (i32 i = 0; auto& pass : _orderedPasses) {
+//        auto distance = distances[i];
+//        auto onLevelCount = 1;
+//        for (i32 j = 0; auto& d : distances) {
+//            if (j == i) {
+//                j++;
+//                continue;
+//            };
+//            if (d == distance)
+//                onLevelCount++;
+//            j++;
+//        }
+//
+//        if (pass->_type == PassType::COMPUTE && onLevelCount == 2) {
+//            pass->setQueue(QueueType::COMPUTE);
+//        }
+//
+//        i++;
+//    }
+
     buildBarriers();
     buildResources();
     buildRenderAttachments();
@@ -571,7 +612,7 @@ auto canta::RenderGraph::compile() -> std::expected<bool, RenderGraphError> {
 auto canta::RenderGraph::execute(std::span<Semaphore::Pair> waits, std::span<Semaphore::Pair> signals, std::span<ImageBarrier> imagesToAcquire) -> std::expected<bool, RenderGraphError> {
     _timerCount = 0;
     RenderGroup currentGroup = {};
-    bool groupChanged = false;
+//    bool groupChanged = false;
     _commandPools[_device->flyingIndex()].reset();
     auto& cmd = _commandPools[_device->flyingIndex()].getBuffer();
     cmd.begin();
@@ -591,70 +632,10 @@ auto canta::RenderGraph::execute(std::span<Semaphore::Pair> waits, std::span<Sem
     for (u32 i = 0; i < _orderedPasses.size(); i++) {
         auto& pass = _orderedPasses[i];
 
-        // if render group changes
-        if (currentGroup.id != pass->getGroup().id) {
-            if (currentGroup.id >= 0)
-                cmd.popDebugLabel();
-            groupChanged = true;
-            if (pass->getGroup().id >= 0)
-                cmd.pushDebugLabel(getGroupName(pass->getGroup()), getGroupColour(pass->getGroup()));
-        } else
-            groupChanged = false;
-
         cmd.pushDebugLabel(pass->_name, pass->_debugColour);
 
-        u32 imageBarrierCount = 0;
-        ImageBarrier imageBarriers[pass->_barriers.size()];
-        u32 bufferBarrierCount = 0;
-        BufferBarrier bufferBarriers[pass->_barriers.size()];
-
-        for (auto& barrier : pass->_barriers) {
-            auto* resource = _resources[barrier.index].get();
-            if (resource->type == ResourceType::IMAGE) {
-                auto image = getImage({ .index = barrier.index });
-                imageBarriers[imageBarrierCount++] = ImageBarrier{
-                    .image = image,
-                    .srcStage = barrier.srcStage,
-                    .dstStage = barrier.dstStage,
-                    .srcAccess = barrier.srcAccess,
-                    .dstAccess = barrier.dstAccess,
-                    .srcLayout = barrier.srcLayout,
-                    .dstLayout = barrier.dstLayout
-                };
-            } else {
-                auto buffer = getBuffer({ .index = barrier.index });
-                bufferBarriers[bufferBarrierCount++] = BufferBarrier{
-                    .buffer = buffer,
-                    .srcStage = barrier.srcStage,
-                    .dstStage = barrier.dstStage,
-                    .srcAccess = barrier.srcAccess,
-                    .dstAccess = barrier.dstAccess,
-                };
-            }
-        }
-        for (u32 barrier = 0; barrier < imageBarrierCount; barrier++)
-            cmd.barrier(imageBarriers[barrier]);
-        for (u32 barrier = 0; barrier < bufferBarrierCount; barrier++)
-            cmd.barrier(bufferBarriers[barrier]);
-
-        if (_timingEnabled && _timingMode != TimingMode::SINGLE) {
-            if (_timingMode == TimingMode::PER_GROUP && groupChanged) {
-                if (currentGroup.id >= 0) {
-                    _timers[_device->flyingIndex()][_timerCount].second.end(cmd);
-                    _timerCount++;
-                }
-                if (pass->getGroup().id >= 0) {
-                    _timers[_device->flyingIndex()][_timerCount].first = getGroupName(pass->getGroup());
-                    _timers[_device->flyingIndex()][_timerCount].second.begin(cmd);
-                }
-            }
-            if (_timingMode == TimingMode::PER_PASS || pass->getGroup().id < 0) {
-                _timers[_device->flyingIndex()][_timerCount].first = pass->_name;
-                _timers[_device->flyingIndex()][_timerCount].second.begin(cmd);
-            }
-        }
-        if (_pipelineStatisticsEnabled && _individualPipelineStatistics)
-            _pipelineStats[_device->flyingIndex()][i].second.begin(cmd);
+        submitBarriers(cmd, pass->_barriers);
+        startQueries(cmd, i, *pass, currentGroup);
 
         if (pass->_type == PassType::GRAPHICS) {
             RenderingInfo info = {};
@@ -685,13 +666,10 @@ auto canta::RenderGraph::execute(std::span<Semaphore::Pair> waits, std::span<Sem
         if (pass->_type == PassType::GRAPHICS) {
             cmd.endRendering();
         }
-        if (_pipelineStatisticsEnabled && _individualPipelineStatistics)
-            _pipelineStats[_device->flyingIndex()][i].second.end(cmd);
-        if (_timingEnabled && _timingMode != TimingMode::SINGLE) {
-            if (_timingMode == TimingMode::PER_PASS || pass->getGroup().id < 0) {
-                _timers[_device->flyingIndex()][_timerCount++].second.end(cmd);
-            }
-        }
+        endQueries(cmd, i, *pass);
+
+        submitBarriers(cmd, pass->_releaseBarriers);
+
         cmd.popDebugLabel();
         currentGroup = pass->getGroup();
     }
@@ -715,6 +693,88 @@ auto canta::RenderGraph::execute(std::span<Semaphore::Pair> waits, std::span<Sem
     cmd.end();
 
     return *_device->queue(QueueType::GRAPHICS).submit({ &cmd, 1 }, waits, signals);
+}
+
+void canta::RenderGraph::submitBarriers(CommandBuffer& commandBuffer, const std::vector<RenderPass::Barrier> &barriers) {
+    u32 imageBarrierCount = 0;
+    ImageBarrier imageBarriers[barriers.size()];
+    u32 bufferBarrierCount = 0;
+    BufferBarrier bufferBarriers[barriers.size()];
+
+    for (auto& barrier : barriers) {
+        auto* resource = _resources[barrier.index].get();
+        if (resource->type == ResourceType::IMAGE) {
+            auto image = getImage({ .index = barrier.index });
+            imageBarriers[imageBarrierCount++] = ImageBarrier{
+                    .image = image,
+                    .srcStage = barrier.srcStage,
+                    .dstStage = barrier.dstStage,
+                    .srcAccess = barrier.srcAccess,
+                    .dstAccess = barrier.dstAccess,
+                    .srcLayout = barrier.srcLayout,
+                    .dstLayout = barrier.dstLayout,
+                    .srcQueue = _device->queue(barrier.srcQueue).familyIndex(),
+                    .dstQueue = _device->queue(barrier.dstQueue).familyIndex(),
+            };
+        } else {
+            auto buffer = getBuffer({ .index = barrier.index });
+            bufferBarriers[bufferBarrierCount++] = BufferBarrier{
+                    .buffer = buffer,
+                    .srcStage = barrier.srcStage,
+                    .dstStage = barrier.dstStage,
+                    .srcAccess = barrier.srcAccess,
+                    .dstAccess = barrier.dstAccess,
+                    .srcQueue = _device->queue(barrier.srcQueue).familyIndex(),
+                    .dstQueue = _device->queue(barrier.dstQueue).familyIndex(),
+            };
+        }
+    }
+    for (u32 barrier = 0; barrier < imageBarrierCount; barrier++)
+        commandBuffer.barrier(imageBarriers[barrier]);
+    for (u32 barrier = 0; barrier < bufferBarrierCount; barrier++)
+        commandBuffer.barrier(bufferBarriers[barrier]);
+}
+
+void canta::RenderGraph::startQueries(canta::CommandBuffer &commandBuffer, u32 passIndex, canta::RenderPass &pass, RenderGroup& currentGroup) {
+    // if render group changes
+    bool groupChanged = false;
+    if (currentGroup.id != pass.getGroup().id) {
+        if (currentGroup.id >= 0)
+            commandBuffer.popDebugLabel();
+        groupChanged = true;
+        if (pass.getGroup().id >= 0)
+            commandBuffer.pushDebugLabel(getGroupName(pass.getGroup()), getGroupColour(pass.getGroup()));
+    } else
+        groupChanged = false;
+
+    if (_timingEnabled && _timingMode != TimingMode::SINGLE) {
+        if (_timingMode == TimingMode::PER_GROUP && groupChanged) {
+            if (currentGroup.id >= 0) {
+                _timers[_device->flyingIndex()][_timerCount].second.end(commandBuffer);
+                _timerCount++;
+            }
+            if (pass.getGroup().id >= 0) {
+                _timers[_device->flyingIndex()][_timerCount].first = getGroupName(pass.getGroup());
+                _timers[_device->flyingIndex()][_timerCount].second.begin(commandBuffer);
+            }
+        }
+        if (_timingMode == TimingMode::PER_PASS || pass.getGroup().id < 0) {
+            _timers[_device->flyingIndex()][_timerCount].first = pass._name;
+            _timers[_device->flyingIndex()][_timerCount].second.begin(commandBuffer);
+        }
+    }
+    if (_pipelineStatisticsEnabled && _individualPipelineStatistics)
+        _pipelineStats[_device->flyingIndex()][passIndex].second.begin(commandBuffer);
+}
+
+void canta::RenderGraph::endQueries(canta::CommandBuffer &commandBuffer, u32 passIndex, canta::RenderPass &pass) {
+    if (_pipelineStatisticsEnabled && _individualPipelineStatistics)
+        _pipelineStats[_device->flyingIndex()][passIndex].second.end(commandBuffer);
+    if (_timingEnabled && _timingMode != TimingMode::SINGLE) {
+        if (_timingMode == TimingMode::PER_PASS || pass.getGroup().id < 0) {
+            _timers[_device->flyingIndex()][_timerCount++].second.end(commandBuffer);
+        }
+    }
 }
 
 void canta::RenderGraph::buildBarriers() {
@@ -771,15 +831,21 @@ void canta::RenderGraph::buildBarriers() {
             if (accessPassIndex < 0)
                 continue;
             auto& accessPass = _orderedPasses[accessPassIndex];
-            accessPass->_barriers.push_back({
+            RenderPass::Barrier barrier = {
                 nextAccess.index,
                 currentAccess.stage,
                 nextAccess.stage,
                 currentAccess.access,
                 nextAccess.access,
                 currentAccess.layout,
-                nextAccess.layout
-            });
+                nextAccess.layout,
+                pass->getQueue(),
+                accessPass->getQueue()
+            };
+            accessPass->_barriers.push_back(barrier);
+            if (pass->getQueue() != accessPass->getQueue()) {
+                pass->_releaseBarriers.push_back(barrier);
+            }
         }
         for (i32 inputIndex = 0; inputIndex < pass->_inputs.size(); inputIndex++) {
             auto& currentAccess = pass->_inputs[inputIndex];
@@ -790,15 +856,21 @@ void canta::RenderGraph::buildBarriers() {
             if (accessPassIndex < 0)
                 continue;
             auto& accessPass = _orderedPasses[accessPassIndex];
-            accessPass->_barriers.push_back({
+            RenderPass::Barrier barrier = {
                 nextAccess.index,
                 currentAccess.stage,
                 nextAccess.stage,
                 currentAccess.access,
                 nextAccess.access,
                 currentAccess.layout,
-                nextAccess.layout
-            });
+                nextAccess.layout,
+                pass->getQueue(),
+                accessPass->getQueue()
+            };
+            accessPass->_barriers.push_back(barrier);
+            if (pass->getQueue() != accessPass->getQueue()) {
+                pass->_releaseBarriers.push_back(barrier);
+            }
         }
     }
 

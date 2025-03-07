@@ -142,6 +142,13 @@ namespace canta {
             return *this;
         }
 
+        auto setQueue(QueueType queue) -> RenderPass& {
+            _queue = queue;
+            return *this;
+        }
+
+        auto getQueue() -> QueueType { return _queue; }
+
         auto setGroup(RenderGroup group) -> RenderPass& {
             _group = group;
             return *this;
@@ -179,6 +186,7 @@ namespace canta {
 
         std::string _name = {};
         PassType _type = PassType::COMPUTE;
+        QueueType _queue = QueueType::GRAPHICS;
 
         PipelineHandle _pipeline = {};
         bool _manualPipeline = false;
@@ -210,8 +218,11 @@ namespace canta {
             Access dstAccess = Access::NONE;
             ImageLayout srcLayout = ImageLayout::UNDEFINED;
             ImageLayout dstLayout = ImageLayout::UNDEFINED;
+            QueueType srcQueue = QueueType::NONE;
+            QueueType dstQueue = QueueType::NONE;
         };
         std::vector<Barrier> _barriers = {};
+        std::vector<Barrier> _releaseBarriers = {};
 
         RenderGroup _group = {};
         std::array<f32, 4> _debugColour = { 0, 1, 0, 1 };
@@ -310,6 +321,12 @@ namespace canta {
     private:
         friend RenderPass;
 
+        // helpers for execution function
+        void submitBarriers(CommandBuffer& commandBuffer, const std::vector<RenderPass::Barrier>& barriers);
+        void startQueries(CommandBuffer& commandBuffer, u32 passIndex, RenderPass& pass, RenderGroup& currentGroup);
+        void endQueries(CommandBuffer& commandBuffer, u32 passIndex, RenderPass& pass);
+
+        // helpers for compile function
         void buildBarriers();
         void buildResources();
         void buildRenderAttachments();
