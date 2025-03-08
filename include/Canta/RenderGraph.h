@@ -13,6 +13,7 @@ namespace canta {
         CYCLICAL_GRAPH,
         INVALID_PIPELINE,
         INVALID_SUBMISSION,
+        INVALID_PASS
     };
 
     enum ResourceType {
@@ -251,6 +252,7 @@ namespace canta {
             bool enablePipelineStatistics = true;
             bool individualPipelineStatistics = false;
             bool multiQueue = true;
+            bool allowHostPasses = true;
             std::string_view name = {};
         };
 
@@ -345,6 +347,7 @@ namespace canta {
         Device* _device = nullptr;
         std::string _name = {};
         bool _multiQueue = true;
+        bool _allowHostPasses = true;
 
         i32 _backbufferId = -1;
         i32 _backbufferIndex = -1;

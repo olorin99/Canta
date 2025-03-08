@@ -252,6 +252,7 @@ auto canta::RenderGraph::create(canta::RenderGraph::CreateInfo info) -> RenderGr
     graph._device = info.device;
     graph._name = info.name;
     graph._multiQueue = info.multiQueue;
+    graph._allowHostPasses = info.allowHostPasses;
     for (auto& poolGroup : graph._commandPools) {
         poolGroup[0] = info.device->createCommandPool({
             .queueType = QueueType::GRAPHICS
@@ -613,6 +614,7 @@ auto canta::RenderGraph::compile() -> std::expected<bool, RenderGraphError> {
                 pass->setQueue(QueueType::COMPUTE);
             }
             if (pass->_type == PassType::HOST) {
+                if (!_allowHostPasses) return std::unexpected(RenderGraphError::INVALID_PASS);
                 pass->setQueue(QueueType::NONE);
             }
 
@@ -675,6 +677,7 @@ auto canta::RenderGraph::execute(std::span<SemaphorePair> waits, std::span<Semap
     for (u32 i = 0; i < _orderedPasses.size(); i++) {
         auto& pass = _orderedPasses[i];
         if (pass->_type == PassType::HOST) {
+            if (!_allowHostPasses) return std::unexpected(RenderGraphError::INVALID_PASS);
             commandBufferIndices.push_back({getQueueIndex(QueueType::NONE), {commandBufferWaits.size(), hostPasses.size()}});
             commandBufferWaits.push_back({});
             for (auto& wait : pass->_waits) {
