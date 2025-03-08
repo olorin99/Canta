@@ -1015,6 +1015,7 @@ void canta::RenderGraph::buildBarriers() {
                         if (auto [prevPassIndex, prevIndex, prevAccess] = findPrevAccess(passIndex - 1, currentAccess.index); prevPassIndex < 0) {
                             barrier = {
                                 nextAccess.index,
+                                passIndex,
                                 currentAccess.stage,
                                 nextAccess.stage,
                                 currentAccess.access,
@@ -1027,6 +1028,7 @@ void canta::RenderGraph::buildBarriers() {
                         } else {
                             barrier = {
                                 nextAccess.index,
+                                passIndex,
                                 currentAccess.stage,
                                 nextAccess.stage,
                                 currentAccess.access,
@@ -1043,6 +1045,7 @@ void canta::RenderGraph::buildBarriers() {
                         if (b.index == currentAccess.index && b.srcLayout != b.dstLayout) {
                             barrier = {
                                 nextAccess.index,
+                                passIndex,
                                 b.srcStage,
                                 nextAccess.stage,
                                 b.srcAccess,
@@ -1059,6 +1062,7 @@ void canta::RenderGraph::buildBarriers() {
             } else {
                 barrier = {
                     nextAccess.index,
+                    passIndex,
                     currentAccess.stage,
                     nextAccess.stage,
                     currentAccess.access,
@@ -1092,6 +1096,7 @@ void canta::RenderGraph::buildBarriers() {
                         if (auto [prevPassIndex, prevIndex, prevAccess] = findPrevAccess(passIndex - 1, currentAccess.index); prevPassIndex < 0) {
                             barrier = {
                                 nextAccess.index,
+                                passIndex,
                                 currentAccess.stage,
                                 nextAccess.stage,
                                 currentAccess.access,
@@ -1104,6 +1109,7 @@ void canta::RenderGraph::buildBarriers() {
                         } else {
                             barrier = {
                                 nextAccess.index,
+                                passIndex,
                                 currentAccess.stage,
                                 nextAccess.stage,
                                 currentAccess.access,
@@ -1121,6 +1127,7 @@ void canta::RenderGraph::buildBarriers() {
                         if (b.index == currentAccess.index && b.srcLayout != b.dstLayout) {
                             barrier = {
                                 nextAccess.index,
+                                passIndex,
                                 b.srcStage,
                                 nextAccess.stage,
                                 b.srcAccess,
@@ -1137,6 +1144,7 @@ void canta::RenderGraph::buildBarriers() {
             } else {
                 barrier = {
                     nextAccess.index,
+                    passIndex,
                     currentAccess.stage,
                     nextAccess.stage,
                     currentAccess.access,
@@ -1167,8 +1175,9 @@ void canta::RenderGraph::buildBarriers() {
         if (resource->type == ResourceType::IMAGE) {
             initialLayout = dynamic_cast<ImageResource*>(resource.get())->initialLayout;
         }
-        accessPass->_barriers.push_back({
+        accessPass->_barriers.push_back(RenderPass::Barrier{
             nextAccess.index,
+            -1,
             PipelineStage::TOP,
             nextAccess.stage,
             Access::MEMORY_READ | Access::MEMORY_WRITE,
@@ -1182,6 +1191,7 @@ void canta::RenderGraph::buildBarriers() {
         const auto [accessPassIndex, accessIndex, prevAccess] = findPrevAccess(_orderedPasses.size() - 1, _backbufferIndex);
         _backbufferBarrier = {
             .index = prevAccess.index,
+            .passIndex = -1,
             .srcStage = prevAccess.stage,
             .dstStage = PipelineStage::BOTTOM,
             .srcAccess = prevAccess.access,

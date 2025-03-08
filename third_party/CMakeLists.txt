@@ -93,3 +93,12 @@ set(IMGUI_PATH ${imgui_SOURCE_DIR})
 set(IMGUI_SOURCES ${IMGUI_PATH}/imgui.cpp ${IMGUI_PATH}/imgui_demo.cpp ${IMGUI_PATH}/imgui_tables.cpp ${IMGUI_PATH}/imgui_widgets.cpp ${IMGUI_PATH}/imgui_draw.cpp ${IMGUI_PATH}/backends/imgui_impl_vulkan.cpp ${IMGUI_PATH}/backends/imgui_impl_sdl2.cpp)
 add_library(imgui ${IMGUI_SOURCES})
 target_include_directories(imgui PUBLIC ${imgui_SOURCE_DIR})
+
+set(IMGUI_NODES_PATH ${CMAKE_CURRENT_SOURCE_DIR}/third_party)
+set(IMGUI_NODES_SOURCES
+        imnodes.cpp
+        imnodes.h
+        imnodes_internal.h)
+add_library(imnodes ${IMGUI_NODES_SOURCES})
+target_include_directories(imnodes PUBLIC ${imguiNodes_SOURCE_DIR})
+target_link_libraries(imnodes imgui)

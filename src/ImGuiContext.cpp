@@ -3,6 +3,7 @@
 #include <Canta/util.h>
 #include <Canta/SDLWindow.h>
 #include <backends/imgui_impl_sdl2.h>
+#include <imnodes.h>
 
 const char* vertexGLSL = R"(
 #version 450 core
@@ -68,6 +69,8 @@ auto canta::ImGuiContext::create(canta::ImGuiContext::CreateInfo info) -> ImGuiC
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
 
+    ImNodes::CreateContext();
+
     ImGuiIO& io = ImGui::GetIO();
     io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
     if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable) {
@@ -86,6 +89,12 @@ auto canta::ImGuiContext::create(canta::ImGuiContext::CreateInfo info) -> ImGuiC
 
     return context;
 }
+
+canta::ImGuiContext::~ImGuiContext() {
+    ImNodes::DestroyContext();
+    // ImGui::DestroyContext();
+}
+
 
 canta::ImGuiContext::ImGuiContext(canta::ImGuiContext &&rhs) noexcept {
     std::swap(_device, rhs._device);
@@ -365,4 +374,71 @@ auto canta::ImGuiContext::createPipeline(canta::Format format) -> PipelineHandle
         .topology = PrimitiveTopology::TRIANGLE_LIST,
         .colourFormats = colourFormats
     });
+}
+
+#include <Canta/RenderGraph.h>
+
+void canta::drawRenderGraph(canta::RenderGraph& renderGraph) {
+    if (ImGui::Begin("Render Graph", nullptr, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse)) {
+            ImNodes::BeginNodeEditor();
+
+            std::vector<std::pair<i32, i32>> links = {};
+            std::vector<i32> validTargets = {};
+
+            for (i32 i = 0; auto& pass : renderGraph.orderedPasses()) {
+
+                i32 passId = 100 * i++;
+
+                ImNodes::BeginNode(passId);
+                ImNodes::BeginNodeTitleBar();
+                ImGui::Text("%s", pass->name().data());
+                ImNodes::EndNodeTitleBar();
+
+                for (auto& input : pass->inputs()) {
+                    const auto resource = renderGraph.resources()[input.index].get();
+
+                    ImNodes::BeginInputAttribute(passId + input.id);
+                    ImGui::Text("%s", resource->name.data());
+                    ImNodes::EndInputAttribute();
+                    validTargets.push_back(passId + input.id);
+
+                    for (auto& barrier : pass->barriers()) {
+                        if (barrier.passIndex < 0) continue;
+                        if (barrier.index == resource->index) {
+                            links.push_back({barrier.passIndex * 100 + input.id, passId + input.id});
+                            // break;
+                        }
+                    }
+                }
+                for (auto& output : pass->output()) {
+                    const auto resource = renderGraph.resources()[output.index].get();
+
+                    ImNodes::BeginOutputAttribute(passId + output.id);
+                    ImGui::Text("%s", resource->name.data());
+                    ImNodes::EndOutputAttribute();
+                    validTargets.push_back(passId + output.id);
+
+
+                    for (auto& barrier : pass->barriers()) {
+                        if (barrier.passIndex < 0) continue;
+                        if (barrier.index == resource->index) {
+                            if (std::find(validTargets.begin(), validTargets.end(), barrier.passIndex * 100 + output.id) != validTargets.end() &&
+                                std::find(validTargets.begin(), validTargets.end(), passId + output.id) != validTargets.end()) {
+                                links.push_back({barrier.passIndex * 100 + output.id, passId + output.id});
+                            }
+                        }
+                    }
+                }
+                ImNodes::EndNode();
+
+            }
+
+            for (i32 i = 0; i < links.size(); i++) {
+                ImNodes::Link(i, links[i].first, links[i].second);
+            }
+
+
+            ImNodes::EndNodeEditor();
+        }
+        ImGui::End();
 }

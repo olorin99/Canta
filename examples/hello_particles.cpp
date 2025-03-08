@@ -6,6 +6,7 @@
 #include <Canta/PipelineManager.h>
 #include <Canta/RenderGraph.h>
 #include <imgui.h>
+#include <imnodes.h>
 #include <Canta/ImGuiContext.h>
 #include <Canta/UploadBuffer.h>
 
@@ -325,6 +326,8 @@ void main() {
         }
         ImGui::End();
 
+        canta::drawRenderGraph(renderGraph);
+
         ImGui::Render();
 
 
@@ -347,16 +350,16 @@ void main() {
             .name = "particles_buffer"
         });
 
-        auto imageAlias = renderGraph.addAlias(imageIndex);
-        renderGraph.addPass({.name = "cpu_test", .type = canta::PassType::HOST})
-            .addStorageImageWrite(imageIndex, canta::PipelineStage::HOST)
-            // .addStorageImageWrite(imageAlias, canta::PipelineStage::HOST)
-            .setExecuteFunction([](canta::CommandBuffer& cmd, canta::RenderGraph& graph) {
-                printf("run on host\n");
-            });
+        // auto imageAlias = renderGraph.addAlias(imageIndex);
+        // renderGraph.addPass({.name = "cpu_test", .type = canta::PassType::HOST})
+        //     .addStorageImageWrite(imageIndex, canta::PipelineStage::HOST)
+        //     // .addStorageImageWrite(imageAlias, canta::PipelineStage::HOST)
+        //     .setExecuteFunction([](canta::CommandBuffer& cmd, canta::RenderGraph& graph) {
+        //         printf("run on host\n");
+        //     });
 
-        renderGraph.addClearPass("clear_image", imageAlias);
-        // renderGraph.addClearPass("clear_image", imageIndex);
+        // renderGraph.addClearPass("clear_image", imageAlias);
+        renderGraph.addClearPass("clear_image", imageIndex);
 
         auto particleGroup = renderGraph.getGroup("particles");
 
@@ -383,7 +386,7 @@ void main() {
             .setGroup(particleGroup)
             .setPipeline(pipelineDraw)
             .addStorageBufferRead(particleBufferIndex, canta::PipelineStage::COMPUTE_SHADER)
-            .addStorageImageRead(imageAlias, canta::PipelineStage::COMPUTE_SHADER)
+            // .addStorageImageRead(imageAlias, canta::PipelineStage::COMPUTE_SHADER)
             .addStorageImageWrite(imageIndex, canta::PipelineStage::COMPUTE_SHADER)
             .setExecuteFunction([particleBufferIndex, imageIndex, numParticles](canta::CommandBuffer& cmd, canta::RenderGraph& graph) {
             auto buffer = graph.getBuffer(particleBufferIndex);

@@ -178,6 +178,20 @@ namespace canta {
         auto inputs() const -> std::span<const ResourceAccess> { return _inputs; }
         auto output() const -> std::span<const ResourceAccess> { return _outputs; }
 
+        struct Barrier {
+            u32 index = 0;
+            i32 passIndex = 0;
+            PipelineStage srcStage = PipelineStage::TOP;
+            PipelineStage dstStage = PipelineStage::BOTTOM;
+            Access srcAccess = Access::NONE;
+            Access dstAccess = Access::NONE;
+            ImageLayout srcLayout = ImageLayout::UNDEFINED;
+            ImageLayout dstLayout = ImageLayout::UNDEFINED;
+            QueueType srcQueue = QueueType::NONE;
+            QueueType dstQueue = QueueType::NONE;
+        };
+        auto barriers() const -> std::span<const Barrier> { return _barriers; }
+
     private:
         friend RenderGraph;
 
@@ -217,17 +231,6 @@ namespace canta {
         i32 _width = -1;
         i32 _height = -1;
 
-        struct Barrier {
-            u32 index = 0;
-            PipelineStage srcStage = PipelineStage::TOP;
-            PipelineStage dstStage = PipelineStage::BOTTOM;
-            Access srcAccess = Access::NONE;
-            Access dstAccess = Access::NONE;
-            ImageLayout srcLayout = ImageLayout::UNDEFINED;
-            ImageLayout dstLayout = ImageLayout::UNDEFINED;
-            QueueType srcQueue = QueueType::NONE;
-            QueueType dstQueue = QueueType::NONE;
-        };
         std::vector<Barrier> _barriers = {};
         std::vector<Barrier> _releaseBarriers = {};
 

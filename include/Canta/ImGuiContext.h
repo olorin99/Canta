@@ -19,6 +19,7 @@ namespace canta {
         static auto create(CreateInfo info) -> ImGuiContext;
 
         ImGuiContext() = default;
+        ~ImGuiContext();
 
         ImGuiContext(ImGuiContext&& rhs) noexcept;
         auto operator=(ImGuiContext&& rhs) noexcept -> ImGuiContext&;
@@ -52,6 +53,9 @@ namespace canta {
         SDLWindow* _window = nullptr;
 
     };
+
+    class RenderGraph;
+    void drawRenderGraph(RenderGraph& renderGraph);
 
 }
 

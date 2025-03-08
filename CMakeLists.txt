@@ -141,6 +141,7 @@ endif ()
 
 if (CANTA_ENABLE_IMGUI)
     target_link_libraries(Canta imgui)
+    target_link_libraries(Canta imnodes)
 endif ()
 
 if (CANTA_BUILD_TESTS)
