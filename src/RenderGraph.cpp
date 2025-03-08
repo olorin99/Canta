@@ -659,7 +659,7 @@ inline auto getQueueIndex(const canta::QueueType queue) -> u32 {
     return 0;
 }
 
-auto canta::RenderGraph::execute(std::span<SemaphorePair> waits, std::span<SemaphorePair> signals, std::span<ImageBarrier> imagesToAcquire) -> std::expected<bool, RenderGraphError> {
+auto canta::RenderGraph::execute(std::span<SemaphorePair> waits, std::span<SemaphorePair> signals, std::span<ImageBarrier> imagesToAcquire, bool synchronous) -> std::expected<bool, RenderGraphError> {
     _timerCount = 0;
     RenderGroup currentGroup = {};
     for (auto& pool : _commandPools[_device->flyingIndex()])
@@ -853,6 +853,11 @@ auto canta::RenderGraph::execute(std::span<SemaphorePair> waits, std::span<Semap
             if (i == commandBufferIndices.size() - 1 || i == lastDevice)
                 internalSignals.insert(internalSignals.end(), signals.begin(), signals.end());
 
+            if (synchronous && i == commandBufferIndices.size() - 1) {
+                internalSignals.push_back(SemaphorePair(_cpuTimeline, _cpuTimeline->value() + 1));
+                _cpuTimeline->increment();
+            }
+
             result |= (indices.first == 0 ? graphicsQueue : computeQueue)->submit({ &commandList, 1 }, internalWaits, internalSignals).value();
             if (!result)
                 return std::unexpected(RenderGraphError::INVALID_SUBMISSION);
@@ -860,6 +865,9 @@ auto canta::RenderGraph::execute(std::span<SemaphorePair> waits, std::span<Semap
 
         i++;
     }
+
+    if (synchronous)
+        _cpuTimeline->wait(_cpuTimeline->value());
 
     return result;
 }
@@ -1000,29 +1008,67 @@ void canta::RenderGraph::buildBarriers() {
             if (accessPassIndex < 0)
                 continue;
             const auto& accessPass = _orderedPasses[accessPassIndex];
-            auto currentLayout = currentAccess.layout;
-
+            RenderPass::Barrier barrier = {};
             if (pass->getType() == PassType::HOST) { // if pass is host no image transitions are made so use previous layout
-                if (_resources[currentAccess.index]->type == ResourceType::IMAGE) {
-                    if (auto [prevPassIndex, prevIndex, prevAccess] = findPrevAccess(passIndex - 1, currentAccess.index); prevPassIndex < 0) {
-                        currentLayout = dynamic_cast<ImageResource*>(_resources[currentAccess.index].get())->initialLayout;
-                    } else {
-                        currentLayout = prevAccess.layout;
+                if (pass->_barriers.empty()) {
+                    if (_resources[currentAccess.index]->type == ResourceType::IMAGE) {
+                        if (auto [prevPassIndex, prevIndex, prevAccess] = findPrevAccess(passIndex - 1, currentAccess.index); prevPassIndex < 0) {
+                            barrier = {
+                                nextAccess.index,
+                                currentAccess.stage,
+                                nextAccess.stage,
+                                currentAccess.access,
+                                nextAccess.access,
+                                dynamic_cast<ImageResource*>(_resources[currentAccess.index].get())->initialLayout,
+                                nextAccess.layout,
+                                pass->getQueue(),
+                                accessPass->getQueue()
+                            };
+                        } else {
+                            barrier = {
+                                nextAccess.index,
+                                currentAccess.stage,
+                                nextAccess.stage,
+                                currentAccess.access,
+                                nextAccess.access,
+                                ImageLayout::GENERAL,
+                                nextAccess.layout,
+                                pass->getQueue(),
+                                accessPass->getQueue()
+                            };
+                        }
+                    }
+                } else {
+                    for (auto& b : pass->_barriers) {
+                        if (b.index == currentAccess.index && b.srcLayout != b.dstLayout) {
+                            barrier = {
+                                nextAccess.index,
+                                b.srcStage,
+                                nextAccess.stage,
+                                b.srcAccess,
+                                nextAccess.access,
+                                ImageLayout::GENERAL,
+                                nextAccess.layout,
+                                b.srcQueue,
+                                accessPass->getQueue()
+                            };
+                            break;
+                        }
                     }
                 }
+            } else {
+                barrier = {
+                    nextAccess.index,
+                    currentAccess.stage,
+                    nextAccess.stage,
+                    currentAccess.access,
+                    nextAccess.access,
+                    currentAccess.layout,
+                    nextAccess.layout,
+                    pass->getQueue(),
+                    accessPass->getQueue()
+                };
             }
-
-            RenderPass::Barrier barrier = {
-                nextAccess.index,
-                currentAccess.stage,
-                nextAccess.stage,
-                currentAccess.access,
-                nextAccess.access,
-                currentLayout,
-                nextAccess.layout,
-                pass->getQueue(),
-                accessPass->getQueue()
-            };
             accessPass->_barriers.push_back(barrier);
             if (pass->getQueue() != accessPass->getQueue()) {
                 pass->_releaseBarriers.push_back(barrier);
@@ -1039,29 +1085,68 @@ void canta::RenderGraph::buildBarriers() {
             if (accessPassIndex < 0)
                 continue;
             const auto& accessPass = _orderedPasses[accessPassIndex];
-            auto currentLayout = currentAccess.layout;
-
+            RenderPass::Barrier barrier = {};
             if (pass->getType() == PassType::HOST) { // if pass is host no image transitions are made so use previous layout
-                if (_resources[currentAccess.index]->type == ResourceType::IMAGE) {
-                    if (auto [prevPassIndex, prevIndex, prevAccess] = findPrevAccess(passIndex - 1, currentAccess.index); prevPassIndex < 0) {
-                        currentLayout = dynamic_cast<ImageResource*>(_resources[currentAccess.index].get())->initialLayout;
-                    } else {
-                        currentLayout = prevAccess.layout;
+                if (pass->_barriers.empty()) {
+                    if (_resources[currentAccess.index]->type == ResourceType::IMAGE) {
+                        if (auto [prevPassIndex, prevIndex, prevAccess] = findPrevAccess(passIndex - 1, currentAccess.index); prevPassIndex < 0) {
+                            barrier = {
+                                nextAccess.index,
+                                currentAccess.stage,
+                                nextAccess.stage,
+                                currentAccess.access,
+                                nextAccess.access,
+                                dynamic_cast<ImageResource*>(_resources[currentAccess.index].get())->initialLayout,
+                                nextAccess.layout,
+                                pass->getQueue(),
+                                accessPass->getQueue()
+                            };
+                        } else {
+                            barrier = {
+                                nextAccess.index,
+                                currentAccess.stage,
+                                nextAccess.stage,
+                                currentAccess.access,
+                                nextAccess.access,
+
+                                ImageLayout::GENERAL,
+                                nextAccess.layout,
+                                pass->getQueue(),
+                                accessPass->getQueue()
+                            };
+                        }
+                    }
+                } else {
+                    for (auto& b : pass->_barriers) {
+                        if (b.index == currentAccess.index && b.srcLayout != b.dstLayout) {
+                            barrier = {
+                                nextAccess.index,
+                                b.srcStage,
+                                nextAccess.stage,
+                                b.srcAccess,
+                                nextAccess.access,
+                                ImageLayout::GENERAL,
+                                nextAccess.layout,
+                                b.srcQueue,
+                                accessPass->getQueue()
+                            };
+                            break;
+                        }
                     }
                 }
+            } else {
+                barrier = {
+                    nextAccess.index,
+                    currentAccess.stage,
+                    nextAccess.stage,
+                    currentAccess.access,
+                    nextAccess.access,
+                    currentAccess.layout,
+                    nextAccess.layout,
+                    pass->getQueue(),
+                    accessPass->getQueue()
+                };
             }
-
-            RenderPass::Barrier barrier = {
-                nextAccess.index,
-                currentAccess.stage,
-                nextAccess.stage,
-                currentAccess.access,
-                nextAccess.access,
-                currentLayout,
-                nextAccess.layout,
-                pass->getQueue(),
-                accessPass->getQueue()
-            };
             accessPass->_barriers.push_back(barrier);
             if (pass->getQueue() != accessPass->getQueue()) {
                 pass->_releaseBarriers.push_back(barrier);

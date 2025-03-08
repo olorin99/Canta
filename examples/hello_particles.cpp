@@ -349,14 +349,14 @@ void main() {
 
         auto imageAlias = renderGraph.addAlias(imageIndex);
         renderGraph.addPass({.name = "cpu_test", .type = canta::PassType::HOST})
-            // .addStorageImageWrite(imageIndex, canta::PipelineStage::HOST)
-            .addStorageImageWrite(imageAlias, canta::PipelineStage::HOST)
+            .addStorageImageWrite(imageIndex, canta::PipelineStage::HOST)
+            // .addStorageImageWrite(imageAlias, canta::PipelineStage::HOST)
             .setExecuteFunction([](canta::CommandBuffer& cmd, canta::RenderGraph& graph) {
                 printf("run on host\n");
             });
 
-        // renderGraph.addClearPass("clear_image", imageAlias);
-        renderGraph.addClearPass("clear_image", imageIndex);
+        renderGraph.addClearPass("clear_image", imageAlias);
+        // renderGraph.addClearPass("clear_image", imageIndex);
 
         auto particleGroup = renderGraph.getGroup("particles");
 
@@ -425,7 +425,7 @@ void main() {
             canta::SemaphorePair(device->frameSemaphore()),
             canta::SemaphorePair(swapchain->presentSemaphore())
         });
-        if (!renderGraph.execute(waits, signals))
+        if (!renderGraph.execute(waits, signals, {}, false))
             return -2;
 
         swapchain->present();
