@@ -348,19 +348,19 @@ void main() {
         });
 
         auto imageAlias = renderGraph.addAlias(imageIndex);
-        renderGraph.addPass("cpu_test", canta::PassType::HOST)
-            .addStorageImageWrite(imageIndex, canta::PipelineStage::HOST)
-            // .addStorageImageWrite(imageAlias, canta::PipelineStage::HOST)
+        renderGraph.addPass({.name = "cpu_test", .type = canta::PassType::HOST})
+            // .addStorageImageWrite(imageIndex, canta::PipelineStage::HOST)
+            .addStorageImageWrite(imageAlias, canta::PipelineStage::HOST)
             .setExecuteFunction([](canta::CommandBuffer& cmd, canta::RenderGraph& graph) {
                 printf("run on host\n");
             });
 
-        renderGraph.addClearPass("clear_image", imageAlias);
-        // renderGraph.addClearPass("clear_image", imageIndex);
+        // renderGraph.addClearPass("clear_image", imageAlias);
+        renderGraph.addClearPass("clear_image", imageIndex);
 
         auto particleGroup = renderGraph.getGroup("particles");
 
-        auto& particlesMovePass = renderGraph.addPass("particles_move")
+        auto& particlesMovePass = renderGraph.addPass({.name = "particles_move"})
             .setGroup(particleGroup)
             .setPipeline(pipeline)
             .addStorageBufferWrite(particleBufferIndex, canta::PipelineStage::COMPUTE_SHADER)
@@ -379,7 +379,7 @@ void main() {
             cmd.dispatchThreads(numParticles);
         });
 
-        auto& particlesDrawPass = renderGraph.addPass("particles_draw")
+        auto& particlesDrawPass = renderGraph.addPass({.name = "particles_draw"})
             .setGroup(particleGroup)
             .setPipeline(pipelineDraw)
             .addStorageBufferRead(particleBufferIndex, canta::PipelineStage::COMPUTE_SHADER)
@@ -403,7 +403,7 @@ void main() {
 
         auto [uiSwapchainIndex] = renderGraph.addBlitPass("blit_to_swapchain", imageIndex, swapchainIndex).aliasImageOutputs<1>();
 
-        auto& uiPass = renderGraph.addPass("ui", canta::PassType::GRAPHICS)
+        auto& uiPass = renderGraph.addPass({.name = "ui", .type = canta::PassType::GRAPHICS})
             .setManualPipeline(true)
             .addColourRead(swapchainIndex)
             .addColourWrite(uiSwapchainIndex)

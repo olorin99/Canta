@@ -289,25 +289,36 @@ auto canta::RenderGraph::create(const canta::RenderGraph::CreateInfo &info) -> R
     return graph;
 }
 
-auto canta::RenderGraph::addPass(const std::string_view name, const PassType type, const RenderGroup group, const bool manualPipeline) -> RenderPass & {
+auto canta::RenderGraph::addPass(PassInfo info) -> RenderPass & {
     const u32 index = _passes.size();
     _passes.emplace_back();
     _passes.back()._graph = this;
-    _passes.back()._name = name;
-    _passes.back()._type = type;
-    _passes.back().setGroup(group);
-    _passes.back().setManualPipeline(manualPipeline);
+    _passes.back()._name = info.name;
+    _passes.back()._type = info.type;
+    switch (info.type) {
+        case PassType::GRAPHICS:
+            info.queue = QueueType::GRAPHICS;
+            break;
+        case PassType::HOST:
+            info.queue = QueueType::NONE;
+            break;
+        default:
+            break;
+    }
+    _passes.back().setQueue(info.queue);
+    _passes.back().setGroup(info.group);
+    _passes.back().setManualPipeline(info.manualPipeline);
     if (_timingEnabled && _timingMode != TimingMode::SINGLE) {
         if (_timers[_device->flyingIndex()].size() <= index) {
-            _timers[_device->flyingIndex()].emplace_back(std::make_pair(name, _device->createTimer()));
+            _timers[_device->flyingIndex()].emplace_back(std::make_pair(info.name, _device->createTimer()));
         } else
-            _timers[_device->flyingIndex()][index].first = name;
+            _timers[_device->flyingIndex()][index].first = info.name;
     }
     if (_pipelineStatisticsEnabled && _individualPipelineStatistics) {
         if (_pipelineStats[_device->flyingIndex()].size() <= index) {
-            _pipelineStats[_device->flyingIndex()].emplace_back(std::make_pair(name, _device->createPipelineStatistics()));
+            _pipelineStats[_device->flyingIndex()].emplace_back(std::make_pair(info.name, _device->createPipelineStatistics()));
         } else
-            _pipelineStats[_device->flyingIndex()][index].first = name;
+            _pipelineStats[_device->flyingIndex()][index].first = info.name;
     }
     return _passes.back();
 }
@@ -332,7 +343,7 @@ auto canta::RenderGraph::addPass(canta::RenderPass &&pass) -> RenderPass & {
 }
 
 auto canta::RenderGraph::addClearPass(const std::string_view name, const canta::ImageIndex index, const ClearValue& value, const RenderGroup group) -> RenderPass & {
-    auto& clearPass = addPass(name, PassType::TRANSFER, group, true);
+    auto& clearPass = addPass({.name = name, .type = PassType::TRANSFER, .group = group, .manualPipeline = true});
     clearPass.addTransferWrite(index);
     clearPass.setExecuteFunction([index, value] (CommandBuffer& cmd, RenderGraph& graph) {
         const auto image = graph.getImage(index);
@@ -342,7 +353,7 @@ auto canta::RenderGraph::addClearPass(const std::string_view name, const canta::
 }
 
 auto canta::RenderGraph::addBlitPass(const std::string_view name, const canta::ImageIndex src, const canta::ImageIndex dst, const Filter filter, const RenderGroup group) -> RenderPass & {
-    auto& blitPass = addPass(name, PassType::TRANSFER, group, true);
+    auto& blitPass = addPass({.name = name, .type = PassType::TRANSFER, .group = group, .manualPipeline = true});
     blitPass.addTransferRead(src);
     blitPass.addTransferWrite(dst);
     blitPass.setExecuteFunction([src, dst, filter] (CommandBuffer& cmd, RenderGraph& graph) {
