@@ -405,8 +405,10 @@ void canta::drawRenderGraph(canta::RenderGraph& renderGraph) {
                     for (auto& barrier : pass->barriers()) {
                         if (barrier.passIndex < 0) continue;
                         if (barrier.index == resource->index) {
-                            links.push_back({barrier.passIndex * 100 + input.id, passId + input.id});
-                            // break;
+                            if (std::find(validTargets.begin(), validTargets.end(), barrier.passIndex * 100 + input.id) != validTargets.end() &&
+                                std::find(validTargets.begin(), validTargets.end(), passId + input.id) != validTargets.end()) {
+                                links.push_back({barrier.passIndex * 100 + input.id, passId + input.id});
+                            }
                         }
                     }
                 }
@@ -438,6 +440,7 @@ void canta::drawRenderGraph(canta::RenderGraph& renderGraph) {
             }
 
 
+            ImNodes::MiniMap();
             ImNodes::EndNodeEditor();
         }
         ImGui::End();
