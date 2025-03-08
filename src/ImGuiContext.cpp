@@ -90,12 +90,6 @@ auto canta::ImGuiContext::create(canta::ImGuiContext::CreateInfo info) -> ImGuiC
     return context;
 }
 
-canta::ImGuiContext::~ImGuiContext() {
-    ImNodes::DestroyContext();
-    // ImGui::DestroyContext();
-}
-
-
 canta::ImGuiContext::ImGuiContext(canta::ImGuiContext &&rhs) noexcept {
     std::swap(_device, rhs._device);
     std::swap(_pipeline, rhs._pipeline);
