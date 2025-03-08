@@ -934,9 +934,9 @@ void canta::RenderGraph::endQueries(canta::CommandBuffer &commandBuffer, u32 pas
 }
 
 void canta::RenderGraph::buildBarriers() {
-    auto findNextAccess = [&](i32 startIndex, u32 resource) -> std::tuple<i32, i32, ResourceAccess> {
+    auto findNextAccess = [&](const i32 startIndex, const u32 resource) -> std::tuple<i32, i32, ResourceAccess> {
         for (i32 passIndex = startIndex + 1; passIndex < _orderedPasses.size(); passIndex++) {
-            auto& pass = _orderedPasses[passIndex];
+            const auto& pass = _orderedPasses[passIndex];
             for (i32 outputIndex = 0; outputIndex < pass->_outputs.size(); outputIndex++) {
                 if (pass->_outputs[outputIndex].index == resource)
                     return { passIndex, outputIndex, pass->_outputs[outputIndex] };
@@ -948,9 +948,9 @@ void canta::RenderGraph::buildBarriers() {
         }
         return { -1, -1, {} };
     };
-    auto findPrevAccess = [&](i32 startIndex, u32 resource) -> std::tuple<i32, i32, ResourceAccess> {
+    auto findPrevAccess = [&](const i32 startIndex, const u32 resource) -> std::tuple<i32, i32, ResourceAccess> {
         for (i32 passIndex = startIndex; passIndex > -1; passIndex--) {
-            auto& pass = _orderedPasses[passIndex];
+            const auto& pass = _orderedPasses[passIndex];
             for (i32 outputIndex = 0; outputIndex < pass->_outputs.size(); outputIndex++) {
                 if (pass->_outputs[outputIndex].index == resource)
                     return { passIndex, outputIndex, pass->_outputs[outputIndex] };
@@ -962,14 +962,14 @@ void canta::RenderGraph::buildBarriers() {
         }
         return { -1, -1, {} };
     };
-    auto readsResource = [&](RenderPass& pass, u32 resource) -> bool {
-        for (auto& access : pass._inputs) {
+    auto readsResource = [&](const RenderPass& pass, const u32 resource) -> bool {
+        for (const auto& access : pass._inputs) {
             if (access.index == resource)
                 return true;
         }
         return false;
     };
-    auto writesResource = [&](RenderPass& pass, u32 resource) -> bool {
+    auto writesResource = [&](const RenderPass& pass, const u32 resource) -> bool {
         for (auto& access : pass._outputs) {
             if (access.index == resource)
                 return true;
@@ -979,21 +979,33 @@ void canta::RenderGraph::buildBarriers() {
 
     // for each pass for each input/output find next pass that access that resource and add barrier to next pass
     for (i32 passIndex = 0; passIndex < _orderedPasses.size(); passIndex++) {
-        auto& pass = _orderedPasses[passIndex];
+        const auto& pass = _orderedPasses[passIndex];
 
         for (i32 outputIndex = 0; outputIndex < pass->_outputs.size(); outputIndex++) {
-            auto& currentAccess = pass->_outputs[outputIndex];
+            const auto& currentAccess = pass->_outputs[outputIndex];
             auto [accessPassIndex, accessIndex, nextAccess] = findNextAccess(passIndex, currentAccess.index);
             if (accessPassIndex < 0)
                 continue;
-            auto& accessPass = _orderedPasses[accessPassIndex];
+            const auto& accessPass = _orderedPasses[accessPassIndex];
+            auto currentLayout = currentAccess.layout;
+
+            if (pass->getType() == PassType::HOST) { // if pass is host no image transitions are made so use previous layout
+                if (_resources[currentAccess.index]->type == ResourceType::IMAGE) {
+                    if (auto [prevPassIndex, prevIndex, prevAccess] = findPrevAccess(passIndex - 1, currentAccess.index); prevPassIndex < 0) {
+                        currentLayout = dynamic_cast<ImageResource*>(_resources[currentAccess.index].get())->initialLayout;
+                    } else {
+                        currentLayout = prevAccess.layout;
+                    }
+                }
+            }
+
             RenderPass::Barrier barrier = {
                 nextAccess.index,
                 currentAccess.stage,
                 nextAccess.stage,
                 currentAccess.access,
                 nextAccess.access,
-                currentAccess.layout,
+                currentLayout,
                 nextAccess.layout,
                 pass->getQueue(),
                 accessPass->getQueue()
@@ -1006,14 +1018,26 @@ void canta::RenderGraph::buildBarriers() {
             }
         }
         for (i32 inputIndex = 0; inputIndex < pass->_inputs.size(); inputIndex++) {
-            auto& currentAccess = pass->_inputs[inputIndex];
+            const auto& currentAccess = pass->_inputs[inputIndex];
             if (writesResource(*pass, currentAccess.index))
                 continue;
 
             auto [accessPassIndex, accessIndex, nextAccess] = findNextAccess(passIndex, currentAccess.index);
             if (accessPassIndex < 0)
                 continue;
-            auto& accessPass = _orderedPasses[accessPassIndex];
+            const auto& accessPass = _orderedPasses[accessPassIndex];
+            auto currentLayout = currentAccess.layout;
+
+            if (pass->getType() == PassType::HOST) { // if pass is host no image transitions are made so use previous layout
+                if (_resources[currentAccess.index]->type == ResourceType::IMAGE) {
+                    if (auto [prevPassIndex, prevIndex, prevAccess] = findPrevAccess(passIndex - 1, currentAccess.index); prevPassIndex < 0) {
+                        currentLayout = dynamic_cast<ImageResource*>(_resources[currentAccess.index].get())->initialLayout;
+                    } else {
+                        currentLayout = prevAccess.layout;
+                    }
+                }
+            }
+
             RenderPass::Barrier barrier = {
                 nextAccess.index,
                 currentAccess.stage,
@@ -1026,7 +1050,6 @@ void canta::RenderGraph::buildBarriers() {
                 accessPass->getQueue()
             };
             accessPass->_barriers.push_back(barrier);
-            accessPass->_waits.push_back({passIndex, pass->getQueue()});
             if (pass->getQueue() != accessPass->getQueue()) {
                 pass->_releaseBarriers.push_back(barrier);
                 accessPass->_waits.push_back({passIndex, pass->getQueue()});
@@ -1040,9 +1063,9 @@ void canta::RenderGraph::buildBarriers() {
         auto [accessPassIndex, accessIndex, nextAccess] = findNextAccess(-1, i);
         if (accessPassIndex < 0)
             continue;
-        auto& accessPass = _orderedPasses[accessPassIndex];
+        const auto& accessPass = _orderedPasses[accessPassIndex];
         auto& resource = _resources[i];
-        ImageLayout initialLayout = ImageLayout::UNDEFINED;
+        auto initialLayout = ImageLayout::UNDEFINED;
         if (resource->type == ResourceType::IMAGE) {
             initialLayout = dynamic_cast<ImageResource*>(resource.get())->initialLayout;
         }
@@ -1053,7 +1076,7 @@ void canta::RenderGraph::buildBarriers() {
             Access::MEMORY_READ | Access::MEMORY_WRITE,
             nextAccess.access,
             initialLayout,
-            nextAccess.layout
+            accessPass->getType() == PassType::HOST ? initialLayout : nextAccess.layout
         });
     }
 
