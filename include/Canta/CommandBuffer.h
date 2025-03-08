@@ -85,7 +85,7 @@ namespace canta {
         auto begin() -> bool;
         auto end() -> bool;
 
-        auto isActive() -> bool { return _active; }
+        auto isActive() const -> bool { return _active; }
 
         void beginRendering(RenderingInfo info);
         void endRendering();

@@ -100,52 +100,52 @@ namespace canta {
     class RenderPass {
     public:
 
-        auto addColourWrite(ImageIndex index, const ClearValue& clearColor = std::to_array({ 0.f, 0.f, 0.f, 1.f })) -> RenderPass&;
-        auto addColourRead(ImageIndex index) -> RenderPass&;
+        auto addColourWrite(const ImageIndex index, const ClearValue& clearColor = std::to_array({ 0.f, 0.f, 0.f, 1.f })) -> RenderPass&;
+        auto addColourRead(const ImageIndex index) -> RenderPass&;
 
-        auto addDepthWrite(ImageIndex index, const ClearValue& clearColor = DepthClearValue{ .depth = 1.f, .stencil = 0 }) -> RenderPass&;
-        auto addDepthRead(ImageIndex index) -> RenderPass&;
+        auto addDepthWrite(const ImageIndex index, const ClearValue& clearColor = DepthClearValue{ .depth = 1.f, .stencil = 0 }) -> RenderPass&;
+        auto addDepthRead(const ImageIndex index) -> RenderPass&;
 
-        auto addStorageImageWrite(ImageIndex index, PipelineStage stage) -> RenderPass&;
-        auto addStorageImageRead(ImageIndex index, PipelineStage stage) -> RenderPass&;
+        auto addStorageImageWrite(const ImageIndex index, const PipelineStage stage) -> RenderPass&;
+        auto addStorageImageRead(const ImageIndex index, const PipelineStage stage) -> RenderPass&;
 
-        auto addStorageBufferWrite(BufferIndex index, PipelineStage stage) -> RenderPass&;
-        auto addStorageBufferRead(BufferIndex index, PipelineStage stage) -> RenderPass&;
+        auto addStorageBufferWrite(const BufferIndex index, const PipelineStage stage) -> RenderPass&;
+        auto addStorageBufferRead(const BufferIndex index, const PipelineStage stage) -> RenderPass&;
 
-        auto addSampledRead(ImageIndex index, PipelineStage stage) -> RenderPass&;
+        auto addSampledRead(const ImageIndex index, const PipelineStage stage) -> RenderPass&;
 
-        auto addBlitWrite(ImageIndex index) -> RenderPass&;
-        auto addBlitRead(ImageIndex index) -> RenderPass&;
+        auto addBlitWrite(const ImageIndex index) -> RenderPass&;
+        auto addBlitRead(const ImageIndex index) -> RenderPass&;
 
-        auto addTransferWrite(ImageIndex index) -> RenderPass&;
-        auto addTransferRead(ImageIndex index) -> RenderPass&;
-        auto addTransferWrite(BufferIndex index) -> RenderPass&;
-        auto addTransferRead(BufferIndex index) -> RenderPass&;
+        auto addTransferWrite(const ImageIndex index) -> RenderPass&;
+        auto addTransferRead(const ImageIndex index) -> RenderPass&;
+        auto addTransferWrite(const BufferIndex index) -> RenderPass&;
+        auto addTransferRead(const BufferIndex index) -> RenderPass&;
 
-        auto addIndirectRead(BufferIndex index) -> RenderPass&;
+        auto addIndirectRead(const BufferIndex index) -> RenderPass&;
 
-        auto setPipeline(PipelineHandle handle) -> RenderPass& {
+        auto setPipeline(const PipelineHandle &handle) -> RenderPass& {
             _pipeline = handle;
             return *this;
         }
 
-        auto setManualPipeline(bool manual = false) -> RenderPass& {
+        auto setManualPipeline(const bool manual = false) -> RenderPass& {
             _manualPipeline = manual;
             return *this;
         }
 
-        auto setExecuteFunction(std::function<void(CommandBuffer&, RenderGraph&)> execute) -> RenderPass& {
+        auto setExecuteFunction(const std::function<void(CommandBuffer&, RenderGraph&)> &execute) -> RenderPass& {
             _execute = execute;
             return *this;
         }
 
-        auto setDimensions(u32 width, u32 height) -> RenderPass& {
+        auto setDimensions(const u32 width, const u32 height) -> RenderPass& {
             _width = width;
             _height = height;
             return *this;
         }
 
-        auto setQueue(QueueType queue) -> RenderPass& {
+        auto setQueue(const QueueType queue) -> RenderPass& {
             _queue = queue;
             return *this;
         }
@@ -154,7 +154,7 @@ namespace canta {
 
         auto getType() const -> PassType { return _type; }
 
-        auto setGroup(RenderGroup group) -> RenderPass& {
+        auto setGroup(const RenderGroup group) -> RenderPass& {
             _group = group;
             return *this;
         }
@@ -181,11 +181,11 @@ namespace canta {
     private:
         friend RenderGraph;
 
-        auto writes(ImageIndex index, Access access, PipelineStage stage, ImageLayout layout) -> Resource*;
-        auto reads(ImageIndex index, Access access, PipelineStage stage, ImageLayout layout) -> Resource*;
+        auto writes(const ImageIndex index, const Access access, const PipelineStage stage, const ImageLayout layout) -> Resource*;
+        auto reads(const ImageIndex index, const Access access, const PipelineStage stage, const ImageLayout layout) -> Resource*;
 
-        auto writes(BufferIndex index, Access access, PipelineStage stage) -> Resource*;
-        auto reads(BufferIndex index, Access access, PipelineStage stage) -> Resource*;
+        auto writes(const BufferIndex index, const Access access, const PipelineStage stage) -> Resource*;
+        auto reads(const BufferIndex index, const Access access, const PipelineStage stage) -> Resource*;
 
         RenderGraph* _graph = nullptr;
 
@@ -256,30 +256,30 @@ namespace canta {
             std::string_view name = {};
         };
 
-        static auto create(CreateInfo info) -> RenderGraph;
+        static auto create(const CreateInfo &info) -> RenderGraph;
 
         RenderGraph() = default;
 
-        auto addPass(std::string_view name, PassType type = PassType::COMPUTE, RenderGroup group = {}, bool manualPipeline = false) -> RenderPass&;
+        auto addPass(const std::string_view name, const PassType type = PassType::COMPUTE, const RenderGroup group = {}, const bool manualPipeline = false) -> RenderPass&;
         auto addPass(RenderPass&& pass) -> RenderPass&;
-        auto addClearPass(std::string_view name, ImageIndex index, const ClearValue& value = std::to_array({ 0.f, 0.f, 0.f, 1.f }), RenderGroup group = {}) -> RenderPass&;
-        auto addBlitPass(std::string_view name, ImageIndex src, ImageIndex dst, Filter filter = Filter::LINEAR, RenderGroup group = {}) -> RenderPass&;
+        auto addClearPass(const std::string_view name, const ImageIndex index, const ClearValue& value = std::to_array({ 0.f, 0.f, 0.f, 1.f }), const RenderGroup group = {}) -> RenderPass&;
+        auto addBlitPass(const std::string_view name, const ImageIndex src, const ImageIndex dst, const Filter filter = Filter::LINEAR, const RenderGroup group = {}) -> RenderPass&;
 
-        auto getGroup(std::string_view name, const std::array<f32, 4>& colour = { 0, 1, 0, 1 }) -> RenderGroup;
-        auto getGroupName(RenderGroup) -> std::string;
-        auto getGroupColour(RenderGroup) -> std::array<f32, 4>;
+        auto getGroup(const std::string_view name, const std::array<f32, 4>& colour = { 0, 1, 0, 1 }) -> RenderGroup;
+        auto getGroupName(const RenderGroup) -> std::string;
+        auto getGroupColour(const RenderGroup) -> std::array<f32, 4>;
 
-        auto addImage(ImageDescription description) -> ImageIndex;
-        auto addBuffer(BufferDescription description) -> BufferIndex;
+        auto addImage(const ImageDescription &description) -> ImageIndex;
+        auto addBuffer(const BufferDescription &description) -> BufferIndex;
 
-        auto addAlias(ImageIndex index) -> ImageIndex;
-        auto addAlias(BufferIndex index) -> BufferIndex;
+        auto addAlias(const ImageIndex index) -> ImageIndex;
+        auto addAlias(const BufferIndex index) -> BufferIndex;
 
-        auto getImage(ImageIndex index) -> ImageHandle;
-        auto getBuffer(BufferIndex index) -> BufferHandle;
+        auto getImage(const ImageIndex index) -> ImageHandle;
+        auto getBuffer(const BufferIndex index) -> BufferHandle;
 
-        void setBackbuffer(ImageIndex index, ImageLayout finalLayout = ImageLayout::UNDEFINED);
-        void setBackbuffer(BufferIndex index);
+        void setBackbuffer(const ImageIndex index, const ImageLayout finalLayout = ImageLayout::UNDEFINED);
+        void setBackbuffer(const BufferIndex index);
 
         void reset();
         auto compile() -> std::expected<bool, RenderGraphError>;
@@ -301,7 +301,7 @@ namespace canta {
         }
 
         auto multiQueueEnabled() const -> bool { return _multiQueue; }
-        void setMultiQueueEnabled(bool enabled) { _multiQueue = enabled; }
+        void setMultiQueueEnabled(const bool enabled) { _multiQueue = enabled; }
 
         auto timingEnabled() const -> bool { return _timingEnabled; }
         auto pipelineStatisticsEnabled() const -> bool { return _pipelineStatisticsEnabled; }
@@ -309,11 +309,11 @@ namespace canta {
         auto timingMode() const -> TimingMode { return _timingMode; }
         auto individualPipelineStatistics() const -> bool { return _individualPipelineStatistics; }
 
-        void setTimingEnabled(bool enabled) { _timingEnabled = enabled; }
-        void setPipelineStatisticsEnabled(bool enabled) { _pipelineStatisticsEnabled = enabled; }
+        void setTimingEnabled(const bool enabled) { _timingEnabled = enabled; }
+        void setPipelineStatisticsEnabled(const bool enabled) { _pipelineStatisticsEnabled = enabled; }
 
-        void setTimingMode(TimingMode mode) { _timingMode = mode; }
-        void setIndividualPipelineStatistics(bool individual) { _individualPipelineStatistics = individual; }
+        void setTimingMode(const TimingMode mode) { _timingMode = mode; }
+        void setIndividualPipelineStatistics(const bool individual) { _individualPipelineStatistics = individual; }
 
         struct Statistics {
             u32 passes = 0;
@@ -385,7 +385,7 @@ namespace canta {
         std::array<ImageIndex, N> aliases = {};
         for (u32 i = 0; auto& output : _outputs) {
             if (i >= N) break;
-            auto& resource = _graph->_resources[output.index];
+            const auto& resource = _graph->_resources[output.index];
             if (resource->type == ResourceType::IMAGE)
                 aliases[i++] = _graph->addAlias(ImageIndex{ .id = output.id, .index = output.index });
         }
@@ -397,7 +397,7 @@ namespace canta {
         std::array<BufferIndex, N> aliases = {};
         for (u32 i = 0; auto& output : _outputs) {
             if (i >= N) break;
-            auto& resource = _graph->_resources[output.index];
+            const auto& resource = _graph->_resources[output.index];
             if (resource->type == ResourceType::BUFFER)
                 aliases[i++] = _graph->addAlias(BufferIndex{ .id = output.id, .index = output.index });
         }
