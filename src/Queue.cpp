@@ -48,6 +48,8 @@ auto canta::Queue::submit(std::span<CommandBuffer> commandBuffers, std::span<Sem
     submitInfo.commandBufferInfoCount = commandBuffers.size();
     submitInfo.pCommandBufferInfos = commandInfos;
 
+    std::unique_lock<std::mutex> lock(_mutex);
+
     auto result = vkQueueSubmit2(_queue, 1, &submitInfo, fence);
     if (result != VK_SUCCESS)
         return std::unexpected(static_cast<VulkanError>(result));

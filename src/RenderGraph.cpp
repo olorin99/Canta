@@ -698,7 +698,7 @@ auto canta::RenderGraph::execute(std::span<SemaphorePair> waits, std::span<Semap
                         semaphore = _cpuTimeline;
                     break;
                     default:
-                        semaphore = _device->queue(wait.second).timeline();
+                        semaphore = _device->queue(wait.second)->timeline();
                 }
 
                 commandBufferWaits.back().push_back(SemaphorePair(semaphore));
@@ -726,7 +726,7 @@ auto canta::RenderGraph::execute(std::span<SemaphorePair> waits, std::span<Semap
                         semaphore = _cpuTimeline;
                         break;
                     default:
-                        semaphore = _device->queue(wait.second).timeline();
+                        semaphore = _device->queue(wait.second)->timeline();
                 }
 
                 commandBufferWaits.back().push_back(SemaphorePair(semaphore));
@@ -811,8 +811,8 @@ auto canta::RenderGraph::execute(std::span<SemaphorePair> waits, std::span<Semap
 
     bool result = true;
 
-    auto& graphicsQueue = _device->queue(QueueType::GRAPHICS);
-    auto& computeQueue = _device->queue(QueueType::COMPUTE);
+    auto graphicsQueue = _device->queue(QueueType::GRAPHICS);
+    auto computeQueue = _device->queue(QueueType::COMPUTE);
 
     u32 firstDevice = 0;
     for (i32 d = 0; d < commandBufferIndices.size(); d++) {
@@ -847,13 +847,13 @@ auto canta::RenderGraph::execute(std::span<SemaphorePair> waits, std::span<Semap
             if (i == 0 || i == firstDevice)
                 internalWaits.insert(internalWaits.end(), waits.begin(), waits.end());
             std::vector<SemaphorePair> internalSignals = {
-                SemaphorePair(indices.first == 0 ? graphicsQueue.timeline() : computeQueue.timeline(), (indices.first == 0 ? graphicsQueue.timeline()->value() : computeQueue.timeline()->value()) + 1)
+                SemaphorePair(indices.first == 0 ? graphicsQueue->timeline() : computeQueue->timeline(), (indices.first == 0 ? graphicsQueue->timeline()->value() : computeQueue->timeline()->value()) + 1)
             };
-            (indices.first == 0 ? graphicsQueue.timeline() : computeQueue.timeline())->increment();
+            (indices.first == 0 ? graphicsQueue->timeline() : computeQueue->timeline())->increment();
             if (i == commandBufferIndices.size() - 1 || i == lastDevice)
                 internalSignals.insert(internalSignals.end(), signals.begin(), signals.end());
 
-            result |= (indices.first == 0 ? graphicsQueue : computeQueue).submit({ &commandList, 1 }, internalWaits, internalSignals).value();
+            result |= (indices.first == 0 ? graphicsQueue : computeQueue)->submit({ &commandList, 1 }, internalWaits, internalSignals).value();
             if (!result)
                 return std::unexpected(RenderGraphError::INVALID_SUBMISSION);
         }
@@ -882,8 +882,8 @@ void canta::RenderGraph::submitBarriers(CommandBuffer& commandBuffer, const std:
                     .dstAccess = barrier.dstAccess,
                     .srcLayout = barrier.srcLayout,
                     .dstLayout = barrier.dstLayout,
-                    .srcQueue = _device->queue(barrier.srcQueue).familyIndex(),
-                    .dstQueue = _device->queue(barrier.dstQueue).familyIndex(),
+                    .srcQueue = _device->queue(barrier.srcQueue)->familyIndex(),
+                    .dstQueue = _device->queue(barrier.dstQueue)->familyIndex(),
             };
         } else {
             const auto buffer = getBuffer({ .index = barrier.index });
@@ -893,8 +893,8 @@ void canta::RenderGraph::submitBarriers(CommandBuffer& commandBuffer, const std:
                     .dstStage = barrier.dstStage,
                     .srcAccess = barrier.srcAccess,
                     .dstAccess = barrier.dstAccess,
-                    .srcQueue = _device->queue(barrier.srcQueue).familyIndex(),
-                    .dstQueue = _device->queue(barrier.dstQueue).familyIndex(),
+                    .srcQueue = _device->queue(barrier.srcQueue)->familyIndex(),
+                    .dstQueue = _device->queue(barrier.dstQueue)->familyIndex(),
             };
         }
     }

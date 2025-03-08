@@ -241,8 +241,8 @@ auto canta::UploadBuffer::flushStagedData() -> UploadBuffer& {
                             .dstAccess = Access::MEMORY_READ,
                             .srcLayout = ImageLayout::TRANSFER_DST,
                             .dstLayout = ImageLayout::SHADER_READ_ONLY,
-                            .srcQueue = _device->queue(QueueType::TRANSFER).familyIndex(),
-                            .dstQueue = _device->queue(QueueType::GRAPHICS).familyIndex()
+                            .srcQueue = _device->queue(QueueType::TRANSFER)->familyIndex(),
+                            .dstQueue = _device->queue(QueueType::GRAPHICS)->familyIndex()
                     };
                     commandBuffer.barrier(barrier);
                     _releasedFromQueue.push_back(barrier);
@@ -257,7 +257,7 @@ auto canta::UploadBuffer::flushStagedData() -> UploadBuffer& {
         auto signals = std::to_array({
              SemaphorePair(_timelineSemaphore)
         });
-        if (!_device->queue(QueueType::TRANSFER).submit({ &commandBuffer, 1 }, waits, signals)) {
+        if (!_device->queue(QueueType::TRANSFER)->submit({ &commandBuffer, 1 }, waits, signals)) {
             _device->logger().error("Failed to submit queue");
             return *this;
         }

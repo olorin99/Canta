@@ -171,7 +171,7 @@ namespace canta {
             auto signal = std::to_array({
                 SemaphorePair(_immediateTimeline)
             });
-            queue(queueType).submit({ &cmd, 1 }, wait, signal).and_then([&](auto result) {
+            queue(queueType)->submit({ &cmd, 1 }, wait, signal).and_then([&](auto result) {
                 return _immediateTimeline->wait(_immediateTimeline->value());
             });
         }
@@ -200,7 +200,7 @@ namespace canta {
 
         auto bindlessSet() const -> VkDescriptorSet { return _bindlessSets[flyingIndex()]; }
 
-        auto queue(QueueType type) -> Queue&;
+        auto queue(QueueType type) -> std::shared_ptr<Queue>;
 
         auto waitIdle() const -> std::expected<bool, VulkanError>;
 
@@ -294,9 +294,9 @@ namespace canta {
         bool _meshShadersEnabled = false;
         bool _taskShadersEnabled = false;
 
-        Queue _graphicsQueue = {};
-        Queue _computeQueue = {};
-        Queue _transferQueue = {};
+        std::shared_ptr<Queue> _graphicsQueue = {};
+        std::shared_ptr<Queue> _computeQueue = {};
+        std::shared_ptr<Queue> _transferQueue = {};
 
         std::vector<u32> _enabledQueueFamilies = {};
 

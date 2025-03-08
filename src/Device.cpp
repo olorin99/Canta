@@ -431,11 +431,12 @@ auto canta::Device::create(canta::Device::CreateInfo info) noexcept -> std::expe
     {
         VkQueue graphicsQueue;
         vkGetDeviceQueue(device->_logicalDevice, graphicsFamilyIndex, graphicsQueueIndex, &graphicsQueue);
-        device->_graphicsQueue._device = device.get();
-        device->_graphicsQueue._queue = graphicsQueue;
-        device->_graphicsQueue._familyIndex = graphicsFamilyIndex;
-        device->_graphicsQueue._queueIndex = graphicsQueueIndex;
-        device->_graphicsQueue._timeline = device->createSemaphore({
+        device->_graphicsQueue = std::make_shared<Queue>();
+        device->_graphicsQueue->_device = device.get();
+        device->_graphicsQueue->_queue = graphicsQueue;
+        device->_graphicsQueue->_familyIndex = graphicsFamilyIndex;
+        device->_graphicsQueue->_queueIndex = graphicsQueueIndex;
+        device->_graphicsQueue->_timeline = device->createSemaphore({
             .initialValue = 0,
             .name = "graphics_timeline"
         }).value();
@@ -443,11 +444,12 @@ auto canta::Device::create(canta::Device::CreateInfo info) noexcept -> std::expe
     if (info.enableAsyncComputeQueue) {
         VkQueue computeQueue;
         vkGetDeviceQueue(device->_logicalDevice, computeFamilyIndex, computeQueueIndex, &computeQueue);
-        device->_computeQueue._device = device.get();
-        device->_computeQueue._queue = computeQueue;
-        device->_computeQueue._familyIndex = computeFamilyIndex;
-        device->_computeQueue._queueIndex = computeQueueIndex;
-        device->_computeQueue._timeline = device->createSemaphore({
+        device->_computeQueue = std::make_shared<Queue>();
+        device->_computeQueue->_device = device.get();
+        device->_computeQueue->_queue = computeQueue;
+        device->_computeQueue->_familyIndex = computeFamilyIndex;
+        device->_computeQueue->_queueIndex = computeQueueIndex;
+        device->_computeQueue->_timeline = device->createSemaphore({
             .initialValue = 0,
             .name = "compute_timeline"
         }).value();
@@ -457,11 +459,12 @@ auto canta::Device::create(canta::Device::CreateInfo info) noexcept -> std::expe
     if (info.enableAsyncTransferQueue) {
         VkQueue transferQueue;
         vkGetDeviceQueue(device->_logicalDevice, transferFamilyIndex, transferQueueIndex, &transferQueue);
-        device->_transferQueue._device = device.get();
-        device->_transferQueue._queue = transferQueue;
-        device->_transferQueue._familyIndex = transferFamilyIndex;
-        device->_transferQueue._queueIndex = transferQueueIndex;
-        device->_transferQueue._timeline = device->createSemaphore({
+        device->_transferQueue = std::make_shared<Queue>();
+        device->_transferQueue->_device = device.get();
+        device->_transferQueue->_queue = transferQueue;
+        device->_transferQueue->_familyIndex = transferFamilyIndex;
+        device->_transferQueue->_queueIndex = transferQueueIndex;
+        device->_transferQueue->_timeline = device->createSemaphore({
             .initialValue = 0,
             .name = "transfer_timeline"
         }).value();
@@ -637,9 +640,9 @@ canta::Device::~Device() {
     _frameTimeline->signal(std::numeric_limits<u64>::max());
     _immediateTimeline = {};
     _frameTimeline = {};
-    _graphicsQueue._timeline = {};
-    _computeQueue._timeline = {};
-    _transferQueue._timeline = {};
+    _graphicsQueue->_timeline = {};
+    _computeQueue->_timeline = {};
+    _transferQueue->_timeline = {};
     _semaphoreList.clearAll([](auto& resource) {
         if (resource.isTimeline())
             resource.signal(std::numeric_limits<u64>::max());
@@ -759,7 +762,7 @@ auto canta::Device::isExtensionEnabled(std::string_view extensionName) -> bool {
     return false;
 }
 
-auto canta::Device::queue(canta::QueueType type) -> Queue& {
+auto canta::Device::queue(canta::QueueType type) -> std::shared_ptr<Queue> {
     switch (type) {
         case QueueType::GRAPHICS:
             return _graphicsQueue;
@@ -839,13 +842,13 @@ auto canta::Device::createCommandPool(CommandPool::CreateInfo info) -> std::expe
     createInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
     switch (info.queueType) {
         case QueueType::GRAPHICS:
-            createInfo.queueFamilyIndex = _graphicsQueue.familyIndex();
+            createInfo.queueFamilyIndex = _graphicsQueue->familyIndex();
             break;
         case QueueType::COMPUTE:
-            createInfo.queueFamilyIndex = _computeQueue.familyIndex();
+            createInfo.queueFamilyIndex = _computeQueue->familyIndex();
             break;
         case QueueType::TRANSFER:
-            createInfo.queueFamilyIndex = _transferQueue.familyIndex();
+            createInfo.queueFamilyIndex = _transferQueue->familyIndex();
             break;
     }
     auto result = vkCreateCommandPool(logicalDevice(), &createInfo, nullptr, &pool._pool);

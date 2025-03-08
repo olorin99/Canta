@@ -15,6 +15,8 @@ namespace canta {
     class Queue {
     public:
 
+        Queue() = default;
+
         auto queue() const -> VkQueue { return _queue; }
         auto familyIndex() const -> u32 { return _familyIndex; }
         auto queueIndex() const -> u32 { return _queueIndex; }
@@ -26,13 +28,14 @@ namespace canta {
     private:
         friend Device;
 
-        Queue() = default;
+
 
         Device* _device = nullptr;
         VkQueue _queue = VK_NULL_HANDLE;
         u32 _familyIndex = 0;
         u32 _queueIndex = 0;
         SemaphoreHandle _timeline = {};
+        std::mutex _mutex = {};
 
     };
 
