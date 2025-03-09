@@ -5,6 +5,8 @@
 #include <backends/imgui_impl_sdl2.h>
 #include <imnodes.h>
 
+#include "../cmake-build-release/_deps/imgui-src/imgui_internal.h"
+
 const char* vertexGLSL = R"(
 #version 450 core
 layout(location = 0) in vec2 aPos;
@@ -373,20 +375,31 @@ auto canta::ImGuiContext::createPipeline(canta::Format format) -> PipelineHandle
 #include <Canta/RenderGraph.h>
 
 void canta::drawRenderGraph(canta::RenderGraph& renderGraph) {
+    static i32 frame = 0;
     if (ImGui::Begin("Render Graph", nullptr, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse)) {
             ImNodes::BeginNodeEditor();
 
             std::vector<std::pair<i32, i32>> links = {};
             std::vector<i32> validTargets = {};
 
+            ImVec2 pos = ImGui::GetCursorScreenPos();
+            ImVec2 originalPos = pos;
+
             for (i32 i = 0; auto& pass : renderGraph.orderedPasses()) {
 
                 i32 passId = 100 * i++;
+
+                if (frame < 10) {
+                    ImNodes::SetNodeScreenSpacePos(passId, pos);
+                    ImNodes::SnapNodeToGrid(passId);
+                }
 
                 ImNodes::BeginNode(passId);
                 ImNodes::BeginNodeTitleBar();
                 ImGui::Text("%s", pass->name().data());
                 ImNodes::EndNodeTitleBar();
+                pos.x += ImGui::CalcTextSize(std::format("{}", pass->name().data()).c_str()).x * 1.5;
+                pos.y = (i % 2 == 0) ? originalPos.y : 100;
 
                 for (auto& input : pass->inputs()) {
                     const auto resource = renderGraph.resources()[input.index].get();
@@ -436,6 +449,7 @@ void canta::drawRenderGraph(canta::RenderGraph& renderGraph) {
 
             ImNodes::MiniMap();
             ImNodes::EndNodeEditor();
+            frame++;
         }
         ImGui::End();
 }
