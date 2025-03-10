@@ -194,12 +194,19 @@ auto canta::Device::create(canta::Device::CreateInfo info) noexcept -> std::expe
 #endif
     instanceExtensions.push_back(VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME);
 
+    std::vector<VkValidationFeatureEnableEXT>  enabledValidationFeatures = {VK_VALIDATION_FEATURE_ENABLE_DEBUG_PRINTF_EXT};
+    VkValidationFeaturesEXT validationFeatures = {};
+    validationFeatures.sType = VK_STRUCTURE_TYPE_VALIDATION_FEATURES_EXT;
+    validationFeatures.pEnabledValidationFeatures = enabledValidationFeatures.data();
+    validationFeatures.enabledValidationFeatureCount = enabledValidationFeatures.size();
+
     VkInstanceCreateInfo instanceCreateInfo = {};
     instanceCreateInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
     instanceCreateInfo.pApplicationInfo = &applicationInfo;
     instanceCreateInfo.enabledLayerCount = 0;
     instanceCreateInfo.enabledExtensionCount = instanceExtensions.size();
     instanceCreateInfo.ppEnabledExtensionNames = instanceExtensions.data();
+    instanceCreateInfo.pNext = &validationFeatures;
 
     VK_TRY(vkCreateInstance(&instanceCreateInfo, nullptr, &device->_instance));
 
