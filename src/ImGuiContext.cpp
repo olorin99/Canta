@@ -375,79 +375,82 @@ auto canta::ImGuiContext::createPipeline(canta::Format format) -> PipelineHandle
 void canta::drawRenderGraph(canta::RenderGraph& renderGraph) {
     static i32 frame = 0;
     if (ImGui::Begin("Render Graph", nullptr, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse)) {
-            ImNodes::BeginNodeEditor();
-
-            std::vector<std::pair<i32, i32>> links = {};
-            std::vector<i32> validTargets = {};
-
-            ImVec2 pos = ImGui::GetCursorScreenPos();
-            ImVec2 originalPos = pos;
-
-            for (i32 i = 0; auto& pass : renderGraph.orderedPasses()) {
-
-                i32 passId = 100 * i++;
-
-                if (frame < 10) {
-                    ImNodes::SetNodeScreenSpacePos(passId, pos);
-                    ImNodes::SnapNodeToGrid(passId);
-                }
-
-                ImNodes::BeginNode(passId);
-                ImNodes::BeginNodeTitleBar();
-                ImGui::Text("%s", pass->name().data());
-                ImNodes::EndNodeTitleBar();
-                pos.x += ImGui::CalcTextSize(std::format("{}", pass->name().data()).c_str()).x * 1.5;
-                pos.y = (i % 2 == 0) ? originalPos.y : 100;
-
-                for (auto& input : pass->inputs()) {
-                    const auto resource = renderGraph.resources()[input.index].get();
-
-                    ImNodes::BeginInputAttribute(passId + input.id);
-                    ImGui::Text("%s", resource->name.data());
-                    ImNodes::EndInputAttribute();
-                    validTargets.push_back(passId + input.id);
-
-                    for (auto& barrier : pass->barriers()) {
-                        if (barrier.passIndex < 0) continue;
-                        if (barrier.index == resource->index) {
-                            if (std::find(validTargets.begin(), validTargets.end(), barrier.passIndex * 100 + input.id) != validTargets.end() &&
-                                std::find(validTargets.begin(), validTargets.end(), passId + input.id) != validTargets.end()) {
-                                links.push_back({barrier.passIndex * 100 + input.id, passId + input.id});
-                            }
-                        }
-                    }
-                }
-                for (auto& output : pass->output()) {
-                    const auto resource = renderGraph.resources()[output.index].get();
-
-                    ImNodes::BeginOutputAttribute(passId + output.id);
-                    ImGui::Text("%s", resource->name.data());
-                    ImNodes::EndOutputAttribute();
-                    validTargets.push_back(passId + output.id);
-
-
-                    for (auto& barrier : pass->barriers()) {
-                        if (barrier.passIndex < 0) continue;
-                        if (barrier.index == resource->index) {
-                            if (std::find(validTargets.begin(), validTargets.end(), barrier.passIndex * 100 + output.id) != validTargets.end() &&
-                                std::find(validTargets.begin(), validTargets.end(), passId + output.id) != validTargets.end()) {
-                                links.push_back({barrier.passIndex * 100 + output.id, passId + output.id});
-                            }
-                        }
-                    }
-                }
-                ImNodes::EndNode();
-
-            }
-
-            for (i32 i = 0; i < links.size(); i++) {
-                ImNodes::Link(i, links[i].first, links[i].second);
-            }
-
-
-            ImNodes::MiniMap();
-            ImNodes::EndNodeEditor();
-            frame++;
+        if (ImGui::Button("Reload Graph")) {
+            frame = 0;
         }
-        ImGui::End();
+        ImNodes::BeginNodeEditor();
+
+        std::vector<std::pair<i32, i32>> links = {};
+        std::vector<i32> validTargets = {};
+
+        ImVec2 pos = ImGui::GetCursorScreenPos();
+        ImVec2 originalPos = pos;
+
+        for (i32 i = 0; auto& pass : renderGraph.orderedPasses()) {
+
+            i32 passId = 100 * i++;
+
+            if (frame < 10) {
+                ImNodes::SetNodeScreenSpacePos(passId, pos);
+                ImNodes::SnapNodeToGrid(passId);
+            }
+
+            ImNodes::BeginNode(passId);
+            ImNodes::BeginNodeTitleBar();
+            ImGui::Text("%s", pass->name().data());
+            ImNodes::EndNodeTitleBar();
+            pos.x += ImGui::CalcTextSize(std::format("{}", pass->name().data()).c_str()).x * 1.5;
+            pos.y = (i % 2 == 0) ? originalPos.y : 100;
+
+            for (auto& input : pass->inputs()) {
+                const auto resource = renderGraph.resources()[input.index].get();
+
+                ImNodes::BeginInputAttribute(passId + input.id);
+                ImGui::Text("%s", resource->name.data());
+                ImNodes::EndInputAttribute();
+                validTargets.push_back(passId + input.id);
+
+                for (auto& barrier : pass->barriers()) {
+                    if (barrier.passIndex < 0) continue;
+                    if (barrier.index == resource->index) {
+                        if (std::find(validTargets.begin(), validTargets.end(), barrier.passIndex * 100 + input.id) != validTargets.end() &&
+                            std::find(validTargets.begin(), validTargets.end(), passId + input.id) != validTargets.end()) {
+                            links.push_back({barrier.passIndex * 100 + input.id, passId + input.id});
+                        }
+                    }
+                }
+            }
+            for (auto& output : pass->output()) {
+                const auto resource = renderGraph.resources()[output.index].get();
+
+                ImNodes::BeginOutputAttribute(passId + output.id);
+                ImGui::Text("%s", resource->name.data());
+                ImNodes::EndOutputAttribute();
+                validTargets.push_back(passId + output.id);
+
+
+                for (auto& barrier : pass->barriers()) {
+                    if (barrier.passIndex < 0) continue;
+                    if (barrier.index == resource->index) {
+                        if (std::find(validTargets.begin(), validTargets.end(), barrier.passIndex * 100 + output.id) != validTargets.end() &&
+                            std::find(validTargets.begin(), validTargets.end(), passId + output.id) != validTargets.end()) {
+                            links.push_back({barrier.passIndex * 100 + output.id, passId + output.id});
+                        }
+                    }
+                }
+            }
+            ImNodes::EndNode();
+
+        }
+
+        for (i32 i = 0; i < links.size(); i++) {
+            ImNodes::Link(i, links[i].first, links[i].second);
+        }
+
+
+        ImNodes::MiniMap();
+        ImNodes::EndNodeEditor();
+        frame++;
+    }
+    ImGui::End();
 }
