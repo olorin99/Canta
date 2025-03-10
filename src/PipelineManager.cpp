@@ -349,6 +349,8 @@ auto canta::PipelineManager::createShader(canta::ShaderDescription info, ShaderH
     createInfo.spirv = info.spirv;
     createInfo.stage = info.stage;
     createInfo.name = info.name;
+    if (createInfo.name.empty() && !info.path.empty())
+        createInfo.name = info.path.c_str();
     if (!_device->meshShadersEnabled() && info.stage == ShaderStage::MESH) //TODO: log
         return {};
     if (!_device->taskShadersEnabled() && info.stage == ShaderStage::TASK)
