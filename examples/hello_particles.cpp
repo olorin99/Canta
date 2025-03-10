@@ -158,6 +158,7 @@ void main() {
 
     auto renderGraph = canta::RenderGraph::create({
         .device = device.get(),
+        .multiQueue = true,
         .name = "Renderer"
     });
 
@@ -367,20 +368,8 @@ void main() {
             .setGroup(particleGroup)
             .setPipeline(pipeline)
             .addStorageBufferWrite(particleBufferIndex, canta::PipelineStage::COMPUTE_SHADER)
-            .setExecuteFunction([particleBufferIndex, numParticles, dt](canta::CommandBuffer& cmd, canta::RenderGraph& graph) {
-            auto buffer = graph.getBuffer(particleBufferIndex);
-            struct Push {
-                u64 address;
-                i32 maxParticles;
-                f32 dt;
-            };
-            cmd.pushConstants(canta::ShaderStage::COMPUTE, Push {
-                    .address = buffer->address(),
-                    .maxParticles = numParticles,
-                    .dt = static_cast<f32>(dt)
-            });
-            cmd.dispatchThreads(numParticles);
-        });
+            .pushConstants(particleBufferIndex, numParticles, static_cast<f32>(dt))
+            .dispatchThreads(numParticles);
 
         auto& particlesDrawPass = renderGraph.addPass({.name = "particles_draw"})
             .setGroup(particleGroup)
@@ -388,21 +377,8 @@ void main() {
             .addStorageBufferRead(particleBufferIndex, canta::PipelineStage::COMPUTE_SHADER)
             // .addStorageImageRead(imageAlias, canta::PipelineStage::COMPUTE_SHADER)
             .addStorageImageWrite(imageIndex, canta::PipelineStage::COMPUTE_SHADER)
-            .setExecuteFunction([particleBufferIndex, imageIndex, numParticles](canta::CommandBuffer& cmd, canta::RenderGraph& graph) {
-            auto buffer = graph.getBuffer(particleBufferIndex);
-            auto image = graph.getImage(imageIndex);
-            struct Push {
-                u64 address;
-                i32 index;
-                i32 maxParticles;
-            };
-            cmd.pushConstants(canta::ShaderStage::COMPUTE, Push{
-                    .address = buffer->address(),
-                    .index = image->defaultView().index(),
-                    .maxParticles = numParticles
-            });
-            cmd.dispatchThreads(numParticles);
-        });
+            .pushConstants(particleBufferIndex, imageIndex, numParticles)
+            .dispatchThreads(numParticles);
 
         auto [uiSwapchainIndex] = renderGraph.addBlitPass("blit_to_swapchain", imageIndex, swapchainIndex).aliasImageOutputs<1>();
 

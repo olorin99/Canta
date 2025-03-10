@@ -134,6 +134,42 @@ namespace canta {
             return *this;
         }
 
+        template <typename T, typename U, typename... Args>
+        void unpack(std::array<u8, 192>& dst, i32& i, const T& t, const U& u, const Args&... args) {
+            unpack(dst, i, t);
+            unpack(dst, i, u, args...);
+        }
+
+        template <typename T>
+        void unpack(std::array<u8, 192>& dst, i32& i, const T& arg) {
+            auto* data = reinterpret_cast<const u8*>(&arg);
+            for (auto j = 0; j < sizeof(arg); j++) {
+                dst[i + j] = data[j];
+            }
+            i += sizeof(arg);
+            _pushConstantSize += sizeof(arg);
+            assert(_pushConstantSize <= 128);
+        }
+
+        void unpack(std::array<u8, 192>& dst, i32&, const ImageIndex& image);
+
+        void unpack(std::array<u8, 192>& dst, i32&, const BufferIndex& image);
+
+        void unpack(std::array<u8, 192>& dst, i32&, const ImageHandle& image);
+
+        void unpack(std::array<u8, 192>& dst, i32&, const BufferHandle& image);
+
+        template <typename... Args>
+        auto pushConstants(const Args&... args) -> RenderPass& {
+            _pushConstantSize = 0;
+            i32 i = 0;
+            unpack(_pushConstants, i, args...);
+            return *this;
+        }
+
+        auto dispatchWorkgroups(u32 x = 1, u32 y = 1, u32 z = 1) -> RenderPass&;
+        auto dispatchThreads(u32 x = 1, u32 y = 1, u32 z = 1) -> RenderPass&;
+
         auto setExecuteFunction(const std::function<void(CommandBuffer&, RenderGraph&)> &execute) -> RenderPass& {
             _execute = execute;
             return *this;
@@ -211,6 +247,16 @@ namespace canta {
 
         PipelineHandle _pipeline = {};
         bool _manualPipeline = false;
+        std::array<u8, 192> _pushConstants = {};
+        u32 _pushConstantSize = 0;
+
+        struct DeferredPushConstant {
+            i32 type = 0; // 0 == image, 1 == buffer
+            i32 id = -1;
+            u32 index = 0;
+            i32 offset = 0;
+        };
+        std::vector<DeferredPushConstant> _deferredPushConstants = {};
 
         std::function<void(CommandBuffer&, RenderGraph&)> _execute = {};
 
