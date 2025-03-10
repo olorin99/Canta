@@ -80,6 +80,14 @@ namespace canta {
             std::vector<std::string> members = {};
         };
 
+        struct SpecConstant {
+            u32 id = 0;
+            std::string name = "";
+            MemberType type = MemberType::INT;
+        };
+
+        auto getSpecConstant(std::string_view name) const -> std::optional<SpecConstant>;
+
         auto getPushRange(u32 range) const -> const PushRange& { return _pushRanges[range]; }
 
         auto getSet(u32 set) const -> const Set& { return _sets[set]; }
@@ -113,6 +121,7 @@ namespace canta {
         u32 _setCount = 0;
 
         std::vector<PushRange> _pushRanges = {};
+        std::vector<SpecConstant> _specConstants = {};
         std::vector<std::pair<ende::math::Vec<3, u32>, ShaderStage>> _localSizes = {};
         ShaderStage _stages = ShaderStage::NONE;
         tsl::robin_map<std::string, Member> _types = {};

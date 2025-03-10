@@ -1,5 +1,8 @@
 import canta;
 
+layout (constant_id = 0) const int x_size = 32;
+layout (constant_id = 1) const int screen_width = 1920;
+
 struct Particle {
     float2 position;
     float2 velocity;
@@ -8,7 +11,7 @@ struct Particle {
 };
 
 bool outOfBounds(float2 position) {
-    if (position.x > 1920 || position.x < 0 || position.y > 1080 || position.y < 0)
+    if (position.x > screen_width || position.x < 0 || position.y > 1080 || position.y < 0)
         return true;
 
     return false;
@@ -21,7 +24,7 @@ struct Push {
 }
 
 [shader("compute")]
-[numthreads(32, 1, 1)]
+[numthreads(x_size, 1, 1)]
 void moveMain(
     uint3 threadId: SV_DispatchThreadID,
     uniform Particle* particles,
@@ -35,7 +38,7 @@ void moveMain(
 
     float2 newPosition = particle.position + particle.velocity * dt / 10;
     if (outOfBounds(newPosition)) {
-        const float2 screenCenter = float2(1920 / 2, 1080 / 2);
+        const float2 screenCenter = float2(screen_width / 2, 1080 / 2);
 
         float2 direction = normalize(screenCenter - newPosition);
         float2 newVelocity = direction * length(particle.velocity);
@@ -47,7 +50,7 @@ void moveMain(
 }
 
 [shader("compute")]
-[numthreads(32, 1, 1)]
+[numthreads(x_size, 1, 1)]
 void drawMain(
     uint3 threadId: SV_DispatchThreadID,
     uniform Particle* particles,

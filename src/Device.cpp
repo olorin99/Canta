@@ -900,15 +900,50 @@ auto canta::Device::createShaderModule(ShaderModule::CreateInfo info, ShaderHand
 auto canta::Device::createPipeline(Pipeline::CreateInfo info, PipelineHandle oldHandle) -> PipelineHandle {
     ShaderInterface interface = {};
     std::vector<VkPipelineShaderStageCreateInfo> shaderStages = {};
+    std::vector<u8> specializationConstantsData = {};
+    std::vector<VkSpecializationMapEntry> specializationMapEntries = {};
+
+    for (auto& specConstant : info.specializationConstants) {
+        u32 id = specConstant.id;
+        if (!specConstant.name.empty()) {
+            if (auto constant = interface.getSpecConstant(specConstant.name))
+                id = constant->id;
+        }
+
+        specializationMapEntries.push_back(VkSpecializationMapEntry{
+            .constantID = id,
+            .offset = static_cast<u32>(specializationConstantsData.size()),
+            .size = sizeof(specConstant.value)
+        });
+
+        auto data = reinterpret_cast<u8*>(&specConstant.value);
+        for (u32 i = 0; i < sizeof(specConstant.value); i++) {
+            specializationConstantsData.push_back(data[i]);
+        }
+    }
+
+    VkSpecializationInfo specInfo = {};
+    specInfo.dataSize = specializationConstantsData.size();
+    specInfo.pData = specializationConstantsData.data();
+    specInfo.mapEntryCount = specializationMapEntries.size();
+    specInfo.pMapEntries = specializationMapEntries.data();
 
     const auto attachShader = [&](ShaderInfo& shaderInfo) {
         auto array = std::to_array({ interface, shaderInfo.module->interface() });
         interface = ShaderInterface::merge(array);
 
+        for (u32 i = 0; i < info.specializationConstants.size(); i++) {
+            if (!info.specializationConstants[i].name.empty()) {
+                if (auto constant = interface.getSpecConstant(info.specializationConstants[i].name))
+                    specializationMapEntries[i].constantID = constant->id;
+            }
+        }
+
         VkPipelineShaderStageCreateInfo stageCreateInfo = {};
         stageCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
         stageCreateInfo.stage = static_cast<VkShaderStageFlagBits>(shaderInfo.module->stage());
         stageCreateInfo.module = shaderInfo.module->module();
+        stageCreateInfo.pSpecializationInfo = &specInfo;
         stageCreateInfo.pName = shaderInfo.entryPoint.data();
         shaderStages.push_back(stageCreateInfo);
     };

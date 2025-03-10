@@ -107,6 +107,17 @@ auto canta::ShaderInterface::create(std::span<CreateInfo> infos) -> ShaderInterf
             interface._localSizes.push_back(std::make_pair(ende::math::Vec<3, u32>{ x, y, z }, info.stage));
         }
 
+        for (auto &c : compiler.get_specialization_constants())
+        {
+            const spirv_cross::SPIRConstant &value = compiler.get_constant(c.id);
+
+            interface._specConstants.push_back({
+                .id = c.constant_id,
+                .name = compiler.get_name(c.id),
+                .type = typeToMemberType(compiler.get_type(value.constant_type))
+            });
+        }
+
         for (u32 i = 0; i < resources.push_constant_buffers.size(); i++) {
             auto& push = resources.push_constant_buffers[i];
             auto& type = compiler.get_type(push.base_type_id);
@@ -281,6 +292,10 @@ auto canta::ShaderInterface::merge(std::span<ShaderInterface> inputs) -> ShaderI
             }
         }
 
+        for (auto& inputSpecConst :moduleInterface._specConstants) {
+            interface._specConstants.push_back(inputSpecConst);
+        }
+
         for (auto& inputPushRange : moduleInterface._pushRanges)
             interface._pushRanges.push_back(inputPushRange);
 
@@ -292,6 +307,15 @@ auto canta::ShaderInterface::merge(std::span<ShaderInterface> inputs) -> ShaderI
 
     return interface;
 }
+
+auto canta::ShaderInterface::getSpecConstant(std::string_view name) const -> std::optional<SpecConstant> {
+    for (auto& constant : _specConstants) {
+        if (constant.name == name)
+            return constant;
+    }
+    return std::nullopt;
+}
+
 
 auto canta::ShaderInterface::bindingHasMember(u32 set, u32 binding, std::string_view name) const -> bool {
     auto& b = _sets[set].bindings[binding];

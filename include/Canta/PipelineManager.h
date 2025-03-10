@@ -59,7 +59,7 @@ namespace canta {
         auto getShader(ShaderDescription info) -> std::expected<ShaderHandle, Error>;
         auto getPipeline(Pipeline::CreateInfo info) -> std::expected<PipelineHandle, Error>;
         auto getPipeline(const Pipeline& old, Pipeline::CreateInfo overrideInfo) -> std::expected<PipelineHandle, Error>;
-        auto getPipeline(const std::filesystem::path& path, std::span<const Macro> additionalMacros = {}) -> std::expected<PipelineHandle, Error>;
+        auto getPipeline(const std::filesystem::path& path, std::span<const Macro> additionalMacros = {}, const std::vector<SpecializationConstant>& specializationConstants = {}) -> std::expected<PipelineHandle, Error>;
 
         auto reload(ShaderHandle shader) -> std::expected<ShaderHandle, Error>;
         auto reload(PipelineHandle pipeline) -> std::expected<PipelineHandle, Error>;

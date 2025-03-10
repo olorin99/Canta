@@ -91,13 +91,13 @@ void main() {
             .name = "ADDITIONAL",
             .value = "TEST"
         }
-    })).value();
+    }), {canta::SpecializationConstant{.name = "screen_width", .value = 780}}).value();
 
     for (auto& type : pipeline->interface().getTypeList()) {
         std::printf("%s - size: %d\n", type.name.c_str(), type.size);
     }
 
-    auto pipelineDraw = pipelineManager.getPipeline({
+    auto pipelineDraw = pipelineManager.getPipeline(canta::Pipeline::CreateInfo{
         .compute = {
             .module = pipelineManager.getShader({
                 .path = "examples/particles.slang",
@@ -105,7 +105,8 @@ void main() {
                 .name = "particleDraw"
             }).value(),
             .entryPoint = "drawMain"
-        }
+        },
+        .specializationConstants = {canta::SpecializationConstant{.id = 1, .name = "screen_width", .value = 780}}
     }).value();
 
     auto testModule = pipelineManager.getShader({

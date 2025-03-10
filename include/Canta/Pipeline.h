@@ -19,6 +19,16 @@ namespace canta {
         std::string entryPoint = "main";
     };
 
+    struct SpecializationConstant {
+        u32 id = 0;
+        std::string name = "";
+        union {
+            i32 intValue = 0;
+            u32 uintValue;
+            f32 f32Value;
+        } value = {};
+    };
+
     struct RasterState {
         CullMode cullMode = CullMode::BACK;
         FrontFace frontFace = FrontFace::CW;
@@ -88,6 +98,7 @@ namespace canta {
             ShaderInfo callable = {};
             ShaderInfo task = {};
             ShaderInfo mesh = {};
+            std::vector<SpecializationConstant> specializationConstants = {};
             RasterState rasterState = {};
             DepthState depthState = {};
             BlendState blendState = {};

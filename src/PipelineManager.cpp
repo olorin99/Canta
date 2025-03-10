@@ -270,6 +270,7 @@ auto canta::PipelineManager::getPipeline(const canta::Pipeline &old, Pipeline::C
             .callable = (old.info().callable.module == ShaderHandle() && old.info().callable.entryPoint == "main") ? overrideInfo.callable : old.info().callable,
             .task = (old.info().task.module == ShaderHandle() && old.info().task.entryPoint == "main") ? overrideInfo.task : old.info().task,
             .mesh = (old.info().mesh.module == ShaderHandle() && old.info().mesh.entryPoint == "main") ? overrideInfo.mesh : old.info().mesh,
+            .specializationConstants = (overrideInfo.specializationConstants.empty()) ? old.info().specializationConstants : overrideInfo.specializationConstants,
             .rasterState = (old.info().rasterState == RasterState{}) ? overrideInfo.rasterState : old.info().rasterState,
             .depthState = (old.info().depthState == DepthState{}) ? overrideInfo.depthState : old.info().depthState,
             .blendState = (old.info().blendState == BlendState{}) ? overrideInfo.blendState : old.info().blendState,
@@ -286,8 +287,9 @@ auto canta::PipelineManager::getPipeline(const canta::Pipeline &old, Pipeline::C
 }
 
 auto loadFromFile(canta::PipelineManager& manager, const std::filesystem::path &path, std::span<const canta::Macro> additionalMacros = {}) -> canta::Pipeline::CreateInfo;
-auto canta::PipelineManager::getPipeline(const std::filesystem::path &path, std::span<const Macro> additionalMacros) -> std::expected<PipelineHandle, Error> {
+auto canta::PipelineManager::getPipeline(const std::filesystem::path &path, std::span<const Macro> additionalMacros, const std::vector<SpecializationConstant>& specializationConstants) -> std::expected<PipelineHandle, Error> {
     auto createInfo = loadFromFile(*this, path, additionalMacros);
+    createInfo.specializationConstants = specializationConstants;
     return getPipeline(createInfo);
 }
 
