@@ -5,8 +5,6 @@
 #include <backends/imgui_impl_sdl2.h>
 #include <imnodes.h>
 
-#include "../cmake-build-release/_deps/imgui-src/imgui_internal.h"
-
 const char* vertexGLSL = R"(
 #version 450 core
 layout(location = 0) in vec2 aPos;
