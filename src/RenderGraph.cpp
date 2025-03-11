@@ -167,6 +167,30 @@ auto canta::RenderPass::addIndirectRead(const canta::BufferIndex index) -> Rende
     return *this;
 }
 
+auto canta::RenderPass::addDummyWrite(const ImageIndex index) -> RenderPass & {
+    assert(index.id >= 0);
+    writes(index, Access::NONE, PipelineStage::NONE, ImageLayout::GENERAL);
+    return *this;
+}
+
+auto canta::RenderPass::addDummyRead(const ImageIndex index) -> RenderPass & {
+    assert(index.id >= 0);
+    reads(index, Access::NONE, PipelineStage::NONE, ImageLayout::GENERAL);
+    return *this;
+}
+
+auto canta::RenderPass::addDummyWrite(const BufferIndex index) -> RenderPass & {
+    assert(index.id >= 0);
+    writes(index, Access::NONE, PipelineStage::NONE);
+    return *this;
+}
+
+auto canta::RenderPass::addDummyRead(const BufferIndex index) -> RenderPass & {
+    assert(index.id >= 0);
+    reads(index, Access::NONE, PipelineStage::NONE);
+    return *this;
+}
+
 
 auto canta::RenderPass::writes(const canta::ImageIndex index, const canta::Access access, const canta::PipelineStage stage, const canta::ImageLayout layout) -> Resource * {
     assert(index.id >= 0);
@@ -208,6 +232,9 @@ auto canta::RenderPass::writes(const canta::BufferIndex index, const canta::Acce
             .access = access,
             .stage = stage
         });
+        if (stage == PipelineStage::HOST && resource->type == ResourceType::BUFFER) {
+            dynamic_cast<BufferResource*>(resource)->memoryType = MemoryType::STAGING;
+        }
     }
     return resource;
 }
@@ -222,6 +249,9 @@ auto canta::RenderPass::reads(const canta::BufferIndex index, const canta::Acces
             .access = access,
             .stage = stage
         });
+        if (stage == PipelineStage::HOST && resource->type == ResourceType::BUFFER) {
+            dynamic_cast<BufferResource*>(resource)->memoryType = MemoryType::READBACK;
+        }
     }
     return resource;
 }
@@ -1104,7 +1134,7 @@ void canta::RenderGraph::buildBarriers() {
         for (i32 outputIndex = 0; outputIndex < pass->_outputs.size(); outputIndex++) {
             const auto& currentAccess = pass->_outputs[outputIndex];
             const auto [accessPassIndex, accessIndex, nextAccess] = findNextAccess(passIndex, currentAccess.index);
-            if (accessPassIndex < 0)
+            if (accessPassIndex < 0 || nextAccess.access == Access::NONE)
                 continue;
             const auto& accessPass = _orderedPasses[accessPassIndex];
             RenderPass::Barrier barrier = {};
@@ -1185,7 +1215,7 @@ void canta::RenderGraph::buildBarriers() {
                 continue;
 
             const auto [accessPassIndex, accessIndex, nextAccess] = findNextAccess(passIndex, currentAccess.index);
-            if (accessPassIndex < 0)
+            if (accessPassIndex < 0 || nextAccess.access == Access::NONE)
                 continue;
             const auto& accessPass = _orderedPasses[accessPassIndex];
             RenderPass::Barrier barrier = {};
@@ -1266,7 +1296,7 @@ void canta::RenderGraph::buildBarriers() {
     // find first access of resources
     for (u32 i = 0; i < _resources.size(); i++) {
         const auto [accessPassIndex, accessIndex, nextAccess] = findNextAccess(-1, i);
-        if (accessPassIndex < 0)
+        if (accessPassIndex < 0 || nextAccess.access == Access::NONE)
             continue;
         const auto& accessPass = _orderedPasses[accessPassIndex];
         const auto& resource = _resources[i];
@@ -1343,6 +1373,7 @@ void canta::RenderGraph::buildResources() {
                 _buffers[bufferResource->bufferIndex] = _device->createBuffer({
                     .size = bufferResource->size,
                     .usage = bufferResource->usage,
+                    .type = bufferResource->memoryType,
                     .name = bufferResource->name
                 });
             }

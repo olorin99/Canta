@@ -1,11 +1,13 @@
 #include "Canta/Device.h"
 #include <spdlog/sinks/stdout_color_sinks.h>
 #include <spdlog/sinks/basic_file_sink.h>
+#include <renderdoc_app.h>
 
 #define VMA_IMPLEMENTATION
 #define VMA_STATIC_VULKAN_FUNCTIONS 0
 #define VMA_DYNAMIC_VULKAN_FUNCTIONS 0
 #include <vk_mem_alloc.h>
+#include <dlfcn.h>
 
 template<> u32 canta::ShaderHandle::s_hash = 0;
 template<> u32 canta::PipelineHandle::s_hash = 0;
@@ -179,6 +181,17 @@ auto canta::Device::create(canta::Device::CreateInfo info) noexcept -> std::expe
     // init instance
     VK_TRY(volkInitialize());
 
+    if (info.enableRenderDoc) {
+        if (void* mod = dlopen("librenderdoc.so", RTLD_NOW | RTLD_NOLOAD)) {
+            pRENDERDOC_GetAPI RENDERDOC_GetAPI = reinterpret_cast<pRENDERDOC_GetAPI>(dlsym(mod, "RENDERDOC_GetAPI"));
+            i32 ret = RENDERDOC_GetAPI(eRENDERDOC_API_Version_1_6_0, &device->_renderDocAPI);
+            assert(ret == 1);
+        }
+        if (device->_renderDocAPI) {
+            static_cast<RENDERDOC_API_1_6_0*>(device->_renderDocAPI)->SetCaptureFilePathTemplate("capture");
+        }
+    }
+
     VkApplicationInfo applicationInfo = {};
     applicationInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
     applicationInfo.pApplicationName = info.applicationName.c_str();
@@ -351,7 +364,9 @@ auto canta::Device::create(canta::Device::CreateInfo info) noexcept -> std::expe
     for (auto& extension : info.deviceExtensions) {
         REQUIRE_EXTENSION(extension, deviceExtensions);
     }
-    REQUIRE_EXTENSION(VK_KHR_SWAPCHAIN_EXTENSION_NAME, deviceExtensions);
+    if (!info.headless) {
+        REQUIRE_EXTENSION(VK_KHR_SWAPCHAIN_EXTENSION_NAME, deviceExtensions);
+    }
     REQUIRE_EXTENSION(VK_EXT_MEMORY_BUDGET_EXTENSION_NAME, deviceExtensions);
     if (info.enableMeshShading) {
         REQUIRE_EXTENSION(VK_EXT_MESH_SHADER_EXTENSION_NAME, deviceExtensions);
@@ -1858,4 +1873,19 @@ auto canta::Device::softMemoryUsage() const -> MemoryUsage {
         .budget = _memoryLimit,
         .usage = _memoryUsage
     };
+}
+
+void canta::Device::startFrameCapture() const {
+    if (_renderDocAPI)
+        static_cast<RENDERDOC_API_1_6_0*>(_renderDocAPI)->StartFrameCapture(nullptr, nullptr);
+}
+
+void canta::Device::endFrameCapture() const {
+    if (_renderDocAPI)
+        static_cast<RENDERDOC_API_1_6_0*>(_renderDocAPI)->EndFrameCapture(nullptr, nullptr);
+}
+
+void canta::Device::triggerCapture() const {
+    if (_renderDocAPI)
+        static_cast<RENDERDOC_API_1_6_0*>(_renderDocAPI)->TriggerCapture();
 }

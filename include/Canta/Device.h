@@ -136,6 +136,7 @@ namespace canta {
             std::string applicationName = {};
             u32 applicationVersion = 0;
             std::function<u32(const Properties&)> selector = {};
+            bool headless = false;
             bool enableMeshShading = true;
             bool enableTaskShading = false;
             bool enableAsyncComputeQueue = true;
@@ -144,6 +145,7 @@ namespace canta {
             std::span<const char* const> instanceExtensions = {};
             std::span<const char* const> deviceExtensions = {};
             spdlog::level::level_enum logLevel = spdlog::level::info;
+            bool enableRenderDoc = false;
         };
 
         static auto create(CreateInfo info) noexcept -> std::expected<std::unique_ptr<Device>, VulkanError>;
@@ -271,6 +273,14 @@ namespace canta {
 
         auto logger() -> spdlog::logger& { return _logger; }
 
+        void startFrameCapture() const;;
+
+        void endFrameCapture() const;
+
+        void triggerCapture() const;
+
+        void updateBindlessDescriptors();
+
     private:
         friend CommandBuffer;
 
@@ -287,6 +297,7 @@ namespace canta {
         VkDebugUtilsMessengerEXT _debugMessenger = VK_NULL_HANDLE;
 
         spdlog::logger _logger = spdlog::logger("logger");
+        void* _renderDocAPI = nullptr;
 
         Properties _properties = {};
         std::vector<std::string> _enabledExtensions = {};
@@ -348,7 +359,6 @@ namespace canta {
         };
         std::vector<DescriptorUpdate> _descriptorUpdates = {};
         std::mutex _descriptorMutex = {};
-        void updateBindlessDescriptors();
 
         ResourceList<ShaderModule> _shaderList = {};
         ResourceList<Pipeline> _pipelineList = {};

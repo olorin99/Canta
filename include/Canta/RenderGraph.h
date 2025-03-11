@@ -45,6 +45,7 @@ namespace canta {
         u32 bufferIndex = 0;
         u32 size = 0;
         BufferUsage usage = BufferUsage::STORAGE;
+        MemoryType memoryType = MemoryType::DEVICE;
     };
 
     struct ImageIndex {
@@ -123,6 +124,11 @@ namespace canta {
         auto addTransferRead(const BufferIndex index) -> RenderPass&;
 
         auto addIndirectRead(const BufferIndex index) -> RenderPass&;
+
+        auto addDummyWrite(const ImageIndex index) -> RenderPass&;
+        auto addDummyRead(const ImageIndex index) -> RenderPass&;
+        auto addDummyWrite(const BufferIndex index) -> RenderPass&;
+        auto addDummyRead(const BufferIndex index) -> RenderPass&;
 
         auto setPipeline(const PipelineHandle &handle) -> RenderPass& {
             _pipeline = handle;

@@ -51,6 +51,9 @@ namespace canta {
 
             auto address() const -> void* { return _address; }
 
+            template <typename T>
+            auto as() const -> T* { return static_cast<T*>(_address); }
+
         private:
             friend Buffer;
             friend Device;
