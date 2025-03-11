@@ -372,6 +372,36 @@ auto canta::ImGuiContext::createPipeline(canta::Format format) -> PipelineHandle
 
 #include <Canta/RenderGraph.h>
 
+auto queueToColour(const canta::QueueType queue) -> ImColor {
+    switch (queue) {
+        case canta::QueueType::NONE:
+            return IM_COL32(255, 0, 0, 255);
+        case canta::QueueType::GRAPHICS:
+            return IM_COL32(0, 255, 0, 255);
+        case canta::QueueType::COMPUTE:
+            return IM_COL32(0, 0, 255, 255);
+        case canta::QueueType::TRANSFER:
+            return IM_COL32(127, 127, 0, 255);
+        default:
+            return IM_COL32(255, 255, 255, 255);
+    }
+}
+
+auto groupToColour(canta::RenderGroup group) -> ImColor {
+    f32 hue = std::abs(group.id) * 1.71f;
+    f32 tmp;
+    hue = std::modf(hue, &tmp);
+    f32 r = std::abs(hue * 6 - 3) - 1;
+    f32 g = 2 - std::abs(hue * 6 - 2);
+    f32 b = 2 - std::abs(hue * 6 - 4);
+    return IM_COL32(
+        std::clamp(r * 255, 0.0f, 255.0f),
+        std::clamp(g * 255, 0.0f, 255.0f),
+        std::clamp(b * 255, 0.0f, 255.0f),
+        255
+    );
+}
+
 void canta::drawRenderGraph(canta::RenderGraph& renderGraph) {
     static i32 frame = 0;
     if (ImGui::Begin("Render Graph", nullptr, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse)) {
@@ -395,6 +425,8 @@ void canta::drawRenderGraph(canta::RenderGraph& renderGraph) {
                 ImNodes::SnapNodeToGrid(passId);
             }
 
+            ImNodes::PushColorStyle(ImNodesCol_TitleBar, queueToColour(pass->getQueue()));
+            ImNodes::PushColorStyle(ImNodesCol_NodeBackground, groupToColour(pass->getGroup()));
             ImNodes::BeginNode(passId);
             ImNodes::BeginNodeTitleBar();
             ImGui::Text("%s", pass->name().data());
@@ -440,6 +472,8 @@ void canta::drawRenderGraph(canta::RenderGraph& renderGraph) {
                 }
             }
             ImNodes::EndNode();
+            ImNodes::PopColorStyle();
+            ImNodes::PopColorStyle();
 
         }
 
