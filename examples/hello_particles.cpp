@@ -329,6 +329,7 @@ void main() {
         ImGui::End();
 
         canta::drawRenderGraph(renderGraph);
+        canta::renderGraphDebugUi(renderGraph);
 
         ImGui::Render();
 

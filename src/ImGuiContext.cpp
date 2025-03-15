@@ -488,3 +488,72 @@ void canta::drawRenderGraph(canta::RenderGraph& renderGraph) {
     }
     ImGui::End();
 }
+
+void canta::renderGraphDebugUi(RenderGraph& graph) {
+    static i32 selectedPass = -1;
+    static i32 selectedResource = -1;
+    if (ImGui::Begin("Render Graph Debug")) {
+
+        {
+            ImGui::BeginChild("Passes", ImVec2(ImGui::GetContentRegionAvail().x * 0.5f, 150), ImGuiChildFlags_None, ImGuiWindowFlags_HorizontalScrollbar);
+            ImGui::Text("Passes");
+            ImGui::Separator();
+            for (u32 i = 0; i < graph.orderedPasses().size(); i++) {
+                auto& pass = graph.orderedPasses()[i];
+
+                if (ImGui::Selectable(pass->name().data(), selectedPass == i))
+                    selectedPass = i;
+            }
+            ImGui::EndChild();
+        }
+        ImGui::SameLine();
+        if (selectedPass > -1) {
+            ImGui::BeginChild("Resources", ImVec2(ImGui::GetContentRegionAvail().x * 0.5f, 150), ImGuiChildFlags_None, ImGuiWindowFlags_HorizontalScrollbar);
+            ImGui::Text("Pass Resources");
+            ImGui::Separator();
+            auto& pass = graph.orderedPasses()[selectedPass];
+            ImGui::Text("Inputs:");
+            for (auto& input : pass->inputs()) {
+                auto resource = graph.resources()[input.index].get();
+                if (ImGui::Selectable(std::format("\t{}_input", resource->name).c_str(), selectedResource == input.index))
+                    selectedResource = input.index;
+            }
+            ImGui::Text("Outputs:");
+            for (auto& output : pass->output()) {
+                auto resource = graph.resources()[output.index].get();
+                if (ImGui::Selectable(std::format("\t{}_output", resource->name).c_str(), selectedResource == output.index))
+                    selectedResource = output.index;
+            }
+            ImGui::EndChild();
+        }
+        if (selectedResource > -1) {
+            ImGui::BeginChild("Info");
+            ImGui::Text("Resource Info");
+            ImGui::Separator();
+            const auto& resource = graph.resources()[selectedResource];
+            ImGui::Text("Name: %s", resource->name.c_str());
+            if (resource->type == ResourceType::IMAGE) {
+                const auto& image = dynamic_cast<ImageResource*>(resource.get());
+                ImGui::Text("Image");
+                ImGui::Text("Matches Backbuffer: %b", image->matchesBackbuffer);
+                ImGui::Text("Width: %u", image->width);
+                ImGui::Text("Height: %u", image->height);
+                ImGui::Text("Depth: %u", image->depth);
+                ImGui::Text("Mips: %u", image->mipLevels);
+                ImGui::Text("Format: %s", formatString(image->format));
+                ImGui::Text("Usage: %s", "Unimplemented");
+                ImGui::Text("Initial Layout: %s", "Unimplemented");
+            } else {
+                const auto& buffer = dynamic_cast<BufferResource*>(resource.get());
+                ImGui::Text("Buffer");
+                ImGui::Text("Size: %u b", buffer->size);
+                ImGui::Text("Usage: %u", buffer->usage);
+                ImGui::Text("Memory Type: %u", buffer->memoryType);
+            }
+
+            ImGui::EndChild();
+        }
+
+        ImGui::End();
+    }
+}

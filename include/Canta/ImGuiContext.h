@@ -55,6 +55,7 @@ namespace canta {
 
     class RenderGraph;
     void drawRenderGraph(RenderGraph& renderGraph);
+    void renderGraphDebugUi(RenderGraph& graph);
 
 }
 
