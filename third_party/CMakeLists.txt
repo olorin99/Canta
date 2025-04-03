@@ -34,13 +34,13 @@ FetchContent_Declare(
 FetchContent_Declare(
     tsl_map
     GIT_REPOSITORY  https://github.com/Tessil/robin-map
-    GIT_TAG         f45ebce73b3631fdfb8205e2ba700b726ff0c34f
+    GIT_TAG         4ec1bf19c6a96125ea22062f38c2cf5b958e448e
 )
 
 FetchContent_Declare(
     spirv_cross
     GIT_REPOSITORY https://github.com/KhronosGroup/SPIRV-Cross
-    GIT_TAG        f349c91274b91c1a7c173f2df70ec53080076191
+    GIT_TAG        9daa7fe0a36dbe5c5b810d74d2cc43b202407d57
 )
 set(SPIRV_CROSS_EXCEPTIONS_TO_ASSERTIONS ON CACHE BOOL "" FORCE)
 set(SPIRV_CROSS_ENABLE_TESTS OFF CACHE BOOL "" FORCE)
