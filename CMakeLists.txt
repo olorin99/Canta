@@ -95,6 +95,8 @@ add_library(Canta
         include/Canta/PipelineStatistics.h
         src/UploadBuffer.cpp
         include/Canta/UploadBuffer.h
+        include/Canta/Camera.h
+        src/Camera.cpp
 )
 
 add_subdirectory(third_party)
