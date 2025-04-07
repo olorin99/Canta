@@ -18,11 +18,11 @@ FetchContent_Declare(
     GIT_TAG         5e43c795daf43dd09398d8307212e85025215052
 )
 
-FetchContent_Declare(
-    imgui
-    GIT_REPOSITORY  https://github.com/ocornut/imgui
-    GIT_TAG         "docking"
-)
+#FetchContent_Declare(
+#    imgui
+#    GIT_REPOSITORY  https://github.com/ocornut/imgui
+#    GIT_TAG         "docking"
+#)
 
 FetchContent_Declare(
     spdlog
@@ -87,12 +87,12 @@ set(SHADERC_ENABLE_WERROR_COMPILE OFF CACHE BOOL "" FORCE)
 set(SPIRV_CROSS_EXCEPTIONS_TO_ASSERTIONS ON CACHE BOOL "" FORCE)
 
 
-FetchContent_MakeAvailable(Ende volk vma imgui spdlog tsl_map spirv_cross spirv-headers spirv-tools glslang shaderc)
+FetchContent_MakeAvailable(Ende volk vma spdlog tsl_map spirv_cross spirv-headers spirv-tools glslang shaderc)
 
-set(IMGUI_PATH ${imgui_SOURCE_DIR})
+set(IMGUI_PATH imgui)
 set(IMGUI_SOURCES ${IMGUI_PATH}/imgui.cpp ${IMGUI_PATH}/imgui_demo.cpp ${IMGUI_PATH}/imgui_tables.cpp ${IMGUI_PATH}/imgui_widgets.cpp ${IMGUI_PATH}/imgui_draw.cpp ${IMGUI_PATH}/backends/imgui_impl_vulkan.cpp ${IMGUI_PATH}/backends/imgui_impl_sdl2.cpp)
 add_library(imgui ${IMGUI_SOURCES})
-target_include_directories(imgui PUBLIC ${imgui_SOURCE_DIR})
+target_include_directories(imgui PUBLIC ${IMGUI_PATH})
 
 set(IMGUI_NODES_PATH ${CMAKE_CURRENT_SOURCE_DIR}/third_party)
 set(IMGUI_NODES_SOURCES
@@ -100,5 +100,4 @@ set(IMGUI_NODES_SOURCES
         imnodes.h
         imnodes_internal.h)
 add_library(imnodes ${IMGUI_NODES_SOURCES})
-target_include_directories(imnodes PUBLIC ${imguiNodes_SOURCE_DIR})
 target_link_libraries(imnodes imgui)

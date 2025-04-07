@@ -21,6 +21,7 @@ if (${CANTA_USE_SLANG})
 endif ()
 
 function(embed_shaders)
+    file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/include")
     cmake_parse_arguments(
             PARSED_ARGS
             ""
