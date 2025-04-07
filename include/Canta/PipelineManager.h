@@ -95,7 +95,9 @@ namespace canta {
 
         std::vector<std::pair<std::string, std::string>> _virtualFiles = {};
 
+#ifdef CANTA_USE_SLANG
         Slang::ComPtr<slang::IGlobalSession> _slangGlobalSession = {};
+#endif
 
     };
 

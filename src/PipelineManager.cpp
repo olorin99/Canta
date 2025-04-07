@@ -173,7 +173,9 @@ canta::PipelineManager::PipelineManager(canta::PipelineManager &&rhs) noexcept {
     std::swap(_fileWatcher, rhs._fileWatcher);
     std::swap(_watchedPipelines, rhs._watchedPipelines);
     std::swap(_virtualFiles, rhs._virtualFiles);
+#ifdef CANTA_USE_SLANG
     std::swap(_slangGlobalSession, rhs._slangGlobalSession);
+#endif
 }
 
 auto canta::PipelineManager::operator=(canta::PipelineManager &&rhs) noexcept -> PipelineManager & {
@@ -184,7 +186,9 @@ auto canta::PipelineManager::operator=(canta::PipelineManager &&rhs) noexcept ->
     std::swap(_fileWatcher, rhs._fileWatcher);
     std::swap(_watchedPipelines, rhs._watchedPipelines);
     std::swap(_virtualFiles, rhs._virtualFiles);
+#ifdef CANTA_USE_SLANG
     std::swap(_slangGlobalSession, rhs._slangGlobalSession);
+#endif
     return *this;
 }
 
