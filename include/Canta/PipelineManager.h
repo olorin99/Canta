@@ -6,8 +6,10 @@
 #include <tsl/robin_map.h>
 #include <filesystem>
 #include <Ende/filesystem/FileWatcher.h>
+#ifdef CANTA_USE_SLANG
 #include <slang.h>
 #include <slang-com-ptr.h>
+#endif
 
 namespace canta {
 
