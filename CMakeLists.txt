@@ -10,6 +10,11 @@ option(CANTA_BUILD_EXAMPLES "enable examples" ON)
 option(CANTA_ENABLE_IMGUI "enable imgui" ON)
 option(CANTA_BUILD_TESTS "build tests" ON)
 option(CANTA_USE_SLANG "use slang shaders" ON)
+option(CANTA_ENABLE_RENDERDOC "enable renderdoc" ON)
+
+if (${CANTA_ENABLE_RENDERDOC})
+    add_compile_definitions(CANTA_RENDERDOC="${CANTA_ENABLE_RENDERDOC}")
+endif ()
 
 add_compile_definitions(CANTA_SRC_DIR="${CMAKE_CURRENT_SOURCE_DIR}")
 

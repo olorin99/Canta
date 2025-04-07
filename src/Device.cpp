@@ -1,7 +1,9 @@
 #include "Canta/Device.h"
 #include <spdlog/sinks/stdout_color_sinks.h>
 #include <spdlog/sinks/basic_file_sink.h>
+#ifdef CANTA_RENDERDOC
 #include <renderdoc_app.h>
+#endif
 
 #define VMA_IMPLEMENTATION
 #define VMA_STATIC_VULKAN_FUNCTIONS 0
@@ -181,6 +183,7 @@ auto canta::Device::create(canta::Device::CreateInfo info) noexcept -> std::expe
     // init instance
     VK_TRY(volkInitialize());
 
+#ifdef CANTA_RENDERDOC
     if (info.enableRenderDoc) {
         if (void* mod = dlopen("librenderdoc.so", RTLD_NOW | RTLD_NOLOAD)) {
             pRENDERDOC_GetAPI RENDERDOC_GetAPI = reinterpret_cast<pRENDERDOC_GetAPI>(dlsym(mod, "RENDERDOC_GetAPI"));
@@ -191,6 +194,7 @@ auto canta::Device::create(canta::Device::CreateInfo info) noexcept -> std::expe
             static_cast<RENDERDOC_API_1_6_0*>(device->_renderDocAPI)->SetCaptureFilePathTemplate("capture");
         }
     }
+#endif
 
     VkApplicationInfo applicationInfo = {};
     applicationInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
@@ -1876,16 +1880,22 @@ auto canta::Device::softMemoryUsage() const -> MemoryUsage {
 }
 
 void canta::Device::startFrameCapture() const {
+#ifdef CANTA_RENDERDOC
     if (_renderDocAPI)
         static_cast<RENDERDOC_API_1_6_0*>(_renderDocAPI)->StartFrameCapture(nullptr, nullptr);
+#endif
 }
 
 void canta::Device::endFrameCapture() const {
+#ifdef CANTA_RENDERDOC
     if (_renderDocAPI)
         static_cast<RENDERDOC_API_1_6_0*>(_renderDocAPI)->EndFrameCapture(nullptr, nullptr);
+#endif
 }
 
 void canta::Device::triggerCapture() const {
+#ifdef CANTA_RENDERDOC
     if (_renderDocAPI)
         static_cast<RENDERDOC_API_1_6_0*>(_renderDocAPI)->TriggerCapture();
+#endif
 }
