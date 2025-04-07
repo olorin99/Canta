@@ -110,10 +110,10 @@ add_subdirectory(third_party)
 target_include_directories(Canta
     PUBLIC
     ${CMAKE_CURRENT_LIST_DIR}/include
-    third_party
+    ${CMAKE_CURRENT_LIST_DIR}/third_party
     PRIVATE
-    src
-    third_party
+    ${CMAKE_CURRENT_LIST_DIR}/src
+    ${CMAKE_CURRENT_LIST_DIR}/third_party
 #    slang::slang
 )
 
