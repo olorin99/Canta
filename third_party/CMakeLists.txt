@@ -1,5 +1,6 @@
 include(FetchContent)
 
+set(ENDE_BUILD_EXAMPLES OFF CACHE BOOL "")
 FetchContent_Declare(
     Ende
     GIT_REPOSITORY https://github.com/olorin99/Ende
