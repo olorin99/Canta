@@ -1,6 +1,15 @@
 # Canta
-Vulkan abstraction.
+Canta is a Tolkien elvish word meaning [shape/framework](https://www.elfdict.com/w/canta).
+This library acts as a framework for creating vulkan applications.
 
+## Features
+- Device creation.
+- Resource management.
+- Indexed ("bindless") resources.
+- Automatic frame synchronisation.
+- Render graph.
+- Pipeline/Shader management.
+- Included ImGui backend.
 
 ## Dependencies
 ### System
