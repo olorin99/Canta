@@ -508,7 +508,7 @@ void canta::renderGraphDebugUi(RenderGraph& graph) {
         }
         ImGui::SameLine();
         if (selectedPass > -1) {
-            ImGui::BeginChild("Resources", ImVec2(ImGui::GetContentRegionAvail().x * 0.5f, 150), ImGuiChildFlags_None, ImGuiWindowFlags_HorizontalScrollbar);
+            ImGui::BeginChild("Resources", ImVec2(ImGui::GetContentRegionAvail().x, 150), ImGuiChildFlags_None, ImGuiWindowFlags_HorizontalScrollbar);
             ImGui::Text("Pass Resources");
             ImGui::Separator();
             auto& pass = graph.orderedPasses()[selectedPass];
