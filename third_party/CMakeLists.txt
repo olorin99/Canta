@@ -50,14 +50,14 @@ set(SPIRV_CROSS_CLI OFF)
 FetchContent_Declare(
     spirv-headers
     GIT_REPOSITORY https://github.com/KhronosGroup/SPIRV-Headers
-    GIT_TAG        1c6bb2743599e6eb6f37b2969acc0aef812e32e3
+    GIT_TAG        aa6cef192b8e693916eb713e7a9ccadf06062ceb
 )
 set(BUILD_TESTS OFF CACHE BOOL "" FORCE)
 
 FetchContent_Declare(
     spirv-tools
     GIT_REPOSITORY https://github.com/KhronosGroup/SPIRV-Tools
-    GIT_TAG        f0cc85efdbbe3a46eae90e0f915dc1509836d0fc
+    GIT_TAG        f289d047f49fb60488301ec62bafab85573668cc
 )
 set(SPIRV_SKIP_TESTS ON CACHE BOOL "" FORCE)
 set(SKIP_SPIRV_TOOLS_INSTALL ON CACHE BOOL "" FORCE)
@@ -68,7 +68,7 @@ set(ENABLE_EXCEPTIONS_ON_MSVC OFF CACHE BOOL "" FORCE)
 FetchContent_Declare(
     glslang
     GIT_REPOSITORY https://github.com/KhronosGroup/glslang
-    GIT_TAG        db4d6f85afb8cf6aa404a141855f556d172c1ed2
+    GIT_TAG        c39c0fea849b42980886b7344119067251ce2bf5
 )
 set(BUILD_EXTERNAL OFF CACHE BOOL "" FORCE)
 set(BUILD_WERROR OFF CACHE BOOL "" FORCE)
