@@ -213,3 +213,25 @@ float4 operator*(float4 vec, float4x4 matrix) {
 float4x4 operator*(float4x4 lhs, float4x4 rhs) {
     return mul(lhs, rhs);
 }
+
+public struct Frustum {
+    float4 planes[6];
+    float4 corners[8];
+
+    public func check(float3 pos, float radius) -> bool {
+        for (int i = 0; i < 6; i++) {
+            if (dot(float4(pos, 1.0), planes[i]) + radius < 0.0)
+                return false;
+        }
+        return true;
+    }
+};
+
+public struct Camera {
+    public float4x4 projection;
+    public float4x4 view;
+    public float3 position;
+    public float near;
+    public float far;
+    public Frustum frustum;
+};
