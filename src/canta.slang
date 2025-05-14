@@ -214,7 +214,7 @@ float4x4 operator*(float4x4 lhs, float4x4 rhs) {
     return mul(lhs, rhs);
 }
 
-public struct Frustum {
+struct Frustum {
     float4 planes[6];
     float4 corners[8];
 
@@ -227,7 +227,7 @@ public struct Frustum {
     }
 };
 
-public struct Camera {
+struct Camera {
     public float4x4 projection;
     public float4x4 view;
     public float3 position;
