@@ -348,23 +348,45 @@ auto canta::RenderPass::dispatchThreads(u32 x, u32 y, u32 z) -> RenderPass & {
     });
 }
 
+auto canta::RenderPass::aliasImageOutput(i32 index) -> std::expected<ImageIndex, i32> {
+    assert(index < _outputs.size());
+    auto& output = _outputs[index];
+    const auto& resource = _graph->_resources[output.index];
+    if (resource->type != ResourceType::IMAGE)
+        return std::unexpected(-1);
+    auto alias = _graph->addAlias(ImageIndex{ .id = output.id, .index = output.index });
+    output.id = alias.id;
+    output.index = alias.index;
+    return alias;
+}
 
-auto canta::RenderPass::aliasImageOutputs() const -> std::vector<ImageIndex> {
+auto canta::RenderPass::aliasBufferOutput(i32 index) -> std::expected<BufferIndex, i32> {
+    assert(index < _outputs.size());
+    auto& output = _outputs[index];
+    const auto& resource = _graph->_resources[output.index];
+    if (resource->type != ResourceType::BUFFER)
+        return std::unexpected(-1);
+    auto alias = _graph->addAlias(BufferIndex{ .id = output.id, .index = output.index });
+    output.id = alias.id;
+    output.index = alias.index;
+    return alias;
+}
+
+
+auto canta::RenderPass::aliasImageOutputs() -> std::vector<ImageIndex> {
     std::vector<ImageIndex> aliases = {};
-    for (const auto& output : _outputs) {
-        const auto& resource = _graph->_resources[output.index];
-        if (resource->type == ResourceType::IMAGE)
-            aliases.push_back(_graph->addAlias(ImageIndex{ .id = output.id, .index = output.index }));
+    for (i32 i = 0; i < _outputs.size(); ++i) {
+        if (auto alias = aliasImageOutput(i))
+            aliases.push_back(*alias);
     }
     return aliases;
 }
 
-auto canta::RenderPass::aliasBufferOutputs() const -> std::vector<BufferIndex> {
+auto canta::RenderPass::aliasBufferOutputs() -> std::vector<BufferIndex> {
     std::vector<BufferIndex> aliases = {};
-    for (const auto& output : _outputs) {
-        const auto& resource = _graph->_resources[output.index];
-        if (resource->type == ResourceType::BUFFER)
-            aliases.push_back(_graph->addAlias(BufferIndex{ .id = output.id, .index = output.index }));
+    for (i32 i = 0; i < _outputs.size(); ++i) {
+        if (auto alias = aliasBufferOutput(i))
+            aliases.push_back(*alias);
     }
     return aliases;
 }
@@ -1084,34 +1106,6 @@ void canta::RenderGraph::endQueries(canta::CommandBuffer &commandBuffer, u32 pas
 }
 
 void canta::RenderGraph::buildBarriers() {
-    auto findNextAccess = [&](const i32 startIndex, const u32 resource) -> std::tuple<i32, i32, ResourceAccess> {
-        for (i32 passIndex = startIndex + 1; passIndex < _orderedPasses.size(); passIndex++) {
-            const auto& pass = _orderedPasses[passIndex];
-            for (i32 outputIndex = 0; outputIndex < pass->_outputs.size(); outputIndex++) {
-                if (pass->_outputs[outputIndex].index == resource)
-                    return { passIndex, outputIndex, pass->_outputs[outputIndex] };
-            }
-            for (i32 inputIndex = 0; inputIndex < pass->_inputs.size(); inputIndex++) {
-                if (pass->_inputs[inputIndex].index == resource)
-                    return { passIndex, inputIndex, pass->_inputs[inputIndex] };
-            }
-        }
-        return { -1, -1, {} };
-    };
-    auto findPrevAccess = [&](const i32 startIndex, const u32 resource) -> std::tuple<i32, i32, ResourceAccess> {
-        for (i32 passIndex = startIndex; passIndex > -1; passIndex--) {
-            const auto& pass = _orderedPasses[passIndex];
-            for (i32 outputIndex = 0; outputIndex < pass->_outputs.size(); outputIndex++) {
-                if (pass->_outputs[outputIndex].index == resource)
-                    return { passIndex, outputIndex, pass->_outputs[outputIndex] };
-            }
-            for (i32 inputIndex = 0; inputIndex < pass->_inputs.size(); inputIndex++) {
-                if (pass->_inputs[inputIndex].index == resource)
-                    return { passIndex, inputIndex, pass->_inputs[inputIndex] };
-            }
-        }
-        return { -1, -1, {} };
-    };
     auto readsResource = [&](const RenderPass& pass, const u32 resource) -> bool {
         for (const auto& access : pass._inputs) {
             if (access.index == resource)
@@ -1382,48 +1376,6 @@ void canta::RenderGraph::buildResources() {
 }
 
 void canta::RenderGraph::buildRenderAttachments() {
-    auto findNextAccess = [&](const i32 startIndex, const u32 resource) -> std::tuple<i32, i32, ResourceAccess> {
-        for (i32 passIndex = startIndex + 1; passIndex < _orderedPasses.size(); passIndex++) {
-            const auto& pass = _orderedPasses[passIndex];
-            for (i32 outputIndex = 0; outputIndex < pass->_outputs.size(); outputIndex++) {
-                if (pass->_outputs[outputIndex].index == resource)
-                    return { passIndex, outputIndex, pass->_outputs[outputIndex] };
-            }
-            for (i32 inputIndex = 0; inputIndex < pass->_inputs.size(); inputIndex++) {
-                if (pass->_inputs[inputIndex].index == resource)
-                    return { passIndex, inputIndex, pass->_inputs[inputIndex] };
-            }
-        }
-        return { -1, -1, {} };
-    };
-
-    auto findCurrAccess = [&](const RenderPass& pass, const u32 resource) -> std::tuple<bool, ResourceAccess> {
-        for (auto& input : pass._inputs) {
-            if (input.index == resource)
-                return { true, input };
-        }
-        for (auto& output : pass._outputs) {
-            if (output.index == resource)
-                return { false, output };
-        }
-        return { false, {} };
-    };
-
-    auto findPrevAccess = [&](const i32 startIndex, const u32 resource) -> std::tuple<i32, i32, ResourceAccess> {
-        for (i32 passIndex = startIndex; passIndex > -1; passIndex--) {
-            const auto& pass = _orderedPasses[passIndex];
-            for (i32 outputIndex = 0; outputIndex < pass->_outputs.size(); outputIndex++) {
-                if (pass->_outputs[outputIndex].index == resource)
-                    return { passIndex, outputIndex, pass->_outputs[outputIndex] };
-            }
-            for (i32 inputIndex = 0; inputIndex < pass->_inputs.size(); inputIndex++) {
-                if (pass->_inputs[inputIndex].index == resource)
-                    return { passIndex, inputIndex, pass->_inputs[inputIndex] };
-            }
-        }
-        return { -1, -1, {} };
-    };
-
     for (u32 i = 0; i < _orderedPasses.size(); i++) {
         auto& pass = _orderedPasses[i];
 
@@ -1470,3 +1422,45 @@ auto canta::RenderGraph::statistics() const -> Statistics {
         .commandBuffers = _commandPools[_device->flyingIndex()][0].index() + _commandPools[_device->flyingIndex()][1].index(),
     };
 }
+
+auto canta::RenderGraph::findNextAccess(const i32 startIndex, const u32 resource) const -> std::tuple<i32, i32, ResourceAccess> {
+    for (i32 passIndex = startIndex + 1; passIndex < _orderedPasses.size(); passIndex++) {
+        const auto& pass = _orderedPasses[passIndex];
+        for (i32 outputIndex = 0; outputIndex < pass->_outputs.size(); outputIndex++) {
+            if (pass->_outputs[outputIndex].index == resource)
+                return { passIndex, outputIndex, pass->_outputs[outputIndex] };
+        }
+        for (i32 inputIndex = 0; inputIndex < pass->_inputs.size(); inputIndex++) {
+            if (pass->_inputs[inputIndex].index == resource)
+                return { passIndex, inputIndex, pass->_inputs[inputIndex] };
+        }
+    }
+    return { -1, -1, {} };
+};
+
+auto canta::RenderGraph::findCurrAccess(const RenderPass& pass, const u32 resource) const -> std::tuple<bool, ResourceAccess> {
+    for (auto& input : pass._inputs) {
+        if (input.index == resource)
+            return { true, input };
+    }
+    for (auto& output : pass._outputs) {
+        if (output.index == resource)
+            return { false, output };
+    }
+    return { false, {} };
+};
+
+auto canta::RenderGraph::findPrevAccess(const i32 startIndex, const u32 resource) const -> std::tuple<i32, i32, ResourceAccess> {
+    for (i32 passIndex = startIndex; passIndex > -1; passIndex--) {
+        const auto& pass = _orderedPasses[passIndex];
+        for (i32 outputIndex = 0; outputIndex < pass->_outputs.size(); outputIndex++) {
+            if (pass->_outputs[outputIndex].index == resource)
+                return { passIndex, outputIndex, pass->_outputs[outputIndex] };
+        }
+        for (i32 inputIndex = 0; inputIndex < pass->_inputs.size(); inputIndex++) {
+            if (pass->_inputs[inputIndex].index == resource)
+                return { passIndex, inputIndex, pass->_inputs[inputIndex] };
+        }
+    }
+    return { -1, -1, {} };
+};

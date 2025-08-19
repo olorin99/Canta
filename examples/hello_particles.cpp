@@ -386,13 +386,15 @@ void main() {
 
         auto& uiPass = renderGraph.addPass({.name = "ui", .type = canta::PassType::GRAPHICS})
             .setManualPipeline(true)
-            .addColourRead(swapchainIndex)
-            .addColourWrite(uiSwapchainIndex)
+            // .addColourRead(swapchainIndex)
+            .addColourRead(uiSwapchainIndex)
+            // .addColourWrite(uiSwapchainIndex)
+            .addColourWrite(swapchainIndex)
             .setExecuteFunction([&imguiContext, &swapchain](canta::CommandBuffer& cmd, canta::RenderGraph& graph) {
             imguiContext.render(ImGui::GetDrawData(), cmd, swapchain->format());
         });
 
-        renderGraph.setBackbuffer(uiSwapchainIndex, canta::ImageLayout::PRESENT);
+        renderGraph.setBackbuffer(swapchainIndex, canta::ImageLayout::PRESENT);
 //        renderGraph.setBackbuffer(swapchainIndex);
         if (!renderGraph.compile())
             return -1;

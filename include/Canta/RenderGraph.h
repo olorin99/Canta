@@ -208,13 +208,16 @@ namespace canta {
             return *this;
         }
 
-        auto aliasImageOutputs() const -> std::vector<ImageIndex>;
-        auto aliasBufferOutputs() const -> std::vector<BufferIndex>;
+        auto aliasImageOutput(i32 index) -> std::expected<ImageIndex, i32>;
+        auto aliasBufferOutput(i32 index) -> std::expected<BufferIndex, i32>;
+
+        auto aliasImageOutputs() -> std::vector<ImageIndex>;
+        auto aliasBufferOutputs() -> std::vector<BufferIndex>;
 
         template <u8 N>
-        auto aliasImageOutputs() const -> std::array<ImageIndex, N>;
+        auto aliasImageOutputs() -> std::array<ImageIndex, N>;
         template <u8 N>
-        auto aliasBufferOutputs() const -> std::array<BufferIndex, N>;
+        auto aliasBufferOutputs() -> std::array<BufferIndex, N>;
 
         auto name() const -> std::string_view { return _name; }
         auto inputs() const -> std::span<const ResourceAccess> { return _inputs; }
@@ -392,6 +395,10 @@ namespace canta {
 
         auto orderedPasses() -> std::span<RenderPass*> { return _orderedPasses; }
 
+        auto findNextAccess(const i32 startIndex, const u32 resource) const -> std::tuple<i32, i32, ResourceAccess>;
+        auto findCurrAccess(const RenderPass& pass, const u32 resource) const -> std::tuple<bool, ResourceAccess>;
+        auto findPrevAccess(const i32 startIndex, const u32 resource) const -> std::tuple<i32, i32, ResourceAccess>;
+
     private:
         friend RenderPass;
 
@@ -443,25 +450,21 @@ namespace canta {
     };
 
     template <u8 N>
-    auto RenderPass::aliasImageOutputs() const -> std::array<ImageIndex, N> {
+    auto RenderPass::aliasImageOutputs() -> std::array<ImageIndex, N> {
         std::array<ImageIndex, N> aliases = {};
-        for (u32 i = 0; auto& output : _outputs) {
-            if (i >= N) break;
-            const auto& resource = _graph->_resources[output.index];
-            if (resource->type == ResourceType::IMAGE)
-                aliases[i++] = _graph->addAlias(ImageIndex{ .id = output.id, .index = output.index });
+        for (i32 i = 0; i < N && i < _outputs.size(); ++i) {
+            if (auto alias = aliasImageOutput(i))
+                aliases[i] = *alias;
         }
         return aliases;
     }
 
     template <u8 N>
-    auto RenderPass::aliasBufferOutputs() const -> std::array<BufferIndex, N> {
+    auto RenderPass::aliasBufferOutputs() -> std::array<BufferIndex, N> {
         std::array<BufferIndex, N> aliases = {};
-        for (u32 i = 0; auto& output : _outputs) {
-            if (i >= N) break;
-            const auto& resource = _graph->_resources[output.index];
-            if (resource->type == ResourceType::BUFFER)
-                aliases[i++] = _graph->addAlias(BufferIndex{ .id = output.id, .index = output.index });
+        for (i32 i = 0; i < N && i < _outputs.size(); ++i) {
+            if (auto alias = aliasBufferOutput(i))
+                aliases[i] = *alias;
         }
         return aliases;
     }
