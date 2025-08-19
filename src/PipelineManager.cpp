@@ -649,6 +649,8 @@ auto canta::PipelineManager::compileSlang(std::string_view name, std::string_vie
     sessionDesc.targets = &targetDesc;
     sessionDesc.targetCount = 1;
     std::vector<slang::CompilerOptionEntry> options = {};
+    options.push_back({ slang::CompilerOptionName::DebugInformation, { slang::CompilerOptionValueKind::Int, 0, 0, nullptr, nullptr }});
+    options.push_back({ slang::CompilerOptionName::Optimization, { slang::CompilerOptionValueKind::Int, 3, 0, nullptr, nullptr }});
     options.push_back({ slang::CompilerOptionName::EmitSpirvDirectly, { slang::CompilerOptionValueKind::Int, 1, 0, nullptr, nullptr }});
     options.push_back({ slang::CompilerOptionName::GLSLForceScalarLayout, { slang::CompilerOptionValueKind::Int, 1, 0, nullptr, nullptr }});
     options.push_back({ slang::CompilerOptionName::MatrixLayoutColumn, { slang::CompilerOptionValueKind::Int, 1, 0, nullptr, nullptr }});
