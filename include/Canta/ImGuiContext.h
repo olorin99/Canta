@@ -4,6 +4,8 @@
 #include <Canta/CommandBuffer.h>
 #include <imgui.h>
 
+#include "RenderGraph.h"
+
 namespace canta {
 
     class Device;
@@ -55,7 +57,7 @@ namespace canta {
 
     class RenderGraph;
     void drawRenderGraph(RenderGraph& renderGraph);
-    void renderGraphDebugUi(RenderGraph& graph);
+    auto renderGraphDebugUi(RenderGraph& graph) -> std::function<void(RenderGraph&)>;
 
 }
 

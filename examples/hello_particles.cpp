@@ -329,7 +329,7 @@ void main() {
         ImGui::End();
 
         canta::drawRenderGraph(renderGraph);
-        canta::renderGraphDebugUi(renderGraph);
+        auto callback = canta::renderGraphDebugUi(renderGraph);
 
         ImGui::Render();
 
@@ -362,7 +362,7 @@ void main() {
         //     });
 
         // renderGraph.addClearPass("clear_image", imageAlias);
-        renderGraph.addClearPass("clear_image", imageIndex);
+        auto imageAlias = renderGraph.addClearPass("clear_image", imageIndex).aliasImageOutput(0).value();
 
         auto particleGroup = renderGraph.getGroup("particles");
 
@@ -385,7 +385,7 @@ void main() {
             .setGroup(particleGroup)
             .setPipeline(pipelineDraw)
             .addStorageBufferRead(particleBufferIndex, canta::PipelineStage::COMPUTE_SHADER)
-            // .addStorageImageRead(imageAlias, canta::PipelineStage::COMPUTE_SHADER)
+            .addStorageImageRead(imageAlias, canta::PipelineStage::COMPUTE_SHADER)
             .addStorageImageWrite(imageIndex, canta::PipelineStage::COMPUTE_SHADER)
             .pushConstants(particleBufferIndex, imageIndex, numParticles)
             .dispatchThreads(numParticles);
@@ -401,6 +401,8 @@ void main() {
             .setExecuteFunction([&imguiContext, &swapchain](canta::CommandBuffer& cmd, canta::RenderGraph& graph) {
             imguiContext.render(ImGui::GetDrawData(), cmd, swapchain->format());
         });
+
+        callback(renderGraph);
 
         renderGraph.setBackbuffer(swapchainIndex, canta::ImageLayout::PRESENT);
 //        renderGraph.setBackbuffer(swapchainIndex);

@@ -226,6 +226,11 @@ namespace canta {
         auto inputs() const -> std::span<const ResourceAccess> { return _inputs; }
         auto output() const -> std::span<const ResourceAccess> { return _outputs; }
 
+        auto isInput(ImageIndex index) const -> bool;
+        auto isInput(BufferIndex index) const -> bool;
+        auto isOutput(ImageIndex index) const -> bool;
+        auto isOutput(BufferIndex index) const -> bool;
+
         struct Barrier {
             u32 index = 0;
             i32 passIndex = 0;
@@ -401,6 +406,7 @@ namespace canta {
         auto images() const -> std::span<const ImageHandle> { return _images; }
 
         auto orderedPasses() -> std::span<RenderPass*> { return _orderedPasses; }
+        auto getPass(std::string_view name) const -> std::optional<RenderPass*>;
 
         auto findNextAccess(const i32 startIndex, const u32 resource) const -> std::tuple<i32, i32, ResourceAccess>;
         auto findCurrAccess(const RenderPass& pass, const u32 resource) const -> std::tuple<bool, ResourceAccess>;

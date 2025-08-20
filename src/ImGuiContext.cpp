@@ -489,9 +489,13 @@ void canta::drawRenderGraph(canta::RenderGraph& renderGraph) {
     ImGui::End();
 }
 
-void canta::renderGraphDebugUi(RenderGraph& graph) {
+auto canta::renderGraphDebugUi(RenderGraph& graph) -> std::function<void(RenderGraph&)> {
     static i32 selectedPass = -1;
+    static std::string_view selectedPassName = "";
     static i32 selectedResource = -1;
+    static ResourceAccess selectedResourceAccess = {};
+
+    std::function<void(RenderGraph&)> frameCallback = [](RenderGraph& renderGraph) {};
     if (ImGui::Begin("Render Graph Debug")) {
 
         {
@@ -501,8 +505,12 @@ void canta::renderGraphDebugUi(RenderGraph& graph) {
             for (u32 i = 0; i < graph.orderedPasses().size(); i++) {
                 auto& pass = graph.orderedPasses()[i];
 
-                if (ImGui::Selectable(pass->name().data(), selectedPass == i))
+                if (ImGui::Selectable(pass->name().data(), selectedPassName == pass->name())) {
                     selectedPass = i;
+                    selectedPassName = pass->name();
+                    selectedResource = -1;
+                    selectedResourceAccess = {};
+                }
             }
             ImGui::EndChild();
         }
@@ -515,14 +523,18 @@ void canta::renderGraphDebugUi(RenderGraph& graph) {
             ImGui::Text("Inputs:");
             for (auto& input : pass->inputs()) {
                 auto resource = graph.resources()[input.index].get();
-                if (ImGui::Selectable(std::format("\t{}_input", resource->name).c_str(), selectedResource == input.index))
+                if (ImGui::Selectable(std::format("\t{}_input", resource->name).c_str(), selectedResource == input.index)) {
                     selectedResource = input.index;
+                    selectedResourceAccess = input;
+                }
             }
             ImGui::Text("Outputs:");
             for (auto& output : pass->output()) {
                 auto resource = graph.resources()[output.index].get();
-                if (ImGui::Selectable(std::format("\t{}_output", resource->name).c_str(), selectedResource == output.index))
+                if (ImGui::Selectable(std::format("\t{}_output", resource->name).c_str(), selectedResource == output.index)) {
                     selectedResource = output.index;
+                    selectedResourceAccess = output;
+                }
             }
             ImGui::EndChild();
         }
@@ -535,6 +547,7 @@ void canta::renderGraphDebugUi(RenderGraph& graph) {
             if (resource->type == ResourceType::IMAGE) {
                 const auto& image = dynamic_cast<ImageResource*>(resource.get());
                 ImGui::Text("Image");
+                ImGui::Text("Id: %u, Index: %u", selectedResourceAccess.id, selectedResourceAccess.index);
                 ImGui::Text("Matches Backbuffer: %b", image->matchesBackbuffer);
                 ImGui::Text("Width: %u", image->width);
                 ImGui::Text("Height: %u", image->height);
@@ -543,9 +556,27 @@ void canta::renderGraphDebugUi(RenderGraph& graph) {
                 ImGui::Text("Format: %s", formatString(image->format));
                 ImGui::Text("Usage: %s", "Unimplemented");
                 ImGui::Text("Initial Layout: %s", "Unimplemented");
+
+                auto passName = selectedPassName;
+                auto access = selectedResourceAccess;
+                frameCallback = [passName, access] (RenderGraph& renderGraph) {
+                    const auto pass = renderGraph.getPass(passName);
+                    if (!pass) return;
+
+                    const ImageIndex index = { .id = access.id, .index = access.index };
+                    if (!(*pass)->isOutput(index)) return;
+
+                    const auto alias = (*pass)->aliasImageOutput(index).value();
+
+                    renderGraph.addPass({.name = "dummy", .type = canta::PassType::HOST})
+                        .addDummyRead(alias)
+                        .addDummyWrite(index)
+                        .setExecuteFunction([](auto& cmd, auto& graph) {});
+                };
             } else {
                 const auto& buffer = dynamic_cast<BufferResource*>(resource.get());
                 ImGui::Text("Buffer");
+                ImGui::Text("Id: %u, Index: %u", selectedResourceAccess.id, selectedResourceAccess.index);
                 ImGui::Text("Size: %u b", buffer->size);
                 ImGui::Text("Usage: %u", buffer->usage);
                 ImGui::Text("Memory Type: %u", buffer->memoryType);
@@ -556,4 +587,5 @@ void canta::renderGraphDebugUi(RenderGraph& graph) {
 
         ImGui::End();
     }
+    return frameCallback;
 }

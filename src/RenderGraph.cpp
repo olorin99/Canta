@@ -419,6 +419,34 @@ auto canta::RenderPass::aliasBufferOutputs() -> std::vector<BufferIndex> {
     return aliases;
 }
 
+auto canta::RenderPass::isInput(ImageIndex index) const -> bool {
+    for (auto& input : _inputs) {
+        if (input.id == index.id) return true;
+    }
+    return false;
+}
+
+auto canta::RenderPass::isInput(BufferIndex index) const -> bool {
+    for (auto& input : _inputs) {
+        if (input.id == index.id) return true;
+    }
+    return false;
+}
+
+auto canta::RenderPass::isOutput(ImageIndex index) const -> bool {
+    for (auto& output : _outputs) {
+        if (output.id == index.id) return true;
+    }
+    return false;
+}
+
+auto canta::RenderPass::isOutput(BufferIndex index) const -> bool {
+    for (auto& output : _outputs) {
+        if (output.id == index.id) return true;
+    }
+    return false;
+}
+
 auto canta::RenderGraph::create(const canta::RenderGraph::CreateInfo &info) -> RenderGraph {
     RenderGraph graph = {};
 
@@ -1513,6 +1541,14 @@ auto canta::RenderGraph::statistics() const -> Statistics {
         .commandBuffers = _commandPools[_device->flyingIndex()][0].index() + _commandPools[_device->flyingIndex()][1].index(),
     };
 }
+
+auto canta::RenderGraph::getPass(std::string_view name) const -> std::optional<RenderPass*> {
+    for (auto& pass : _orderedPasses) {
+        if (pass->name() == name) return pass;
+    }
+    return std::nullopt;
+}
+
 
 auto canta::RenderGraph::findNextAccess(const i32 startIndex, const u32 resource) const -> std::tuple<i32, i32, ResourceAccess> {
     for (i32 passIndex = startIndex + 1; passIndex < _orderedPasses.size(); passIndex++) {
