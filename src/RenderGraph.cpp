@@ -372,6 +372,34 @@ auto canta::RenderPass::aliasBufferOutput(i32 index) -> std::expected<BufferInde
     return alias;
 }
 
+auto canta::RenderPass::aliasImageOutput(ImageIndex index) -> std::expected<ImageIndex, i32> {
+    i32 outputIndex = -1;
+    for (i32  i = 0; const auto& output : _outputs) {
+        if (output.id == index.id) {
+            outputIndex = i;
+            break;
+        }
+        i++;
+    }
+    if (outputIndex == -1) return std::unexpected(-2);
+
+    return aliasImageOutput(outputIndex);
+}
+
+auto canta::RenderPass::aliasBufferOutput(BufferIndex index) -> std::expected<BufferIndex, i32> {
+    i32 outputIndex = -1;
+    for (i32  i = 0; const auto& output : _outputs) {
+        if (output.id == index.id) {
+            outputIndex = i;
+            break;
+        }
+        i++;
+    }
+    if (outputIndex == -1) return std::unexpected(-2);
+
+    return aliasBufferOutput(outputIndex);
+}
+
 
 auto canta::RenderPass::aliasImageOutputs() -> std::vector<ImageIndex> {
     std::vector<ImageIndex> aliases = {};
@@ -514,6 +542,69 @@ auto canta::RenderGraph::addBlitPass(const std::string_view name, const canta::I
     });
     return blitPass;
 }
+
+auto canta::RenderGraph::addClearPass(const std::string_view name, const BufferIndex index, u32 value, u32 offset, u32 size, const RenderGroup group) -> RenderPass & {
+    auto& clearPass = addPass({ .name = name, .type = PassType::TRANSFER, .group = group, .manualPipeline = true});
+    clearPass.addTransferWrite(index);
+    clearPass.setExecuteFunction([index, value, offset, size] (CommandBuffer& cmd, RenderGraph& graph) {
+        const auto buffer = graph.getBuffer(index);
+        cmd.clearBuffer(buffer, value, offset, size);
+    });
+    return clearPass;
+}
+
+auto canta::RenderGraph::addCopyPass(const std::string_view name, const BufferIndex src, const BufferIndex dst, u32 srcOffset, u32 dstOffset, u32 size, const RenderGroup group) -> RenderPass & {
+    auto& copyPass = addPass({.name = name, .type = PassType::TRANSFER, .group = group, .manualPipeline = true});
+    copyPass.addTransferRead(src);
+    copyPass.addTransferWrite(dst);
+    copyPass.setExecuteFunction([src, dst, srcOffset, dstOffset, size] (CommandBuffer& cmd, RenderGraph& graph) {
+        const auto srcBuffer = graph.getBuffer(src);
+        const auto dstBuffer = graph.getBuffer(dst);
+        cmd.copyBuffer({
+            .src = srcBuffer,
+            .dst = dstBuffer,
+            .srcOffset = srcOffset,
+            .dstOffset = dstOffset,
+            .size = size,
+        });
+    });
+    return copyPass;
+}
+
+auto canta::RenderGraph::addCopyPass(const std::string_view name, const BufferIndex src, const ImageIndex dst, const RenderGroup group) -> RenderPass & {
+    auto& copyPass = addPass({.name = name, .type = PassType::TRANSFER, .group = group, .manualPipeline = true});
+    copyPass.addTransferRead(src);
+    copyPass.addTransferWrite(dst);
+    copyPass.setExecuteFunction([src, dst] (CommandBuffer& cmd, RenderGraph& graph) {
+        const auto srcBuffer = graph.getBuffer(src);
+        const auto dstImage = graph.getImage(dst);
+        cmd.copyBufferToImage({
+            .buffer = srcBuffer,
+            .image = dstImage,
+            .dstLayout = ImageLayout::TRANSFER_DST,
+        });
+    });
+    return copyPass;
+}
+
+auto canta::RenderGraph::addCopyPass(const std::string_view name, const ImageIndex src, const BufferIndex dst, const RenderGroup group) -> RenderPass & {
+    auto& copyPass = addPass({.name = name, .type = PassType::TRANSFER, .group = group, .manualPipeline = true});
+    copyPass.addTransferRead(src);
+    copyPass.addTransferWrite(dst);
+    copyPass.setExecuteFunction([src, dst] (CommandBuffer& cmd, RenderGraph& graph) {
+        const auto srcImage = graph.getImage(src);
+        const auto dstBuffer = graph.getBuffer(dst);
+        cmd.copyImageToBuffer({
+            .buffer = dstBuffer,
+            .image = srcImage,
+            .dstLayout = ImageLayout::TRANSFER_SRC,
+        });
+    });
+    return copyPass;
+}
+
+
+
 
 auto canta::RenderGraph::getGroup(const std::string_view name, const std::array<f32, 4>& colour) -> RenderGroup {
     const auto it = _renderGroups.find(name);

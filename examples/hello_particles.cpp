@@ -366,12 +366,20 @@ void main() {
 
         auto particleGroup = renderGraph.getGroup("particles");
 
-        auto& particlesMovePass = renderGraph.addPass({.name = "particles_move"})
+        // auto& particlesMovePass = renderGraph.addPass({.name = "particles_move"})
+        auto particlesMovePassOutputs = renderGraph.addPass({.name = "particles_move"})
             .setGroup(particleGroup)
             .setPipeline(pipeline)
             .addStorageBufferWrite(particleBufferIndex, canta::PipelineStage::COMPUTE_SHADER)
             .pushConstants(particleBufferIndex, numParticles, static_cast<f32>(dt))
-            .dispatchThreads(numParticles);
+            .dispatchThreads(numParticles).aliasBufferOutput(particleBufferIndex).value();
+
+        renderGraph.addPass({.name = "copy", .type = canta::PassType::HOST})
+            .addDummyRead(particlesMovePassOutputs)
+            .addDummyWrite(particleBufferIndex)
+            .setExecuteFunction([](auto& cmd, auto& graph) {
+               // std::printf("test\n");
+            });
 
         auto& particlesDrawPass = renderGraph.addPass({.name = "particles_draw"})
             .setGroup(particleGroup)

@@ -211,6 +211,9 @@ namespace canta {
         auto aliasImageOutput(i32 index) -> std::expected<ImageIndex, i32>;
         auto aliasBufferOutput(i32 index) -> std::expected<BufferIndex, i32>;
 
+        auto aliasImageOutput(ImageIndex index) -> std::expected<ImageIndex, i32>;
+        auto aliasBufferOutput(BufferIndex index) -> std::expected<BufferIndex, i32>;
+
         auto aliasImageOutputs() -> std::vector<ImageIndex>;
         auto aliasBufferOutputs() -> std::vector<BufferIndex>;
 
@@ -329,6 +332,10 @@ namespace canta {
         auto addPass(RenderPass&& pass) -> RenderPass&;
         auto addClearPass(const std::string_view name, const ImageIndex index, const ClearValue& value = std::to_array({ 0.f, 0.f, 0.f, 1.f }), const RenderGroup group = {}) -> RenderPass&;
         auto addBlitPass(const std::string_view name, const ImageIndex src, const ImageIndex dst, const Filter filter = Filter::LINEAR, const RenderGroup group = {}) -> RenderPass&;
+        auto addClearPass(const std::string_view name, const BufferIndex index, u32 value, u32 offset, u32 size, const RenderGroup group = {}) -> RenderPass&;
+        auto addCopyPass(const std::string_view name, const BufferIndex src, const BufferIndex dst, u32 srcOffset = 0, u32 dstOffset = 0, u32 size = 0, const RenderGroup group = {}) -> RenderPass&;
+        auto addCopyPass(const std::string_view name, const BufferIndex src, const ImageIndex dst, const RenderGroup group = {}) -> RenderPass&;
+        auto addCopyPass(const std::string_view name, const ImageIndex src, const BufferIndex dst, const RenderGroup group = {}) -> RenderPass&;
 
         auto getGroup(const std::string_view name, const std::array<f32, 4>& colour = { 0, 1, 0, 1 }) -> RenderGroup;
         auto getGroupName(const RenderGroup) -> std::string;
