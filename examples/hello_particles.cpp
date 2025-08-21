@@ -10,6 +10,8 @@
 #include <Canta/ImGuiContext.h>
 #include <Canta/UploadBuffer.h>
 
+#include "Canta/RenderGraphDebugger.h"
+
 int main() {
 
     std::printf("%s", canta::formatString(canta::Format::RGBA8_UNORM));
@@ -159,8 +161,12 @@ void main() {
 
     auto renderGraph = canta::RenderGraph::create({
         .device = device.get(),
-        .multiQueue = true,
+        .multiQueue = false,
         .name = "Renderer"
+    });
+
+    auto renderGraphDebugger = canta::RenderGraphDebugger::create({
+        .renderGraph = &renderGraph,
     });
 
     f64 dt = 1.f / 60;
@@ -329,7 +335,8 @@ void main() {
         ImGui::End();
 
         canta::drawRenderGraph(renderGraph);
-        auto callback = canta::renderGraphDebugUi(renderGraph);
+        renderGraphDebugger.render();
+        // auto callback = canta::renderGraphDebugUi(renderGraph);
 
         ImGui::Render();
 
@@ -374,21 +381,25 @@ void main() {
             .pushConstants(particleBufferIndex, numParticles, static_cast<f32>(dt))
             .dispatchThreads(numParticles).aliasBufferOutput(particleBufferIndex).value();
 
-        renderGraph.addPass({.name = "copy", .type = canta::PassType::HOST})
-            .addDummyRead(particlesMovePassOutputs)
-            .addDummyWrite(particleBufferIndex)
-            .setExecuteFunction([](auto& cmd, auto& graph) {
+        // renderGraph.addPass({.name = "copy", .type = canta::PassType::HOST})
+            // .addDummyRead(particlesMovePassOutputs)
+            // .addDummyWrite(particleBufferIndex)
+            // .setExecuteFunction([](auto& cmd, auto& graph) {
                // std::printf("test\n");
-            });
+            // });
 
         auto& particlesDrawPass = renderGraph.addPass({.name = "particles_draw"})
             .setGroup(particleGroup)
             .setPipeline(pipelineDraw)
-            .addStorageBufferRead(particleBufferIndex, canta::PipelineStage::COMPUTE_SHADER)
+            // .addStorageBufferRead(particleBufferIndex, canta::PipelineStage::COMPUTE_SHADER)
+            .addStorageBufferRead(particlesMovePassOutputs, canta::PipelineStage::COMPUTE_SHADER)
             .addStorageImageRead(imageAlias, canta::PipelineStage::COMPUTE_SHADER)
             .addStorageImageWrite(imageIndex, canta::PipelineStage::COMPUTE_SHADER)
             .pushConstants(particleBufferIndex, imageIndex, numParticles)
             .dispatchThreads(numParticles);
+
+        renderGraphDebugger.setBasePass(particlesDrawPass);
+        renderGraphDebugger.setBaseResource(imageIndex);
 
         auto [uiSwapchainIndex] = renderGraph.addBlitPass("blit_to_swapchain", imageIndex, swapchainIndex).aliasImageOutputs<1>();
 
@@ -402,7 +413,9 @@ void main() {
             imguiContext.render(ImGui::GetDrawData(), cmd, swapchain->format());
         });
 
-        callback(renderGraph);
+        // callback(renderGraph);
+
+        renderGraphDebugger.debug();
 
         renderGraph.setBackbuffer(swapchainIndex, canta::ImageLayout::PRESENT);
 //        renderGraph.setBackbuffer(swapchainIndex);

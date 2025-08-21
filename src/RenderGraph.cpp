@@ -191,6 +191,10 @@ auto canta::RenderPass::addDummyRead(const BufferIndex index) -> RenderPass & {
     return *this;
 }
 
+bool isDummy(const canta::ResourceAccess &access) {
+    return access.access == canta::Access::NONE && access.stage == canta::PipelineStage::NONE;
+}
+
 
 auto canta::RenderPass::writes(const canta::ImageIndex index, const canta::Access access, const canta::PipelineStage stage, const canta::ImageLayout layout) -> Resource * {
     assert(index.id >= 0);
@@ -1245,7 +1249,10 @@ void canta::RenderGraph::buildBarriers() {
         const auto& pass = _orderedPasses[passIndex];
 
         for (i32 outputIndex = 0; outputIndex < pass->_outputs.size(); outputIndex++) {
-            const auto& currentAccess = pass->_outputs[outputIndex];
+            // const auto& currentAccess = pass->_outputs[outputIndex];
+            const auto& [currentState, currentAccess] = findCurrAccess(*pass, pass->_outputs[outputIndex].index);
+            if (isDummy(currentAccess)) continue;
+            // const auto& [currentState, currentAccess] = findCurrAccess(*pass, outputIndex);
             const auto [accessPassIndex, accessIndex, nextAccess] = findNextAccess(passIndex, currentAccess.index);
             if (accessPassIndex < 0 || nextAccess.access == Access::NONE)
                 continue;
@@ -1323,8 +1330,10 @@ void canta::RenderGraph::buildBarriers() {
             }
         }
         for (i32 inputIndex = 0; inputIndex < pass->_inputs.size(); inputIndex++) {
-            const auto& currentAccess = pass->_inputs[inputIndex];
-            if (writesResource(*pass, currentAccess.index))
+            // const auto& currentAccess = pass->_inputs[inputIndex];
+            const auto& [currentState, currentAccess] = findCurrAccess(*pass, pass->_inputs[inputIndex].index);
+            if (isDummy(currentAccess)) continue;
+            if (writesResource(*pass, currentAccess.index) || isDummy(currentAccess))
                 continue;
 
             const auto [accessPassIndex, accessIndex, nextAccess] = findNextAccess(passIndex, currentAccess.index);
@@ -1554,13 +1563,46 @@ auto canta::RenderGraph::findNextAccess(const i32 startIndex, const u32 resource
     for (i32 passIndex = startIndex + 1; passIndex < _orderedPasses.size(); passIndex++) {
         const auto& pass = _orderedPasses[passIndex];
         for (i32 outputIndex = 0; outputIndex < pass->_outputs.size(); outputIndex++) {
-            if (pass->_outputs[outputIndex].index == resource)
-                return { passIndex, outputIndex, pass->_outputs[outputIndex] };
+            if (pass->_outputs[outputIndex].index == resource) {
+                if (!isDummy(pass->_outputs[outputIndex]))
+                    return { passIndex, outputIndex, pass->_outputs[outputIndex] };
+                break;
+            }
         }
         for (i32 inputIndex = 0; inputIndex < pass->_inputs.size(); inputIndex++) {
-            if (pass->_inputs[inputIndex].index == resource)
-                return { passIndex, inputIndex, pass->_inputs[inputIndex] };
+            if (pass->_inputs[inputIndex].index == resource) {
+                if (!isDummy(pass->_inputs[inputIndex]))
+                    return { passIndex, inputIndex, pass->_inputs[inputIndex] };
+                break;
+            }
         }
+
+        // i32 outputIndex = -1;
+        // ResourceAccess outputAccess = {};
+        // for (i32 i = 0; i < pass->_outputs.size(); i++) {
+        //     if (pass->_outputs[i].index == resource) {
+        //         outputIndex = i;
+        //         outputAccess = pass->_outputs[i];
+        //         break;
+        //     }
+        //     // return { passIndex, outputIndex, pass->_outputs[outputIndex] };
+        // }
+        // i32 inputIndex = -1;
+        // ResourceAccess inputAccess = {};
+        // for (i32 i = 0; i < pass->_inputs.size(); i++) {
+        //     if (pass->_inputs[i].index == resource) {
+        //         inputIndex = i;
+        //         inputAccess = pass->_inputs[i];
+        //         break;
+        //     }
+        //     // return { passIndex, inputIndex, pass->_inputs[inputIndex] };
+        // }
+        //
+        // if (inputIndex > -1 || outputIndex > -1) {
+        //     if (isDummy(outputAccess) && !isDummy(inputAccess)) return { passIndex, inputIndex, inputAccess };
+        //     return { passIndex, outputIndex, outputAccess };
+        // }
+
     }
     return { -1, -1, {} };
 };

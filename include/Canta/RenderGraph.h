@@ -83,7 +83,7 @@ namespace canta {
     };
 
     struct ResourceAccess {
-        i32 id = 0;
+        i32 id = -1;
         u32 index = 0;
         Access access = Access::NONE;
         PipelineStage stage = PipelineStage::NONE;

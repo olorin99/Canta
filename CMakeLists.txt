@@ -103,6 +103,8 @@ add_library(Canta
         include/Canta/UploadBuffer.h
         include/Canta/Camera.h
         src/Camera.cpp
+        src/RenderGraphDebugger.cpp
+        include/Canta/RenderGraphDebugger.h
 )
 
 add_subdirectory(third_party)
