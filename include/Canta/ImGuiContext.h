@@ -55,10 +55,6 @@ namespace canta {
 
     };
 
-    class RenderGraph;
-    void drawRenderGraph(RenderGraph& renderGraph);
-    auto renderGraphDebugUi(RenderGraph& graph) -> std::function<void(RenderGraph&)>;
-
 }
 
 #endif //CANTA_IMGUICONTEXT_H

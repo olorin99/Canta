@@ -334,9 +334,8 @@ void main() {
         }
         ImGui::End();
 
-        canta::drawRenderGraph(renderGraph);
         renderGraphDebugger.render();
-        // auto callback = canta::renderGraphDebugUi(renderGraph);
+        renderGraphDebugger.drawRenderGraph();
 
         ImGui::Render();
 
@@ -412,8 +411,6 @@ void main() {
             .setExecuteFunction([&imguiContext, &swapchain](canta::CommandBuffer& cmd, canta::RenderGraph& graph) {
             imguiContext.render(ImGui::GetDrawData(), cmd, swapchain->format());
         });
-
-        // callback(renderGraph);
 
         renderGraphDebugger.debug();
 

@@ -1559,9 +1559,18 @@ auto canta::RenderGraph::getPass(std::string_view name) const -> std::optional<R
 }
 
 
-auto canta::RenderGraph::findNextAccess(const i32 startIndex, const u32 resource) const -> std::tuple<i32, i32, ResourceAccess> {
+auto canta::RenderGraph::findNextAccess(const i32 startIndex, const u32 resource, bool prioritiseInputs) const -> std::tuple<i32, i32, ResourceAccess> {
     for (i32 passIndex = startIndex + 1; passIndex < _orderedPasses.size(); passIndex++) {
         const auto& pass = _orderedPasses[passIndex];
+        if (prioritiseInputs) {
+            for (i32 inputIndex = 0; inputIndex < pass->_inputs.size(); inputIndex++) {
+                if (pass->_inputs[inputIndex].index == resource) {
+                    if (!isDummy(pass->_inputs[inputIndex]))
+                        return { passIndex, inputIndex, pass->_inputs[inputIndex] };
+                    break;
+                }
+            }
+        }
         for (i32 outputIndex = 0; outputIndex < pass->_outputs.size(); outputIndex++) {
             if (pass->_outputs[outputIndex].index == resource) {
                 if (!isDummy(pass->_outputs[outputIndex]))
@@ -1569,40 +1578,15 @@ auto canta::RenderGraph::findNextAccess(const i32 startIndex, const u32 resource
                 break;
             }
         }
-        for (i32 inputIndex = 0; inputIndex < pass->_inputs.size(); inputIndex++) {
-            if (pass->_inputs[inputIndex].index == resource) {
-                if (!isDummy(pass->_inputs[inputIndex]))
-                    return { passIndex, inputIndex, pass->_inputs[inputIndex] };
-                break;
+        if (!prioritiseInputs) {
+            for (i32 inputIndex = 0; inputIndex < pass->_inputs.size(); inputIndex++) {
+                if (pass->_inputs[inputIndex].index == resource) {
+                    if (!isDummy(pass->_inputs[inputIndex]))
+                        return { passIndex, inputIndex, pass->_inputs[inputIndex] };
+                    break;
+                }
             }
         }
-
-        // i32 outputIndex = -1;
-        // ResourceAccess outputAccess = {};
-        // for (i32 i = 0; i < pass->_outputs.size(); i++) {
-        //     if (pass->_outputs[i].index == resource) {
-        //         outputIndex = i;
-        //         outputAccess = pass->_outputs[i];
-        //         break;
-        //     }
-        //     // return { passIndex, outputIndex, pass->_outputs[outputIndex] };
-        // }
-        // i32 inputIndex = -1;
-        // ResourceAccess inputAccess = {};
-        // for (i32 i = 0; i < pass->_inputs.size(); i++) {
-        //     if (pass->_inputs[i].index == resource) {
-        //         inputIndex = i;
-        //         inputAccess = pass->_inputs[i];
-        //         break;
-        //     }
-        //     // return { passIndex, inputIndex, pass->_inputs[inputIndex] };
-        // }
-        //
-        // if (inputIndex > -1 || outputIndex > -1) {
-        //     if (isDummy(outputAccess) && !isDummy(inputAccess)) return { passIndex, inputIndex, inputAccess };
-        //     return { passIndex, outputIndex, outputAccess };
-        // }
-
     }
     return { -1, -1, {} };
 };

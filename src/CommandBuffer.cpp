@@ -482,7 +482,6 @@ void canta::CommandBuffer::barrier(ImageBarrier barrier) {
 }
 
 void canta::CommandBuffer::barrier(canta::BufferBarrier barrier) {
-    std::printf("%u", barrier.buffer.index());
     VkBufferMemoryBarrier2 bufferBarrier = {};
     bufferBarrier.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2;
     bufferBarrier.buffer = barrier.buffer->buffer();

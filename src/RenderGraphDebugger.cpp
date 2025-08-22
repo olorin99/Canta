@@ -1,10 +1,114 @@
 #include <Canta/RenderGraphDebugger.h>
 #include <imgui/imgui.h>
 
+#include "imnodes.h"
+
 auto canta::RenderGraphDebugger::create(const CreateInfo &info) -> RenderGraphDebugger {
     RenderGraphDebugger debugger;
     debugger.setRenderGraph(info.renderGraph);
     return debugger;
+}
+
+auto queueToColour(const canta::QueueType queue) -> ImColor {
+    switch (queue) {
+        case canta::QueueType::NONE:
+            return IM_COL32(255, 0, 0, 255);
+        case canta::QueueType::GRAPHICS:
+            return IM_COL32(0, 255, 0, 255);
+        case canta::QueueType::COMPUTE:
+            return IM_COL32(0, 0, 255, 255);
+        case canta::QueueType::TRANSFER:
+            return IM_COL32(127, 127, 0, 255);
+        default:
+            return IM_COL32(255, 255, 255, 255);
+    }
+}
+
+auto groupToColour(canta::RenderGroup group) -> ImColor {
+    f32 hue = std::abs(group.id) * 1.71f;
+    f32 tmp;
+    hue = std::modf(hue, &tmp);
+    f32 r = std::abs(hue * 6 - 3) - 1;
+    f32 g = 2 - std::abs(hue * 6 - 2);
+    f32 b = 2 - std::abs(hue * 6 - 4);
+    return IM_COL32(
+        std::clamp(r * 255, 0.0f, 255.0f),
+        std::clamp(g * 255, 0.0f, 255.0f),
+        std::clamp(b * 255, 0.0f, 255.0f),
+        255
+    );
+}
+
+void canta::RenderGraphDebugger::drawRenderGraph() {
+    static i32 frame = 0;
+    if (ImGui::Begin("Render Graph", nullptr, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse)) {
+        if (ImGui::Button("Reload Graph")) {
+            frame = 0;
+        }
+
+        ImNodes::BeginNodeEditor();
+
+        std::vector<std::pair<i32, i32>> links = {};
+
+        ImVec2 pos = ImGui::GetCursorScreenPos();
+        ImVec2 originalPos = pos;
+
+        for (i32 i = 0; const auto& pass : _renderGraph->orderedPasses()) {
+            const i32 passId = 100 * i;
+
+            if (frame < 10) {
+                ImNodes::SetNodeScreenSpacePos(passId, pos);
+                ImNodes::SnapNodeToGrid(passId);
+            }
+
+            ImNodes::BeginNode(passId);
+            ImNodes::BeginNodeTitleBar();
+            ImGui::Text("%s: %d, %d", pass->name().data(), i, passId);
+            ImNodes::EndNodeTitleBar();
+
+            pos.x += ImGui::CalcTextSize(std::format("{}", pass->name().data()).c_str()).x * 1.5;
+            pos.y = (i % 2 == 0) ? originalPos.y : 100;
+
+
+            ImNodes::PushColorStyle(ImNodesCol_TitleBar, queueToColour(pass->getQueue()));
+            ImNodes::PushColorStyle(ImNodesCol_NodeBackground, groupToColour(pass->getGroup()));
+
+            for (auto& input : pass->inputs()) {
+                const auto resource = _renderGraph->resources()[input.index].get();
+
+                ImNodes::BeginInputAttribute(passId + input.id);
+                ImGui::Text("%s: %d, %d", resource->name.data(), input.id, passId + input.id);
+                ImNodes::EndInputAttribute();
+            }
+
+            for (auto& output : pass->output()) {
+                const auto resource = _renderGraph->resources()[output.index].get();
+                ImNodes::BeginOutputAttribute(passId + output.id);
+                ImGui::Text("%s: %d, %d", resource->name.data(), output.id, passId + output.id);
+                ImNodes::EndOutputAttribute();
+
+                auto [accessPassIndex, accessIndex, nextAccess] = _renderGraph->findNextAccess(i, output.index, true);
+                if (accessPassIndex < 0)
+                    continue;
+                links.push_back({ passId + output.id, accessPassIndex * 100 + nextAccess.id });
+            }
+
+            ImNodes::EndNode();
+            ImNodes::PopColorStyle();
+            ImNodes::PopColorStyle();
+            i++;
+        }
+
+        for (i32 i = 0; i < links.size(); i++) {
+            ImNodes::Link(i, links[i].first, links[i].second);
+        }
+
+
+        ImNodes::MiniMap();
+        ImNodes::EndNodeEditor();
+        frame++;
+    }
+    ImGui::End();
 }
 
 

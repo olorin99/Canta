@@ -16,6 +16,8 @@ namespace canta {
 
         void render();
 
+        void drawRenderGraph();
+
         void debug();
 
         void setRenderGraph(RenderGraph *renderGraph) { _renderGraph = renderGraph; }

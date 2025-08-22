@@ -408,7 +408,7 @@ namespace canta {
         auto orderedPasses() -> std::span<RenderPass*> { return _orderedPasses; }
         auto getPass(std::string_view name) const -> std::optional<RenderPass*>;
 
-        auto findNextAccess(const i32 startIndex, const u32 resource) const -> std::tuple<i32, i32, ResourceAccess>;
+        auto findNextAccess(const i32 startIndex, const u32 resource, bool prioritiseInputs = false) const -> std::tuple<i32, i32, ResourceAccess>;
         auto findCurrAccess(const RenderPass& pass, const u32 resource) const -> std::tuple<bool, ResourceAccess>;
         auto findPrevAccess(const i32 startIndex, const u32 resource) const -> std::tuple<i32, i32, ResourceAccess>;
 
