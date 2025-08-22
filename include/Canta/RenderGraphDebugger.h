@@ -46,7 +46,8 @@ namespace canta {
 
         bool _copyResource = false;
 
-        ImageIndex _transientImage = {};
+        ende::math::Vec<2, i32> _viewportSize = {};
+        ende::math::Vec<2, i32> _viewportOffset = {};
     };
 
 }

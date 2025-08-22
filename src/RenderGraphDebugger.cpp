@@ -197,7 +197,15 @@ void canta::RenderGraphDebugger::render() {
                 ImGui::Text("Usage: %s", "Unimplemented");
                 ImGui::Text("Initial Layout: %s", "Unimplemented");
 
-                _copyResource = true;
+                ImGui::SameLine();
+
+                ImGui::Checkbox("Copy", &_copyResource);
+                ImGui::Text("Bounds");
+
+                ImGui::SliderInt("Offset X", &_viewportOffset[0], 0, 1920);
+                ImGui::SliderInt("Offset Y", &_viewportOffset[1], 0, 1080);
+                ImGui::SliderInt("Width X", &_viewportSize[0], 0, 1920);
+                ImGui::SliderInt("Height Y", &_viewportSize[1], 0, 1080);
 
             } else {
                 const auto& buffer = dynamic_cast<BufferResource*>(resource);
@@ -217,6 +225,8 @@ void canta::RenderGraphDebugger::render() {
 }
 
 void canta::RenderGraphDebugger::debug() {
+    if (!_copyResource) return;
+
     const auto pass = _renderGraph->getPass(_selectedPass);
     if (!pass) return;
 
@@ -261,32 +271,36 @@ void canta::RenderGraphDebugger::debug() {
 
     const auto baseAlias = (*basePass)->aliasImageOutput(baseResource).value();
 
+    auto topLeft = _viewportOffset;
+    auto bottomRight = topLeft + _viewportSize;
+
     _renderGraph->addPass({.name = "composite", .type = canta::PassType::TRANSFER, .manualPipeline = true})
         .addDummyRead(baseAlias)
         .addTransferRead(transientImage)
         .addTransferWrite(baseResource)
-        .setExecuteFunction([transientImage, baseResource, resource] (auto& cmd, auto& graph) {
+        .setExecuteFunction([transientImage, baseResource, topLeft, bottomRight] (auto& cmd, auto& graph) {
             auto src = graph.getImage(transientImage);
             auto dst = graph.getImage(baseResource);
 
-            auto width = resource->width;
-            auto height = resource->height;
+            auto width = topLeft.x();
+            auto height = topLeft.y();
+            auto x = bottomRight.x();
+            auto y = bottomRight.y();
 
             auto blitInfo = CommandBuffer::BlitInfo{
                 .src = src,
                 .srcSize = {
-                    static_cast<i32>(width / 2), static_cast<i32>(height / 2), 1
+                    width, height, 1
                 },
                 .srcOffset = {
-                    static_cast<i32>(width / 2), 0, 0
+                    x, y, 0
                 },
                 .dst = dst,
                 .dstSize = {
-                    static_cast<i32>(width / 2), static_cast<i32>(height / 2), 1
+                    width, height, 1
                 },
                 .dstOffset = {
-                    // static_cast<i32>(width / 2), static_cast<i32>(height / 2), 0
-                    static_cast<i32>(0), static_cast<i32>(0), 0
+                    x, y, 0
                 },
                 .srcLayout = ImageLayout::TRANSFER_SRC,
                 .dstLayout = ImageLayout::TRANSFER_DST,
