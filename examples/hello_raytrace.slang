@@ -9,7 +9,7 @@ struct Ray {
     }
 }
 
-struct Camera {
+struct RayCamera {
 
     func getRay(float u, float v) -> Ray {
         return { _origin, _lowerLeft + (_horizonal * u) + (_vertical * v) - _origin };
@@ -85,7 +85,7 @@ void traceMain(
     uniform Sphere* spheres,
     uniform RWImage2D<float4> backbuffer,
     uniform uint sphereCount,
-    uniform Camera camera,
+    uniform RayCamera camera,
     uniform uint imageWidth,
     uniform uint imageHeight
 ) {
