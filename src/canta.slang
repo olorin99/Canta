@@ -235,3 +235,31 @@ struct Camera {
     float far;
     Frustum frustum;
 };
+
+float rand(float seed) {
+    float noise = fract(sin(dot(float2(seed), float2(12.9898,78.233)*2.0)) * 43758.5453);
+    return abs(noise.x) * 0.5;
+}
+
+float rand(float2 uv) {
+    float2 noise = (fract(float2(sin(dot(uv, float2(12.9898,78.233)*2.0)) * 43758.5453)));
+    return abs(noise.x + noise.y) * 0.5;
+}
+
+float2 rand2(float2 uv) {
+    float noiseX = (fract(sin(dot(uv, float2(12.9898,78.233) * 2.0)) * 43758.5453));
+    float noiseY = sqrt(1 - noiseX * noiseX);
+    return float2(noiseX, noiseY);
+}
+
+float3 rand3(uint3 v) {
+	v = v * 1664525u + 1013904223u;
+	v.x += v.y * v.z;
+	v.y += v.z * v.x;
+	v.z += v.x * v.y;
+	v ^= v >> 16u;
+	v.x += v.y * v.z;
+	v.y += v.z * v.x;
+	v.z += v.x * v.y;
+	return float3(v) * (1.0 / float(0xffffffffu));
+}
