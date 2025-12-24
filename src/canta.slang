@@ -180,43 +180,6 @@ public struct RWImage3D<T : ITexelElement> {
     }
 }
 
-// matrix and vec multiplication overload
-public float2 operator*(float2x2 matrix, float2 vec) {
-    return mul(matrix, vec);
-}
-
-public float2 operator*(float2 vec, float2x2 matrix) {
-    return mul(vec, matrix);
-}
-
-public float2x2 operator*(float2x2 lhs, float2x2 rhs) {
-    return mul(lhs, rhs);
-}
-
-public float3 operator*(float3x3 matrix, float3 vec) {
-    return mul(matrix, vec);
-}
-
-public float3 operator*(float3 vec, float3x3 matrix) {
-    return mul(vec, matrix);
-}
-
-public float3x3 operator*(float3x3 lhs, float3x3 rhs) {
-    return mul(lhs, rhs);
-}
-
-public float4 operator*(float4x4 matrix, float4 vec) {
-    return mul(matrix, vec);
-}
-
-public float4 operator*(float4 vec, float4x4 matrix) {
-    return mul(vec, matrix);
-}
-
-public float4x4 operator*(float4x4 lhs, float4x4 rhs) {
-    return mul(lhs, rhs);
-}
-
 public struct Frustum {
     private float4 planes[6];
     private float4 corners[8];
@@ -267,4 +230,41 @@ public float3 rand3(uint3 v) {
 	return float3(v) * (1.0 / float(0xffffffffu));
 }
 
+}
+
+// matrix and vec multiplication overload
+public float2 operator*(float2x2 matrix, float2 vec) {
+    return mul(matrix, vec);
+}
+
+public float2 operator*(float2 vec, float2x2 matrix) {
+    return mul(vec, matrix);
+}
+
+public float2x2 operator*(float2x2 lhs, float2x2 rhs) {
+    return mul(lhs, rhs);
+}
+
+public float3 operator*(float3x3 matrix, float3 vec) {
+    return mul(matrix, vec);
+}
+
+public float3 operator*(float3 vec, float3x3 matrix) {
+    return mul(vec, matrix);
+}
+
+public float3x3 operator*(float3x3 lhs, float3x3 rhs) {
+    return mul(lhs, rhs);
+}
+
+public float4 operator*(float4x4 matrix, float4 vec) {
+    return mul(matrix, vec);
+}
+
+public float4 operator*(float4 vec, float4x4 matrix) {
+    return mul(vec, matrix);
+}
+
+public float4x4 operator*(float4x4 lhs, float4x4 rhs) {
+    return mul(lhs, rhs);
 }
