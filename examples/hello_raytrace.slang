@@ -83,7 +83,7 @@ bool checkHit(Sphere* spheres, uint count, Ray ray, float tMin, float tMax, inou
 void traceMain(
     uint3 threadId : SV_DispatchThreadID,
     uniform Sphere* spheres,
-    uniform RWImage2D<float4> backbuffer,
+    uniform canta.RWImage2D<float4> backbuffer,
     uniform uint sphereCount,
     uniform RayCamera camera,
     uniform uint imageWidth,

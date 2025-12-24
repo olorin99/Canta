@@ -95,7 +95,7 @@ void main() {
             }).value()
         },
         .colourFormats = std::vector{ colourFormat }
-    });
+    }).value();
 
     auto sampler = device->createSampler({});
 
@@ -138,11 +138,11 @@ void main() {
 
         auto waits = std::to_array({
             { device->frameSemaphore(), device->framePrevValue() },
-            swapchain->acquireSemaphore()->getPair()
+            canta::SemaphorePair{swapchain->acquireSemaphore()}
         });
         auto signals = std::to_array({
-            device->frameSemaphore()->getPair(),
-            swapchain->presentSemaphore()->getPair()
+            canta::SemaphorePair{device->frameSemaphore()},
+            canta::SemaphorePair{swapchain->presentSemaphore()}
         });
 
         auto flyingIndex = device->flyingIndex();
@@ -193,7 +193,7 @@ void main() {
 
         commandBuffer.end();
 
-        device->queue(canta::QueueType::GRAPHICS).submit({ &commandBuffer, 1 }, waits, signals);
+        device->queue(canta::QueueType::GRAPHICS)->submit({ &commandBuffer, 1 }, waits, signals);
 
         swapchain->present();
 

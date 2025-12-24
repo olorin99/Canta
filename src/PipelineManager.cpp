@@ -626,6 +626,41 @@ auto canta::PipelineManager::compileSlang(std::string_view name, std::string_vie
 #ifndef CANTA_USE_SLANG
     return std::unexpected("Attempted to compile slang shader without linking slang");
 #else
+
+    auto session = TRY(createSlangSession());
+
+    Slang::ComPtr<slang::IModule> slangModule = {};
+    {
+        Slang::ComPtr<slang::IBlob> diagnostics = {};
+        slangModule = session->loadModuleFromSourceString(name.data(), name.data(), slang.data(), diagnostics.writeRef());
+        DIAGNOSE(diagnostics);
+    }
+
+    Slang::ComPtr<slang::IComponentType> linkedProgram;
+    {
+        Slang::ComPtr<slang::IBlob> diagnostics;
+        SlangResult result = slangModule->link(linkedProgram.writeRef(), diagnostics.writeRef());
+        DIAGNOSE(diagnostics);
+    }
+
+    Slang::ComPtr<slang::IBlob> kernelBlob;
+    {
+        Slang::ComPtr<slang::IBlob> diagnostics;
+        SlangResult result = linkedProgram->getTargetCode(0, kernelBlob.writeRef(), diagnostics.writeRef());
+        DIAGNOSE(diagnostics);
+    }
+
+    std::vector<u32> spirv = {};
+    spirv.insert(spirv.begin(), (u32*)kernelBlob->getBufferPointer(), (u32*)((u8*)kernelBlob->getBufferPointer() + kernelBlob->getBufferSize()));
+    return spirv;
+#endif
+}
+
+auto canta::PipelineManager::createSlangSession(std::span<const Macro> macros) -> std::expected<Slang::ComPtr<slang::ISession>, std::string> {
+    if (macros.empty() && _slangMainSession) {
+        return _slangMainSession;
+    }
+
     slang::SessionDesc sessionDesc = {};
     const auto rootPath = _rootPath.string();
     const char* searchPaths[] = { rootPath.c_str() };
@@ -663,6 +698,7 @@ auto canta::PipelineManager::compileSlang(std::string_view name, std::string_vie
     if (0 != res)
         return std::unexpected("Could not create slang session");
 
+    // load canta module by default
     Slang::ComPtr<slang::IModule> cantaModule = {};
     {
         Slang::ComPtr<slang::IBlob> diagnostics = {};
@@ -675,48 +711,11 @@ auto canta::PipelineManager::compileSlang(std::string_view name, std::string_vie
         }
     }
 
-    Slang::ComPtr<slang::IModule> slangModule = {};
-    {
-        Slang::ComPtr<slang::IBlob> diagnostics = {};
-        slangModule = session->loadModuleFromSourceString(name.data(), name.data(), slang.data(), diagnostics.writeRef());
-        DIAGNOSE(diagnostics);
+    if (macros.empty() && !_slangMainSession) {
+        _slangMainSession = session;
     }
 
-    std::array<slang::IComponentType*, 2> componentTypes = {
-            cantaModule,
-            slangModule,
-    };
-
-    Slang::ComPtr<slang::IComponentType> composedProgram;
-    {
-        Slang::ComPtr<slang::IBlob> diagnostics;
-        SlangResult result = session->createCompositeComponentType(
-            componentTypes.data(),
-            componentTypes.size(),
-            composedProgram.writeRef(),
-            diagnostics.writeRef()
-        );
-        DIAGNOSE(diagnostics);
-    }
-
-    Slang::ComPtr<slang::IComponentType> linkedProgram;
-    {
-        Slang::ComPtr<slang::IBlob> diagnostics;
-        SlangResult result = composedProgram->link(linkedProgram.writeRef(), diagnostics.writeRef());
-        DIAGNOSE(diagnostics);
-    }
-
-    Slang::ComPtr<slang::IBlob> kernelBlob;
-    {
-        Slang::ComPtr<slang::IBlob> diagnostics;
-        SlangResult result = linkedProgram->getTargetCode(0, kernelBlob.writeRef(), diagnostics.writeRef());
-        DIAGNOSE(diagnostics);
-    }
-
-    std::vector<u32> spirv = {};
-    spirv.insert(spirv.begin(), (u32*)kernelBlob->getBufferPointer(), (u32*)((u8*)kernelBlob->getBufferPointer() + kernelBlob->getBufferSize()));
-    return spirv;
-#endif
+    return session;
 }
 
 auto canta::PipelineManager::findVirtualFile(const std::filesystem::path &path) -> std::expected<std::string, Error> {

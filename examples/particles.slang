@@ -45,7 +45,9 @@ void moveMain(
         particle.velocity = newVelocity;
     }
 
-    particle.position = newPosition;
+    float2 randDir = canta.rand2(float2(dt, idx));
+
+    particle.position = newPosition + randDir;
     particles[idx] = particle;
 }
 
@@ -64,7 +66,7 @@ void drawMain(
     Particle particle = particles[idx];
     float4 colour = float4(particle.colour, 1);
 
-    var outputImage = RWImage2D<float4>(imageIndex);
+    var outputImage = canta.RWImage2D<float4>(imageIndex);
 
     for (int x = -particle.radius; x < particle.radius; x++) {
         for (int y = -particle.radius; y < particle.radius; y++) {

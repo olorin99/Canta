@@ -83,6 +83,8 @@ namespace canta {
         auto compileGLSL(std::string_view name, std::string_view glsl, ShaderStage stage, std::span<const Macro> macros = {}) -> std::expected<std::vector<u32>, std::string>;
         auto compileSlang(std::string_view name, std::string_view slang, ShaderStage stage, std::span<const Macro> macros = {}) -> std::expected<std::vector<u32>, std::string>;
 
+        auto createSlangSession(std::span<const Macro> macros = {}) -> std::expected<Slang::ComPtr<slang::ISession>, std::string>;
+
         auto findVirtualFile(const std::filesystem::path& path) -> std::expected<std::string, Error>;
 
         Device* _device = nullptr;
@@ -97,6 +99,7 @@ namespace canta {
 
 #ifdef CANTA_USE_SLANG
         Slang::ComPtr<slang::IGlobalSession> _slangGlobalSession = {};
+        Slang::ComPtr<slang::ISession> _slangMainSession = {};
 #endif
 
     };
