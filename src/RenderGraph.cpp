@@ -1109,14 +1109,18 @@ auto canta::RenderGraph::execute(std::span<SemaphorePair> waits, std::span<Semap
             hostPasses[indices.hostIndex]->_execute(*currentCommandBuffer, *this);
 
             _cpuTimeline->signal(_cpuTimeline->value() + 1);
-            _cpuTimeline->increment();
+            // _cpuTimeline->increment();
 
         } else { // if device
             auto& commandList = _commandPools[_device->flyingIndex()][indices.queueIndex].buffers()[indices.bufferIndex];
 
             std::vector<SemaphorePair> internalWaits;// = commandBufferWaits[indices.second.first];
             for (auto& wait : commandBufferWaits[indices.waitIndex]) {
-                internalWaits.push_back(SemaphorePair(_device->queue(wait)->timeline()));
+                if (wait == QueueType::NONE) {
+                    internalWaits.push_back(SemaphorePair(_cpuTimeline));
+                } else {
+                    internalWaits.push_back(SemaphorePair(_device->queue(wait)->timeline()));
+                }
             }
             if (i == 0 || i == firstDevice)
                 internalWaits.insert(internalWaits.end(), waits.begin(), waits.end());

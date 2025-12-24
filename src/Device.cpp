@@ -185,10 +185,12 @@ auto canta::Device::create(canta::Device::CreateInfo info) noexcept -> std::expe
 
 #ifdef CANTA_RENDERDOC
     if (info.enableRenderDoc) {
-        if (void* mod = dlopen("librenderdoc.so", RTLD_NOW | RTLD_NOLOAD)) {
+        if (void* mod = dlopen("librenderdoc.so", RTLD_NOW); mod) {
             pRENDERDOC_GetAPI RENDERDOC_GetAPI = reinterpret_cast<pRENDERDOC_GetAPI>(dlsym(mod, "RENDERDOC_GetAPI"));
             i32 ret = RENDERDOC_GetAPI(eRENDERDOC_API_Version_1_6_0, &device->_renderDocAPI);
             assert(ret == 1);
+        } else {
+            device->logger().warn("Unable to start renderdoc API");
         }
         if (device->_renderDocAPI) {
             static_cast<RENDERDOC_API_1_6_0*>(device->_renderDocAPI)->SetCaptureFilePathTemplate("capture");
@@ -670,7 +672,7 @@ canta::Device::~Device() {
     _computeQueue->_timeline = {};
     _transferQueue->_timeline = {};
     _semaphoreList.clearAll([](auto& resource) {
-        if (resource.isTimeline())
+        if (resource.isTimeline() && resource.value() != std::numeric_limits<u64>::max())
             resource.signal(std::numeric_limits<u64>::max());
         resource = {};
     });
