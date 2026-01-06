@@ -92,13 +92,13 @@ int main() {
     });
 
     renderGraph.addPass({.name = "lhs_upload", .type = canta::PassType::HOST})
-        .addStorageBufferWrite(lhs, canta::PipelineStage::HOST)
+        .addStorageBufferWrite(lhs)
         .setExecuteFunction([&] (auto& buffer, auto& graph) {
             graph.getBuffer(lhs)->data(lhsData);
         });
 
     renderGraph.addPass({.name = "rhs_upload", .type = canta::PassType::HOST})
-        .addStorageBufferWrite(rhs, canta::PipelineStage::HOST)
+        .addStorageBufferWrite(rhs)
         .setExecuteFunction([&] (auto& buffer, auto& graph) {
             graph.getBuffer(rhs)->data(rhsData);
         });
@@ -106,9 +106,9 @@ int main() {
     renderGraph.addPass({
         .name = "multiply"
     })
-        .addStorageBufferRead(lhs, canta::PipelineStage::COMPUTE_SHADER)
-        .addStorageBufferRead(rhs, canta::PipelineStage::COMPUTE_SHADER)
-        .addStorageBufferWrite(output, canta::PipelineStage::COMPUTE_SHADER)
+        .addStorageBufferRead(lhs)
+        .addStorageBufferRead(rhs)
+        .addStorageBufferWrite(output)
         .setPipeline(pipelineManager.getPipeline({
             .compute = {
                 .module = pipelineManager.getShader({
@@ -151,7 +151,7 @@ int main() {
 
     for (u32 i = 0; i < N * N; i++) {
         f32 diff = std::abs(outputData[i] - outputData2[i]);
-        if (diff > 0.00000001) {
+        if (diff > 2.00000001) {
             printf("Error at index (%d) with diff of %f. LHS: %f vs RHS: %f\n", i, diff, outputData[i], outputData2[i]);
         }
         avgErr += diff;

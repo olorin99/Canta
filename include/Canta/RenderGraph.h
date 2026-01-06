@@ -107,13 +107,13 @@ namespace canta {
         auto addDepthWrite(const ImageIndex index, const ClearValue& clearColor = DepthClearValue{ .depth = 1.f, .stencil = 0 }) -> RenderPass&;
         auto addDepthRead(const ImageIndex index) -> RenderPass&;
 
-        auto addStorageImageWrite(const ImageIndex index, const PipelineStage stage) -> RenderPass&;
-        auto addStorageImageRead(const ImageIndex index, const PipelineStage stage) -> RenderPass&;
+        auto addStorageImageWrite(const ImageIndex index, const PipelineStage stage = PipelineStage::NONE) -> RenderPass&;
+        auto addStorageImageRead(const ImageIndex index, const PipelineStage stage = PipelineStage::NONE) -> RenderPass&;
 
-        auto addStorageBufferWrite(const BufferIndex index, const PipelineStage stage) -> RenderPass&;
-        auto addStorageBufferRead(const BufferIndex index, const PipelineStage stage) -> RenderPass&;
+        auto addStorageBufferWrite(const BufferIndex index, const PipelineStage stage = PipelineStage::NONE) -> RenderPass&;
+        auto addStorageBufferRead(const BufferIndex index, const PipelineStage stage = PipelineStage::NONE) -> RenderPass&;
 
-        auto addSampledRead(const ImageIndex index, const PipelineStage stage) -> RenderPass&;
+        auto addSampledRead(const ImageIndex index, const PipelineStage stage = PipelineStage::NONE) -> RenderPass&;
 
         auto addBlitWrite(const ImageIndex index) -> RenderPass&;
         auto addBlitRead(const ImageIndex index) -> RenderPass&;

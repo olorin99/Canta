@@ -1,5 +1,45 @@
 #include "Canta/RenderGraph.h"
 
+constexpr auto defaultPassStage(const canta::PassType type) -> canta::PipelineStage {
+    switch (type) {
+        case canta::PassType::GRAPHICS:
+            return canta::PipelineStage::ALL_GRAPHICS;
+        case canta::PassType::COMPUTE:
+            return canta::PipelineStage::COMPUTE_SHADER;
+        case canta::PassType::TRANSFER:
+            return canta::PipelineStage::TRANSFER;
+        case canta::PassType::HOST:
+            return canta::PipelineStage::HOST;
+    }
+    return canta::PipelineStage::ALL_COMMANDS;
+}
+
+constexpr auto checkPassStageMatch(const canta::PassType type, const canta::PipelineStage stage) -> bool {
+    switch (type) {
+        case canta::PassType::GRAPHICS:
+            switch (stage) {
+                case canta::PipelineStage::TOP:
+                        return true;
+                }
+            break;
+        case canta::PassType::COMPUTE:
+            switch (stage) {
+                case canta::PipelineStage::COMPUTE_SHADER:
+                    return true;
+            }
+            break;
+        case canta::PassType::TRANSFER:
+            switch (stage) {
+                case canta::PipelineStage::COMPUTE_SHADER:
+                    return true;
+            }
+            break;
+        case canta::PassType::HOST:
+            if (stage != canta::PipelineStage::HOST) return false;
+            break;
+    }
+    return false;
+}
 
 auto canta::RenderPass::addColourWrite(const canta::ImageIndex index, const ClearValue &clearColor) -> RenderPass& {
     assert(index.id >= 0);
@@ -55,8 +95,10 @@ auto canta::RenderPass::addDepthRead(const canta::ImageIndex index) -> RenderPas
     return *this;
 }
 
-auto canta::RenderPass::addStorageImageWrite(const canta::ImageIndex index, const canta::PipelineStage stage) -> RenderPass& {
+auto canta::RenderPass::addStorageImageWrite(const canta::ImageIndex index, canta::PipelineStage stage) -> RenderPass& {
     assert(index.id >= 0);
+    if (stage == PipelineStage::NONE)
+        stage = defaultPassStage(_type);
     if (const auto resource = writes(index, stage == PipelineStage::HOST ? Access::HOST_WRITE | Access::HOST_READ : Access::SHADER_WRITE | Access::SHADER_READ,
                                stage, ImageLayout::GENERAL)) {
         dynamic_cast<ImageResource*>(resource)->usage |= ImageUsage::STORAGE;
@@ -64,8 +106,10 @@ auto canta::RenderPass::addStorageImageWrite(const canta::ImageIndex index, cons
     return *this;
 }
 
-auto canta::RenderPass::addStorageImageRead(const canta::ImageIndex index, const canta::PipelineStage stage) -> RenderPass& {
+auto canta::RenderPass::addStorageImageRead(const canta::ImageIndex index, canta::PipelineStage stage) -> RenderPass& {
     assert(index.id >= 0);
+    if (stage == PipelineStage::NONE)
+        stage = defaultPassStage(_type);
     if (const auto resource = reads(index, stage == PipelineStage::HOST ? Access::HOST_READ : Access::SHADER_READ,
                               stage, ImageLayout::GENERAL)) {
         dynamic_cast<ImageResource*>(resource)->usage |= ImageUsage::STORAGE;
@@ -73,8 +117,10 @@ auto canta::RenderPass::addStorageImageRead(const canta::ImageIndex index, const
     return *this;
 }
 
-auto canta::RenderPass::addStorageBufferWrite(const canta::BufferIndex index, const canta::PipelineStage stage) -> RenderPass& {
+auto canta::RenderPass::addStorageBufferWrite(const canta::BufferIndex index, canta::PipelineStage stage) -> RenderPass& {
     assert(index.id >= 0);
+    if (stage == PipelineStage::NONE)
+        stage = defaultPassStage(_type);
     if (const auto resource = writes(index, stage == PipelineStage::HOST ? Access::HOST_WRITE | Access::HOST_READ : Access::SHADER_WRITE | Access::SHADER_READ,
                                stage)) {
         dynamic_cast<BufferResource*>(resource)->usage |= BufferUsage::STORAGE;
@@ -82,8 +128,10 @@ auto canta::RenderPass::addStorageBufferWrite(const canta::BufferIndex index, co
     return *this;
 }
 
-auto canta::RenderPass::addStorageBufferRead(const canta::BufferIndex index, const canta::PipelineStage stage) -> RenderPass& {
+auto canta::RenderPass::addStorageBufferRead(const canta::BufferIndex index, canta::PipelineStage stage) -> RenderPass& {
     assert(index.id >= 0);
+    if (stage == PipelineStage::NONE)
+        stage = defaultPassStage(_type);
     if (const auto resource = reads(index, stage == PipelineStage::HOST ? Access::HOST_READ : Access::SHADER_READ,
                               stage)) {
         dynamic_cast<BufferResource*>(resource)->usage |= BufferUsage::STORAGE;
@@ -91,8 +139,10 @@ auto canta::RenderPass::addStorageBufferRead(const canta::BufferIndex index, con
     return *this;
 }
 
-auto canta::RenderPass::addSampledRead(const canta::ImageIndex index, const canta::PipelineStage stage) -> RenderPass& {
+auto canta::RenderPass::addSampledRead(const canta::ImageIndex index, canta::PipelineStage stage) -> RenderPass& {
     assert(index.id >= 0);
+    if (stage == PipelineStage::NONE)
+        stage = defaultPassStage(_type);
     if (const auto resource = reads(index, Access::SHADER_READ,
                               stage, ImageLayout::SHADER_READ_ONLY)) {
         dynamic_cast<ImageResource*>(resource)->usage |= ImageUsage::SAMPLED;
