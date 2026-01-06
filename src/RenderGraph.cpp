@@ -261,6 +261,12 @@ auto canta::RenderPass::reads(const canta::BufferIndex index, const canta::Acces
 }
 
 void canta::RenderPass::unpack(std::array<u8, 192>& dst, i32& i, const ImageIndex& image) {
+    // in debug builds check that image pushconstants have corresponding dependencies declared in pass
+    assert([&]() -> bool {
+        return std::ranges::any_of(_inputs, [&](const auto& input) { return input.index == image.index; }) ||
+            std::ranges::any_of(_outputs, [&](const auto& output) { return output.index == image.index; });
+    }());
+
     _deferredPushConstants.push_back({
         .type = 0,
         .id = image.id,
@@ -272,11 +278,17 @@ void canta::RenderPass::unpack(std::array<u8, 192>& dst, i32& i, const ImageInde
     assert(_pushConstantSize <= 128);
 }
 
-void canta::RenderPass::unpack(std::array<u8, 192>& dst, i32& i, const BufferIndex& image) {
+void canta::RenderPass::unpack(std::array<u8, 192>& dst, i32& i, const BufferIndex& buffer) {
+    // in debug builds check that image pushconstants have corresponding dependencies declared in pass
+    assert([&]() -> bool {
+        return std::ranges::any_of(_inputs, [&](const auto& input) { return input.index == buffer.index; }) ||
+            std::ranges::any_of(_outputs, [&](const auto& output) { return output.index == buffer.index; });
+    }());
+
     _deferredPushConstants.push_back({
         .type = 1,
-        .id = image.id,
-        .index = image.index,
+        .id = buffer.id,
+        .index = buffer.index,
         .offset = i
     });
     i += sizeof(u64);
