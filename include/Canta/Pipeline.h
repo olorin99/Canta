@@ -16,7 +16,12 @@ namespace canta {
 
     struct ShaderInfo {
         ShaderHandle module = {};
+        std::string path;
         std::string entryPoint = "main";
+
+        explicit operator bool() const {
+            return module || !path.empty();
+        }
     };
 
     struct SpecializationConstant {

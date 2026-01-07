@@ -196,17 +196,59 @@ auto canta::PipelineManager::operator=(canta::PipelineManager &&rhs) noexcept ->
 }
 
 auto canta::PipelineManager::getShader(canta::ShaderDescription info) -> std::expected<ShaderHandle, Error> {
-    auto it = _shaders.find(info);
-    if (it != _shaders.end())
+    std::string name;
+    if (info.name.empty() && !info.path.empty()) {
+        name = info.path.filename().string();
+        info.name = name;
+    }
+
+    if (const auto it = _shaders.find(info); it != _shaders.end())
         return it->second;
 
     return createShader(info);
 }
 
 auto canta::PipelineManager::getPipeline(Pipeline::CreateInfo info) -> std::expected<PipelineHandle, Error> {
-    auto it = _pipelines.find(info);
-    if (it != _pipelines.end())
+    if (const auto it = _pipelines.find(info); it != _pipelines.end())
         return it->second;
+
+    const auto evalShader = [&](ShaderStage stage, ShaderInfo shaderInfo) -> ShaderInfo {
+        const auto shader = shaderInfo.module ? shaderInfo.module : getShader({
+            .path = shaderInfo.path,
+            .stage = stage
+        }).value();
+        shaderInfo.module = shader;
+        return shaderInfo;
+    };
+
+    if (info.vertex)
+        info.vertex = evalShader(ShaderStage::VERTEX, info.vertex);
+    if (info.tesselationControl)
+        info.tesselationControl = evalShader(ShaderStage::TESS_CONTROL, info.tesselationControl);
+    if (info.tesselationEvaluation)
+        info.tesselationEvaluation = evalShader(ShaderStage::TESS_EVAL, info.tesselationEvaluation);
+    if (info.geometry)
+        info.geometry = evalShader(ShaderStage::GEOMETRY, info.geometry);
+    if (info.fragment)
+        info.fragment = evalShader(ShaderStage::FRAGMENT, info.fragment);
+    if (info.compute)
+        info.compute = evalShader(ShaderStage::COMPUTE, info.compute);
+    if (info.rayGen)
+        info.rayGen = evalShader(ShaderStage::RAYGEN, info.rayGen);
+    if (info.anyHit)
+        info.anyHit = evalShader(ShaderStage::ANY_HIT, info.anyHit);
+    if (info.closestHit)
+        info.closestHit = evalShader(ShaderStage::CLOSEST_HIT, info.closestHit);
+    if (info.miss)
+        info.miss = evalShader(ShaderStage::MISS, info.miss);
+    if (info.intersection)
+        info.intersection = evalShader(ShaderStage::INTERSECTION, info.intersection);
+    if (info.callable)
+        info.callable = evalShader(ShaderStage::CALLABLE, info.callable);
+    if (info.task)
+        info.task = evalShader(ShaderStage::TASK, info.task);
+    if (info.mesh)
+        info.mesh = evalShader(ShaderStage::MESH, info.mesh);
 
     const auto addShaderDependency = [&](ShaderHandle shader, PipelineHandle pipeline) {
         ShaderDescription description = {};

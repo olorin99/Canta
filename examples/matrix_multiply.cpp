@@ -99,12 +99,7 @@ int main() {
     })
         .setPipeline(pipelineManager.getPipeline({
             .compute = {
-                .module = pipelineManager.getShader({
-                    .path = "matrix_multiply.slang",
-                    .stage = canta::ShaderStage::COMPUTE,
-                    .name = "matrix_multiply"
-                }).value(),
-                .entryPoint = "main"
+                .path = "matrix_multiply.slang"
             }
         }).value())
         .pushConstants(canta::Read(lhs), canta::Read(rhs), canta::Write(output), N)

@@ -3,9 +3,12 @@
 
 #include <Ende/platform.h>
 #include <expected>
+#include <filesystem>
 #include <string>
 #include <vector>
 #include <Canta/Device.h>
+
+#include "PipelineManager.h"
 
 namespace canta {
 

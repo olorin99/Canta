@@ -99,11 +99,7 @@ int main() {
     renderGraph.addPass({.name = "trace_rays"})
         .setPipeline(pipelineManager.getPipeline(canta::Pipeline::CreateInfo{
             .compute = {
-                .module = pipelineManager.getShader({
-                    .path = CANTA_SRC_DIR"/examples/hello_raytrace.slang",
-                    .stage = canta::ShaderStage::COMPUTE,
-                    .name = "hello_raytace"
-                }).value(),
+                .path = CANTA_SRC_DIR"/examples/hello_raytrace.slang",
                 .entryPoint = "traceMain"
             }
         }).value())
