@@ -92,6 +92,18 @@ namespace canta {
 
     class RenderGraph;
 
+    template <typename T>
+    struct Read {
+        explicit Read(T r) : resource(std::move(r)) {}
+        T resource;
+    };
+
+    template <typename T>
+    struct Write {
+        explicit Write(T r) : resource(std::move(r)) {}
+        T resource;
+    };
+
     enum class PassType {
         GRAPHICS,
         COMPUTE,
@@ -164,6 +176,14 @@ namespace canta {
         void unpack(std::array<u8, 192>& dst, i32&, const ImageHandle& image);
 
         void unpack(std::array<u8, 192>& dst, i32&, const BufferHandle& image);
+
+        void unpack(std::array<u8, 192>& dst, i32&, const Read<ImageIndex>& image);
+
+        void unpack(std::array<u8, 192>& dst, i32&, const Read<BufferIndex>& buffer);
+
+        void unpack(std::array<u8, 192>& dst, i32&, const Write<ImageIndex>& image);
+
+        void unpack(std::array<u8, 192>& dst, i32&, const Write<BufferIndex>& buffer);
 
         template <typename... Args>
         auto pushConstants(const Args&... args) -> RenderPass& {

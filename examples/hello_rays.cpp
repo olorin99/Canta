@@ -101,8 +101,6 @@ int main() {
         });
 
     renderGraph.addPass({.name = "trace_rays"})
-        .addStorageBufferRead(sphereBuffer, canta::PipelineStage::COMPUTE_SHADER)
-        .addStorageImageWrite(outputImage, canta::PipelineStage::COMPUTE_SHADER)
         .setPipeline(pipelineManager.getPipeline(canta::Pipeline::CreateInfo{
             .compute = {
                 .module = pipelineManager.getShader({
@@ -113,20 +111,10 @@ int main() {
                 .entryPoint = "traceMain"
             }
         }).value())
-        .pushConstants(sphereBuffer, outputImage, static_cast<u32>(spheres.size()), camera, imageWidth, imageHeight)
+        .pushConstants(canta::Read(sphereBuffer), canta::Write(outputImage), static_cast<u32>(spheres.size()), camera, imageWidth, imageHeight)
         .dispatchThreads(imageWidth, imageHeight);
 
-    renderGraph.addPass({.name = "copy_to_buffer"})
-        .setManualPipeline(true)
-        .addTransferRead(outputImage)
-        .addTransferWrite(outputBufferIndex)
-        .setExecuteFunction([outputImage, outputBufferIndex](auto& buffer, auto& graph) {
-            buffer.copyImageToBuffer({
-                .buffer = graph.getBuffer(outputBufferIndex),
-                .image = graph.getImage(outputImage),
-                .dstLayout = canta::ImageLayout::TRANSFER_SRC,
-            });
-        });
+    renderGraph.addCopyPass("copy_to_buffer", outputImage, outputBufferIndex);
 
     renderGraph.setBackbuffer(outputBufferIndex);
 

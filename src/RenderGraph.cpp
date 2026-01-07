@@ -376,6 +376,26 @@ void canta::RenderPass::unpack(std::array<u8, 192>& dst, i32& i, const BufferHan
     unpack(dst, i, id);
 }
 
+void canta::RenderPass::unpack(std::array<u8, 192>& dst, i32& i, const Read<ImageIndex>& image) {
+    addStorageImageRead(image.resource);
+    unpack(dst, i, image.resource);
+}
+
+void canta::RenderPass::unpack(std::array<u8, 192>& dst, i32& i, const Read<BufferIndex>& buffer) {
+    addStorageBufferRead(buffer.resource);
+    unpack(dst, i, buffer.resource);
+}
+
+void canta::RenderPass::unpack(std::array<u8, 192>& dst, i32& i, const Write<ImageIndex>& image) {
+    addStorageImageWrite(image.resource);
+    unpack(dst, i, image.resource);
+}
+
+void canta::RenderPass::unpack(std::array<u8, 192>& dst, i32& i, const Write<BufferIndex>& buffer) {
+    addStorageBufferWrite(buffer.resource);
+    unpack(dst, i, buffer.resource);
+}
+
 auto canta::RenderPass::dispatchWorkgroups(u32 x, u32 y, u32 z) -> RenderPass & {
     auto pushConstants = _pushConstants;
     auto pushConstantsSize = _pushConstantSize;

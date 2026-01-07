@@ -372,12 +372,10 @@ void main() {
 
         auto particleGroup = renderGraph.getGroup("particles");
 
-        // auto& particlesMovePass = renderGraph.addPass({.name = "particles_move"})
         auto particlesMovePassOutputs = renderGraph.addPass({.name = "particles_move"})
             .setGroup(particleGroup)
             .setPipeline(pipeline)
-            .addStorageBufferWrite(particleBufferIndex)
-            .pushConstants(particleBufferIndex, numParticles, static_cast<f32>(dt))
+            .pushConstants(canta::Write(particleBufferIndex), numParticles, static_cast<f32>(dt))
             .dispatchThreads(numParticles).aliasBufferOutput(particleBufferIndex).value();
 
         // renderGraph.addPass({.name = "copy", .type = canta::PassType::HOST})
@@ -390,11 +388,8 @@ void main() {
         auto& particlesDrawPass = renderGraph.addPass({.name = "particles_draw"})
             .setGroup(particleGroup)
             .setPipeline(pipelineDraw)
-            // .addStorageBufferRead(particleBufferIndex, canta::PipelineStage::COMPUTE_SHADER)
-            .addStorageBufferRead(particlesMovePassOutputs)
             .addStorageImageRead(imageAlias)
-            .addStorageImageWrite(imageIndex)
-            .pushConstants(particleBufferIndex, imageIndex, numParticles)
+            .pushConstants(canta::Read(particlesMovePassOutputs), canta::Write(imageIndex), numParticles)
             .dispatchThreads(numParticles);
 
         renderGraphDebugger.setBasePass(particlesDrawPass);

@@ -106,9 +106,9 @@ int main() {
     renderGraph.addPass({
         .name = "multiply"
     })
-        .addStorageBufferRead(lhs)
-        .addStorageBufferRead(rhs)
-        .addStorageBufferWrite(output)
+        // .addStorageBufferRead(lhs)
+        // .addStorageBufferRead(rhs)
+        // .addStorageBufferWrite(output)
         .setPipeline(pipelineManager.getPipeline({
             .compute = {
                 .module = pipelineManager.getShader({
@@ -119,7 +119,7 @@ int main() {
                 .entryPoint = "main"
             }
         }).value())
-        .pushConstants(lhs, rhs, output, N)
+        .pushConstants(canta::Read(lhs), canta::Read(rhs), canta::Write(output), N)
         .dispatchThreads(N, N);
 
     renderGraph.setBackbuffer(output);
