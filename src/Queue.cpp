@@ -8,7 +8,7 @@ canta::Queue::submit(canta::CommandPool &commandPool, std::span<SemaphorePair> w
 
 auto canta::Queue::submit(std::span<CommandBuffer> commandBuffers, std::span<SemaphorePair> waits, std::span<SemaphorePair> signals, VkFence fence) -> std::expected<bool, VulkanError> {
     VkSemaphoreSubmitInfo waitInfos[waits.size()];
-    VkSemaphoreSubmitInfo signalInfos[signals.size()];
+    VkSemaphoreSubmitInfo signalInfos[signals.size() + 1];
 
     for (u32 i = 0; i < waits.size(); i++) {
         auto& wait = waits[i];
@@ -28,6 +28,13 @@ auto canta::Queue::submit(std::span<CommandBuffer> commandBuffers, std::span<Sem
         signalInfos[i].deviceIndex = 0;
         signalInfos[i].pNext = nullptr;
     }
+    // resource timeline signal on each queue submit
+    signalInfos[signals.size()].sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
+    signalInfos[signals.size()].semaphore = _device->resourceTimeline()->semaphore();
+    signalInfos[signals.size()].value = _device->resourceTimeline()->increment();
+    signalInfos[signals.size()].stageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
+    signalInfos[signals.size()].deviceIndex = 0;
+    signalInfos[signals.size()].pNext = nullptr;
 
     VkCommandBufferSubmitInfo commandInfos[commandBuffers.size()];
     for (u32 i = 0; i < commandBuffers.size(); i++) {

@@ -2,6 +2,7 @@
 #define CANTA_RESOURCELIST_H
 
 #include <Ende/platform.h>
+#include <utility>
 #include <vector>
 #include <memory>
 #include <functional>
@@ -128,7 +129,7 @@ namespace canta {
 
         static inline auto decrement(Data* data) -> i32 {
             if (data) {
-                i32 newCount = --data->count;
+                const i32 newCount = --data->count;
                 if (newCount < 1) {
                     data->deleter(data->index);
                 }
@@ -151,14 +152,24 @@ namespace canta {
         using ResourceHandle =  Handle<T, ResourceList<T>>;
         using ResourceData = ResourceHandle::Data;
 
-        static auto create(i32 destroyDelay, spdlog::logger* logger = nullptr) -> ResourceList<T> {
+        static auto create(i32 destructionDelay = 3, spdlog::logger* logger = nullptr, std::function<u64()> getTimelineValue = [] { return 0; }) -> ResourceList<T> {
             ResourceList<T> list = {};
-            list._destroyDelay = destroyDelay;
+            list._destructionDelay = destructionDelay;
+            list._logger = logger;
+            list._getTimelineValue = std::move(getTimelineValue);
             return list;
         }
 
         void setLogger(spdlog::logger* logger) {
             _logger = logger;
+        }
+
+        void setDestructionDelay(const u32 delay) {
+            _destructionDelay = delay;
+        }
+
+        void setGetTimelineValue(const std::function<u64()> &getTimelineValue) {
+            _getTimelineValue = getTimelineValue;
         }
 
         auto allocate() -> ResourceHandle {
@@ -171,7 +182,8 @@ namespace canta {
                 _resources[index]->second.index = index;
                 _resources[index]->second.deleter = [this](i32 index) {
                     std::unique_lock lock(_mutex);
-                    _destroyQueue.push_back(std::make_pair(_destroyDelay, index));
+                    const auto timelineValue = _getTimelineValue();
+                    _destroyQueue.emplace_back(timelineValue, index);
                     if (_logger) _logger->info("Resource {} at index {} destroyed", typeid(T).name(), index);
                 };
             } else {
@@ -180,7 +192,8 @@ namespace canta {
                 _resources.back()->second.index = index;
                 _resources.back()->second.deleter = [this](i32 index) {
                     std::unique_lock lock(_mutex);
-                    _destroyQueue.push_back(std::make_pair(_destroyDelay, index));
+                    const auto timelineValue = _getTimelineValue();
+                    _destroyQueue.emplace_back(timelineValue, index);
                     if (_logger) _logger->info("Resource {} at index {} destroyed", typeid(T).name(), index);
                 };
             }
@@ -210,13 +223,14 @@ namespace canta {
 
         void clearQueue(std::function<void(T&)> func = [](auto& resource) { resource = {}; }) {
             std::unique_lock lock(_mutex);
-            for (auto it = _destroyQueue.begin(); it != _destroyQueue.end(); it++) {
-                if (it->first <= 0) {
+            const auto timelineValue = _getTimelineValue();
+            for (auto it = _destroyQueue.begin(); it != _destroyQueue.end(); ++it) {
+                if ((it->first + _destructionDelay) < timelineValue) {
                     func(_resources[it->second]->first);
+                    if (_logger) _logger->info("GPU Resource {} at index {} destroyed. Timeline({} <= {})", typeid(T).name(), it->second, it->first, timelineValue);
                     _freeResources.push_back(it->second);
                     _destroyQueue.erase(it--);
-                } else
-                    --it->first;
+                }
             }
         }
 
@@ -242,7 +256,7 @@ namespace canta {
         auto getHandle(i32 index) -> ResourceHandle {
             if (index >= _resources.size())
                 return {};
-            _resources[index]->second.count++;
+            ++_resources[index]->second.count;
             return ResourceHandle::create(this, &_resources[index]->second);
         }
 
@@ -259,8 +273,9 @@ namespace canta {
 
         std::vector<std::unique_ptr<std::pair<T, typename Handle<T, ResourceList<T>>::Data>>> _resources = {};
         std::vector<u32> _freeResources = {};
-        std::vector<std::pair<i32, i32>> _destroyQueue = {};
-        i32 _destroyDelay = 3;
+        std::vector<std::pair<u64, i32>> _destroyQueue = {};
+        i32 _destructionDelay = 3;
+        std::function<u64()> _getTimelineValue = [] { return 0; };
         std::mutex _mutex = {};
         spdlog::logger* _logger = nullptr;
 

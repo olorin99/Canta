@@ -554,6 +554,10 @@ auto canta::Device::create(canta::Device::CreateInfo info) noexcept -> std::expe
         .initialValue = 0,
         .name = "immediateTimelineSemaphore"
     }).value();
+    device->_resourceTimeline = device->createSemaphore({
+        .initialValue = 0,
+        .name = "resourceTimelineSemaphore"
+    }).value();
 
     VkDescriptorPoolSize poolSizes[] = {
             { VK_DESCRIPTOR_TYPE_SAMPLER, device->limits().maxBindlessSamplers * FRAMES_IN_FLIGHT },
@@ -651,12 +655,40 @@ auto canta::Device::create(canta::Device::CreateInfo info) noexcept -> std::expe
         .queueType = QueueType::GRAPHICS
     }).value();
 
+
+    const auto rawDevicePtr = device.get();
+    const auto frameBasedResourceLifetimes = info.frameBasedResourceLifetime;
+
+    const auto getResourceTimelineValue = [rawDevicePtr, frameBasedResourceLifetimes] () -> u64 {
+        SemaphoreHandle timeline = {};
+        if (frameBasedResourceLifetimes)
+            timeline = rawDevicePtr->frameSemaphore();
+        else
+            timeline = rawDevicePtr->resourceTimeline();
+        if (timeline) {
+            return timeline->value();
+        }
+        return 0;
+    };
+
     device->_shaderList.setLogger(&device->_logger);
+    device->_shaderList.setGetTimelineValue(getResourceTimelineValue);
+    device->_shaderList.setDestructionDelay(info.resourceDestructionDelay);
     device->_pipelineList.setLogger(&device->_logger);
+    device->_pipelineList.setGetTimelineValue(getResourceTimelineValue);
+    device->_pipelineList.setDestructionDelay(info.resourceDestructionDelay);
     device->_imageList.setLogger(&device->_logger);
+    device->_imageList.setGetTimelineValue(getResourceTimelineValue);
+    device->_imageList.setDestructionDelay(info.resourceDestructionDelay);
     device->_imageViewList.setLogger(&device->_logger);
+    device->_imageViewList.setGetTimelineValue(getResourceTimelineValue);
+    device->_imageViewList.setDestructionDelay(info.resourceDestructionDelay);
     device->_bufferList.setLogger(&device->_logger);
+    device->_bufferList.setGetTimelineValue(getResourceTimelineValue);
+    device->_bufferList.setDestructionDelay(info.resourceDestructionDelay);
     device->_samplerList.setLogger(&device->_logger);
+    device->_samplerList.setGetTimelineValue(getResourceTimelineValue);
+    device->_samplerList.setDestructionDelay(info.resourceDestructionDelay);
 
     device->logger().info("Device creation complete");
 
@@ -664,10 +696,9 @@ auto canta::Device::create(canta::Device::CreateInfo info) noexcept -> std::expe
 }
 
 canta::Device::~Device() {
-    _immediateTimeline->signal(std::numeric_limits<u64>::max());
-    _frameTimeline->signal(std::numeric_limits<u64>::max());
     _immediateTimeline = {};
     _frameTimeline = {};
+    _resourceTimeline = {};
     _graphicsQueue->_timeline = {};
     _computeQueue->_timeline = {};
     _transferQueue->_timeline = {};
@@ -697,10 +728,10 @@ canta::Device::~Device() {
 
     _immediatePool = {};
 
-    for (auto& queryPool : _pipelineStatisticsPools)
+    for (const auto& queryPool : _pipelineStatisticsPools)
         vkDestroyQueryPool(_logicalDevice, queryPool, nullptr);
 
-    for (auto& queryPool : _timestampPools)
+    for (const auto& queryPool : _timestampPools)
         vkDestroyQueryPool(_logicalDevice, queryPool, nullptr);
 
     vmaDestroyAllocator(_allocator);
@@ -724,6 +755,7 @@ canta::Device::Device(canta::Device &&rhs) noexcept {
     std::swap(_transferQueue, rhs._transferQueue);
     std::swap(_allocator, rhs._allocator);
     std::swap(_frameTimeline, rhs._frameTimeline);
+    std::swap(_resourceTimeline, rhs._resourceTimeline);
 }
 
 auto canta::Device::operator=(canta::Device &&rhs) noexcept -> Device & {
@@ -737,6 +769,7 @@ auto canta::Device::operator=(canta::Device &&rhs) noexcept -> Device & {
     std::swap(_transferQueue, rhs._transferQueue);
     std::swap(_allocator, rhs._allocator);
     std::swap(_frameTimeline, rhs._frameTimeline);
+    std::swap(_resourceTimeline, rhs._resourceTimeline);
     return *this;
 }
 
@@ -900,12 +933,11 @@ auto canta::Device::createShaderModule(ShaderModule::CreateInfo info, ShaderHand
     createInfo.codeSize = info.spirv.size() * sizeof(u32);
     createInfo.pCode = info.spirv.data();
 
-    auto result = vkCreateShaderModule(logicalDevice(), &createInfo, nullptr, &module);
-    if (result != VK_SUCCESS)
+    if (const auto result = vkCreateShaderModule(logicalDevice(), &createInfo, nullptr, &module); result != VK_SUCCESS)
         return {};
 
     if (!info.name.empty())
-        setDebugName(VK_OBJECT_TYPE_SHADER_MODULE, (u64)module, info.name);
+        setDebugName(VK_OBJECT_TYPE_SHADER_MODULE, reinterpret_cast<u64>(module), info.name);
 
     ShaderHandle handle = {};
     if (oldHandle)

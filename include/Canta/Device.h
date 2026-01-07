@@ -141,6 +141,8 @@ namespace canta {
             bool enableTaskShading = false;
             bool enableAsyncComputeQueue = true;
             bool enableAsyncTransferQueue = true;
+            bool frameBasedResourceLifetime = true;
+            u32 resourceDestructionDelay = 3;
             u64 memoryLimit = 1000000000;
             std::span<const char* const> instanceExtensions = {};
             std::span<const char* const> deviceExtensions = {};
@@ -187,6 +189,8 @@ namespace canta {
         auto frameValue() const -> u64 { return _frameTimeline->value(); }
         auto framePrevValue() const -> u64 { return std::max(0l, static_cast<i64>(_frameTimeline->value()) - 1); }
         auto flyingIndex() const -> u32 { return _frameTimeline->value() % FRAMES_IN_FLIGHT; }
+
+        auto resourceTimeline() const -> SemaphoreHandle { return _resourceTimeline; }
 
         auto instance() const -> VkInstance { return _instance; }
         auto physicalDevice() const -> VkPhysicalDevice { return _physicalDevice; }
@@ -344,6 +348,7 @@ namespace canta {
 
         SemaphoreHandle _frameTimeline = {};
         SemaphoreHandle _immediateTimeline = {};
+        SemaphoreHandle _resourceTimeline = {};
 
         VkDescriptorPool _bindlessPool = VK_NULL_HANDLE;
         VkDescriptorSetLayout _bindlessLayout = VK_NULL_HANDLE;

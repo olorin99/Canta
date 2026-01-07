@@ -284,6 +284,7 @@ void main() {
             ImGui::Text("VRAM Usage: %f%%", static_cast<f64>(softMemoryUsage.usage) / static_cast<f64>(softMemoryUsage.budget));
 
             auto resourceStats = device->resourceStats();
+            ImGui::Text("Resource timeline value %lu", device->resourceTimeline()->value());
             ImGui::Text("Shader Count %d", resourceStats.shaderCount);
             ImGui::Text("Shader Allocated %d", resourceStats.shaderAllocated);
             ImGui::Text("Pipeline Count %d", resourceStats.pipelineCount);
@@ -330,6 +331,14 @@ void main() {
 
                 uploadBuffer.upload(buffer, particles);
                 uploadBuffer.flushStagedData();
+            }
+            if (ImGui::Button("Allocate")) {
+                auto throwAwayBuffer = device->createBuffer({
+                    .size = 10000,
+                    .usage = canta::BufferUsage::STORAGE,
+                    .type = canta::MemoryType::DEVICE,
+                    .name = "throw_away",
+                });
             }
         }
         ImGui::End();
