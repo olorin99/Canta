@@ -49,6 +49,7 @@ namespace canta {
         struct CreateInfo {
             Device* device = nullptr;
             std::filesystem::path rootPath = {};
+            bool rowMajor = true;
         };
 
         static auto create(CreateInfo info) -> PipelineManager;
@@ -89,6 +90,7 @@ namespace canta {
 
         Device* _device = nullptr;
         std::filesystem::path _rootPath = {};
+        bool _rowMajor = true;
         tsl::robin_map<ShaderDescription, ShaderHandle> _shaders;
         tsl::robin_map<Pipeline::CreateInfo, PipelineHandle, std::hash<Pipeline::CreateInfo>> _pipelines;
 

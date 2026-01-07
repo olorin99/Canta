@@ -102,6 +102,7 @@ auto canta::PipelineManager::create(canta::PipelineManager::CreateInfo info) -> 
     PipelineManager manager = {};
     manager._device = info.device;
     manager._rootPath = info.rootPath;
+    manager._rowMajor = info.rowMajor;
 
     registerEmbededShadersCanta(manager);
 
@@ -168,6 +169,7 @@ layout (set = 0, binding = CANTA_BINDLESS_SAMPLERS) uniform sampler samplers[];
 canta::PipelineManager::PipelineManager(canta::PipelineManager &&rhs) noexcept {
     std::swap(_device, rhs._device);
     std::swap(_rootPath, rhs._rootPath);
+    std::swap(_rowMajor, rhs._rowMajor);
     std::swap(_shaders, rhs._shaders);
     std::swap(_pipelines, rhs._pipelines);
     std::swap(_fileWatcher, rhs._fileWatcher);
@@ -181,6 +183,7 @@ canta::PipelineManager::PipelineManager(canta::PipelineManager &&rhs) noexcept {
 auto canta::PipelineManager::operator=(canta::PipelineManager &&rhs) noexcept -> PipelineManager & {
     std::swap(_device, rhs._device);
     std::swap(_rootPath, rhs._rootPath);
+    std::swap(_rowMajor, rhs._rowMajor);
     std::swap(_shaders, rhs._shaders);
     std::swap(_pipelines, rhs._pipelines);
     std::swap(_fileWatcher, rhs._fileWatcher);
@@ -675,7 +678,7 @@ auto canta::PipelineManager::createSlangSession(std::span<const Macro> macros) -
     }
     sessionDesc.preprocessorMacros = slangMacros.data();
     sessionDesc.preprocessorMacroCount = slangMacros.size();
-    sessionDesc.defaultMatrixLayoutMode = SLANG_MATRIX_LAYOUT_COLUMN_MAJOR;
+    sessionDesc.defaultMatrixLayoutMode = _rowMajor ? SLANG_MATRIX_LAYOUT_ROW_MAJOR : SLANG_MATRIX_LAYOUT_COLUMN_MAJOR;
     slang::TargetDesc targetDesc = {};
     targetDesc.format = SLANG_SPIRV;
     targetDesc.profile = _slangGlobalSession->findProfile("sm_6_6");
@@ -688,7 +691,7 @@ auto canta::PipelineManager::createSlangSession(std::span<const Macro> macros) -
     options.push_back({ slang::CompilerOptionName::Optimization, { slang::CompilerOptionValueKind::Int, 3, 0, nullptr, nullptr }});
     options.push_back({ slang::CompilerOptionName::EmitSpirvDirectly, { slang::CompilerOptionValueKind::Int, 1, 0, nullptr, nullptr }});
     options.push_back({ slang::CompilerOptionName::GLSLForceScalarLayout, { slang::CompilerOptionValueKind::Int, 1, 0, nullptr, nullptr }});
-    options.push_back({ slang::CompilerOptionName::MatrixLayoutColumn, { slang::CompilerOptionValueKind::Int, 1, 0, nullptr, nullptr }});
+    options.push_back({ _rowMajor ? slang::CompilerOptionName::MatrixLayoutRow : slang::CompilerOptionName::MatrixLayoutColumn, { slang::CompilerOptionValueKind::Int, 1, 0, nullptr, nullptr }});
     options.push_back({ slang::CompilerOptionName::VulkanUseEntryPointName, { slang::CompilerOptionValueKind::Int, 1, 0, nullptr, nullptr }});
     sessionDesc.compilerOptionEntries = options.data();
     sessionDesc.compilerOptionEntryCount = options.size();
