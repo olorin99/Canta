@@ -94,11 +94,7 @@ int main() {
         .name = "output_buffer"
     });
 
-    renderGraph.addPass({.name = "sphere_upload", .type = canta::PassType::HOST})
-        .addStorageBufferWrite(sphereBuffer, canta::PipelineStage::HOST)
-        .setExecuteFunction([&](auto& buffer, auto& graph) {
-            graph.getBuffer(sphereBuffer)->data(spheres);
-        });
+    renderGraph.addUploadPass("sphere_upload", sphereBuffer, spheres);
 
     renderGraph.addPass({.name = "trace_rays"})
         .setPipeline(pipelineManager.getPipeline(canta::Pipeline::CreateInfo{

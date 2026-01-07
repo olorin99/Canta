@@ -717,6 +717,25 @@ auto canta::RenderGraph::addCopyPass(const std::string_view name, const ImageInd
     return copyPass;
 }
 
+auto canta::RenderGraph::addUploadPass(const std::string_view name, const BufferIndex dst, std::span<const u8> data, const RenderGroup group) -> RenderPass& {
+    auto& uploadPass = addPass({.name = name, .type = PassType::HOST, .group = group, .manualPipeline = true});
+    uploadPass.addStorageBufferWrite(dst);
+    uploadPass.setExecuteFunction([dst, data] (auto& cmd, auto& graph) {
+        graph.getBuffer(dst)->data(data);
+    });
+    return uploadPass;
+}
+
+auto canta::RenderGraph::addReadbackPass(const std::string_view name, const BufferIndex src, std::span<u8> data, const RenderGroup group) -> RenderPass& {
+    auto& uploadPass = addPass({.name = name, .type = PassType::HOST, .group = group, .manualPipeline = true});
+    uploadPass.addStorageBufferRead(src);
+    uploadPass.addStorageBufferWrite(src);
+    uploadPass.setExecuteFunction([src, data] (auto& cmd, auto& graph) {
+        auto mapped = graph.getBuffer(src)->map();
+        std::memcpy(data.data(), mapped.address(), data.size());
+    });
+    return uploadPass;
+}
 
 
 
@@ -1141,26 +1160,24 @@ auto canta::RenderGraph::execute(std::span<SemaphorePair> waits, std::span<Semap
             currentCommandBuffer = nullptr;
         }
     }
-    if (!currentCommandBuffer)
+
+    if (currentCommandBuffer) {
+        if (_backbufferFinalLayout != ImageLayout::UNDEFINED) {
+            currentCommandBuffer->barrier({
+                .image = getImage({ .index = static_cast<u32>(_backbufferIndex)}),
+                .srcStage = _backbufferBarrier.srcStage,
+                .dstStage = _backbufferBarrier.dstStage,
+                .srcAccess = _backbufferBarrier.srcAccess,
+                .dstAccess = _backbufferBarrier.dstAccess,
+                .srcLayout = _backbufferBarrier.srcLayout,
+                .dstLayout = _backbufferBarrier.dstLayout
+            });
+        }
+
+        currentCommandBuffer->end();
+    } else if (_orderedPasses.back()->getType() != PassType::HOST) {
         return std::unexpected(RenderGraphError::INVALID_SUBMISSION);
-
-    if (_backbufferFinalLayout != ImageLayout::UNDEFINED) {
-        currentCommandBuffer->barrier({
-            .image = getImage({ .index = static_cast<u32>(_backbufferIndex)}),
-            .srcStage = _backbufferBarrier.srcStage,
-            .dstStage = _backbufferBarrier.dstStage,
-            .srcAccess = _backbufferBarrier.srcAccess,
-            .dstAccess = _backbufferBarrier.dstAccess,
-            .srcLayout = _backbufferBarrier.srcLayout,
-            .dstLayout = _backbufferBarrier.dstLayout
-        });
     }
-
-//    if (_pipelineStatisticsEnabled && !_individualPipelineStatistics)
-//        _pipelineStats[_device->flyingIndex()].front().second.end(*currentCommandBuffer);
-//    if (_timingEnabled && _timingMode == TimingMode::SINGLE)
-//        _timers[_device->flyingIndex()].front().second.end(*currentCommandBuffer);
-    currentCommandBuffer->end();
 
     bool result = true;
 

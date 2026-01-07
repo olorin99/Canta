@@ -362,6 +362,18 @@ namespace canta {
         auto addCopyPass(const std::string_view name, const BufferIndex src, const ImageIndex dst, const RenderGroup group = {}) -> RenderPass&;
         auto addCopyPass(const std::string_view name, const ImageIndex src, const BufferIndex dst, const RenderGroup group = {}) -> RenderPass&;
 
+        template <std::ranges::range Range>
+        auto addUploadPass(const std::string_view name, const BufferIndex dst, const Range& range, const RenderGroup group = {}) -> RenderPass& {
+            return addUploadPass(name, dst, std::span<const u8>(reinterpret_cast<const u8*>(std::ranges::data(range)), std::ranges::size(range) * sizeof(std::ranges::range_value_t<Range>)), group);
+        }
+        auto addUploadPass(const std::string_view name, const BufferIndex dst, std::span<const u8> data, const RenderGroup group = {}) -> RenderPass&;
+
+        template <std::ranges::range Range>
+        auto addReadbackPass(const std::string_view name, const BufferIndex dst, Range& range, const RenderGroup group = {}) -> RenderPass& {
+            return addReadbackPass(name, dst, std::span<u8>(reinterpret_cast<u8*>(std::ranges::data(range)), std::ranges::size(range) * sizeof(std::ranges::range_value_t<Range>)), group);
+        }
+        auto addReadbackPass(const std::string_view name, const BufferIndex src, std::span<u8> data, const RenderGroup group = {}) -> RenderPass&;
+
         auto getGroup(const std::string_view name, const std::array<f32, 4>& colour = { 0, 1, 0, 1 }) -> RenderGroup;
         auto getGroupName(const RenderGroup) -> std::string;
         auto getGroupColour(const RenderGroup) -> std::array<f32, 4>;

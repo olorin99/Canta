@@ -91,24 +91,12 @@ int main() {
         .name = "output"
     });
 
-    renderGraph.addPass({.name = "lhs_upload", .type = canta::PassType::HOST})
-        .addStorageBufferWrite(lhs)
-        .setExecuteFunction([&] (auto& buffer, auto& graph) {
-            graph.getBuffer(lhs)->data(lhsData);
-        });
+    renderGraph.addUploadPass("lhs_upload", lhs, lhsData);
+    renderGraph.addUploadPass("rhs_upload", rhs, rhsData);
 
-    renderGraph.addPass({.name = "rhs_upload", .type = canta::PassType::HOST})
-        .addStorageBufferWrite(rhs)
-        .setExecuteFunction([&] (auto& buffer, auto& graph) {
-            graph.getBuffer(rhs)->data(rhsData);
-        });
-
-    renderGraph.addPass({
+    auto outputAlias = renderGraph.addPass({
         .name = "multiply"
     })
-        // .addStorageBufferRead(lhs)
-        // .addStorageBufferRead(rhs)
-        // .addStorageBufferWrite(output)
         .setPipeline(pipelineManager.getPipeline({
             .compute = {
                 .module = pipelineManager.getShader({
@@ -120,17 +108,15 @@ int main() {
             }
         }).value())
         .pushConstants(canta::Read(lhs), canta::Read(rhs), canta::Write(output), N)
-        .dispatchThreads(N, N);
-
-    renderGraph.setBackbuffer(output);
-
-    renderGraph.compile();
-    renderGraph.execute({}, {}, {}, true);
-
+        .dispatchThreads(N, N).aliasBufferOutput(0).value();
 
     f32 outputData[N * N] = {};
-    const auto mapped = outputBuffer->map();
-    std::memcpy(outputData, mapped.address(), N * N * sizeof(f32));
+    auto backbuffer = renderGraph.addReadbackPass("output_read", outputAlias, outputData).aliasBufferOutput(0);
+
+    renderGraph.setBackbuffer(backbuffer.value());
+
+    if (!renderGraph.compile()) return -1;
+    if (!renderGraph.execute({}, {}, {}, true)) return -3;
 
     printf("LHS: \n");
     printMatrix(N, lhsData);
