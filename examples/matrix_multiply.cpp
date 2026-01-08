@@ -105,28 +105,37 @@ int main() {
         .pushConstants(canta::Read(lhs), canta::Read(rhs), canta::Write(output), N)
         .dispatchThreads(N, N).aliasBufferOutput(0).value();
 
+    canta::BufferIndex frameIndex = outputAlias;
+    for (i32 i = 0; i < 60; i++ ) {
+        frameIndex = renderGraph.addPass({
+            .name = "multiply"
+        })
+        .setPipeline(pipelineManager.getPipeline({
+            .compute = {
+                .path = "matrix_multiply.slang"
+            }
+        }).value())
+        .addStorageBufferRead(frameIndex)
+        .pushConstants(canta::Read(lhs), canta::Read(rhs), canta::Write(frameIndex), N)
+        .dispatchThreads(N, N).aliasBufferOutput(0).value();
+    }
+
     f32 outputData[N * N] = {};
-    auto backbuffer = renderGraph.addReadbackPass("output_read", outputAlias, outputData).aliasBufferOutput(0);
+    auto backbuffer = renderGraph.addReadbackPass("output_read", frameIndex, outputData).aliasBufferOutput(0);
 
     renderGraph.setBackbuffer(backbuffer.value());
 
     if (!renderGraph.compile()) return -1;
     if (!renderGraph.execute({}, {}, {}, true)) return -3;
 
-    printf("LHS: \n");
-    printMatrix(N, lhsData);
-
-    printf("RHS: \n");
-    printMatrix(N, rhsData);
-
-    printf("Output: \n");
-    printMatrix(N, outputData);
+    printf("RenderGraph\n");
+    printf("Passes: %lu\n", renderGraph.orderedPasses().size());
 
     printf("Validate output\n");
 
     f32 outputData2[N * N] = {};
     multiplyMatrix(N, lhsData, rhsData, outputData2);
-    printMatrix(N, outputData2);
+    // printMatrix(N, outputData2);
 
     f32 avgErr = 0.0;
 
@@ -141,10 +150,13 @@ int main() {
     avgErr /= (N * N);
     printf("Average error: %f\n", avgErr);
 
+    u64 totalTime = 0;
     for (auto timers = renderGraph.timers(); auto&[name, timer] : timers) {
-        printf("Timer: %s\n", name.c_str());
-        printf("Milliseconds: %f\n", timer.result().value() / 1e6);
+        const auto time = timer.result().value();
+        printf("Pass: %s (%fms)\n", name.c_str(), time / 1e6);
+        totalTime += time;
     }
+    printf("Total time: %fms\n", totalTime / 1e6);
 
 
     device->endFrameCapture();
