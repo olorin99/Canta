@@ -6,10 +6,8 @@
 #include <tsl/robin_map.h>
 #include <filesystem>
 #include <Ende/filesystem/FileWatcher.h>
-#ifdef CANTA_USE_SLANG
 #include <slang.h>
 #include <slang-com-ptr.h>
-#endif
 
 namespace canta {
 
@@ -21,7 +19,6 @@ namespace canta {
     struct ShaderDescription {
         std::filesystem::path path = {};
         std::vector<u32> spirv = {};
-        std::string_view glsl = {};
         std::string_view slang = {};
         std::vector<Macro> macros = {};
         ShaderStage stage = ShaderStage::NONE;
@@ -81,7 +78,7 @@ namespace canta {
 
         auto createShader(ShaderDescription info, ShaderHandle handle = {}) -> std::expected<ShaderHandle, Error>;
 
-        auto compileGLSL(std::string_view name, std::string_view glsl, ShaderStage stage, std::span<const Macro> macros = {}) -> std::expected<std::vector<u32>, std::string>;
+        // auto compileGLSL(std::string_view name, std::string_view glsl, ShaderStage stage, std::span<const Macro> macros = {}) -> std::expected<std::vector<u32>, std::string>;
         auto compileSlang(std::string_view name, std::string_view slang, ShaderStage stage, std::span<const Macro> macros = {}) -> std::expected<std::vector<u32>, std::string>;
 
         auto createSlangSession(std::span<const Macro> macros = {}) -> std::expected<Slang::ComPtr<slang::ISession>, std::string>;
@@ -99,10 +96,8 @@ namespace canta {
 
         std::vector<std::pair<std::string, std::string>> _virtualFiles = {};
 
-#ifdef CANTA_USE_SLANG
         Slang::ComPtr<slang::IGlobalSession> _slangGlobalSession = {};
         Slang::ComPtr<slang::ISession> _slangMainSession = {};
-#endif
 
     };
 

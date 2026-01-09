@@ -125,10 +125,7 @@ auto pipeline  = pipelineManager.getPipeline({
 - VulkanMemoryAllocator
 - Tessil/robin-map
 - SPIRV-Cross
-- SPIRV-Headers
-- SPIRV-Tools
-- glslang
-- shaderc
+- slang
 
 ### Embeded in project
 - imgui

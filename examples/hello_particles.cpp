@@ -32,60 +32,15 @@ int main() {
         .window = &window
     });
 
-    auto imguiContext = canta::ImGuiContext::create({
-        .device = device.get(),
-        .window = &window
-    });
-
-    std::string particleDrawComp = R"(
-#version 460
-
-#include "canta.glsl"
-
-layout (local_size_x = 32) in;
-
-declareStorageImages(storageImages, image2D, writeonly);
-
-struct Particle {
-    vec2 position;
-    vec2 velocity;
-    vec3 colour;
-    int radius;
-};
-
-declareBufferReference(ParticleBuffer,
-    Particle particles[];
-);
-
-layout (push_constant) uniform Push {
-    ParticleBuffer particleBuffer;
-    int imageIndex;
-    int maxParticles;
-};
-
-void main() {
-    const uint idx = gl_GlobalInvocationID.x;
-    if (idx >= maxParticles)
-        return;
-
-    Particle particle = particleBuffer.particles[idx];
-
-    vec4 colour = vec4(particle.colour, 1);
-
-    for (int x = -particle.radius; x < particle.radius; x++) {
-        for (int y = -particle.radius; y < particle.radius; y++) {
-            ivec2 position = ivec2(particle.position) + ivec2(x, y);
-            imageStore(storageImages[imageIndex], position, colour);
-        }
-    }
-
-    imageStore(storageImages[imageIndex], ivec2(particle.position), colour);
-}
-)";
-
     auto pipelineManager = canta::PipelineManager::create({
         .device = device.get(),
         .rootPath = CANTA_SRC_DIR
+    });
+
+    auto imguiContext = canta::ImGuiContext::create({
+        .device = device.get(),
+        .window = &window,
+        .pipelineManager = &pipelineManager,
     });
 
     auto pipeline = pipelineManager.getPipeline(CANTA_SRC_DIR"/examples/particles_update.pipeline", std::to_array({

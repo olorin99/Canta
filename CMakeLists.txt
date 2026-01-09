@@ -9,7 +9,6 @@ set(CMAKE_CXX_STANDARD 23)
 option(CANTA_BUILD_EXAMPLES "enable examples" ON)
 option(CANTA_ENABLE_IMGUI "enable imgui" ON)
 option(CANTA_BUILD_TESTS "build tests" ON)
-option(CANTA_USE_SLANG "use slang shaders" ON)
 option(CANTA_ENABLE_RENDERDOC "enable renderdoc" ON)
 
 if (${CANTA_ENABLE_RENDERDOC})
@@ -20,10 +19,6 @@ add_compile_definitions(CANTA_SRC_DIR="${CMAKE_CURRENT_SOURCE_DIR}")
 
 find_package(SDL2 REQUIRED)
 find_package(Threads REQUIRED)
-if (${CANTA_USE_SLANG})
-    find_package(slang REQUIRED)
-    add_compile_definitions(CANTA_USE_SLANG="${CANTA_USE_SLANG}")
-endif ()
 
 function(embed_shaders)
     file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/include")
@@ -116,7 +111,7 @@ target_include_directories(Canta
     PRIVATE
     ${CMAKE_CURRENT_LIST_DIR}/src
     ${CMAKE_CURRENT_LIST_DIR}/third_party
-#    slang::slang
+    slang
 )
 
 target_link_libraries(Canta
@@ -126,23 +121,11 @@ target_link_libraries(Canta
     spdlog
     ${SDL2_LIBRARIES}
     spirv-cross-cpp
-    shaderc_combined
     tsl::robin_map
     Threads::Threads
-#    slang::slang
+    slang
     Canta_SHADERS
 )
-
-if (${CANTA_USE_SLANG})
-    target_include_directories(Canta
-            PRIVATE
-            slang::slang
-    )
-    target_link_libraries(Canta
-        slang::slang
-    )
-endif ()
-
 
 
 if (CANTA_BUILD_EXAMPLES)

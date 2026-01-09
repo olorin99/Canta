@@ -6,8 +6,8 @@ static const uint2 blockDim = uint2(32, 32);
 [numthreads(32, 32, 1)]
 void main(
     uint3 threadId: SV_DispatchThreadID,
-    uniform const float* lhs,
-    uniform const float* rhs,
+    uniform Ptr<float, Access.Read> lhs,
+    uniform Ptr<float, Access.Read> rhs,
     uniform float* output,
     uniform const uint N,
 ) {

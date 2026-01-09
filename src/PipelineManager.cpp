@@ -1,12 +1,9 @@
 #include <cstring>
 #include "Canta/PipelineManager.h"
 #include <Ende/util/hash.h>
-#include <Canta/util.h>
 #include <Ende/filesystem/File.h>
 #include <format>
-#include <shaderc/shaderc.hpp>
 #include <rapidjson/document.h>
-#include <Ende/filesystem/File.h>
 #include "embeded_shaders_Canta.h"
 
 size_t std::hash<canta::Pipeline::CreateInfo>::operator()(const canta::Pipeline::CreateInfo &object) const {
@@ -49,8 +46,8 @@ size_t std::hash<canta::ShaderDescription>::operator()(const canta::ShaderDescri
         for (auto& code : object.spirv)
             hash = ende::util::combineHash(hash, static_cast<u64>(code));
     }
-    if (!object.glsl.empty())
-        hash = ende::util::combineHash(hash, std::hash<std::string_view>()(object.glsl));
+    if (!object.slang.empty())
+        hash = ende::util::combineHash(hash, std::hash<std::string_view>()(object.slang));
     for (auto& macro : object.macros) {
         hash = ende::util::combineHash(hash, std::hash<std::string>()(macro.name));
         hash = ende::util::combineHash(hash, std::hash<std::string>()(macro.value));
@@ -87,9 +84,8 @@ bool canta::operator==(const Pipeline::CreateInfo &lhs, const Pipeline::CreateIn
 
 bool canta::operator==(const ShaderDescription &lhs, const ShaderDescription &rhs) {
     auto result = lhs.stage == rhs.stage && lhs.path == rhs.path && lhs.spirv.size() == rhs.spirv.size() &&
-            lhs.glsl.size() == rhs.glsl.size() && lhs.macros.size() == rhs.macros.size() &&
-            memcmp(reinterpret_cast<const void*>(lhs.spirv.data()), reinterpret_cast<const void*>(rhs.spirv.data()), sizeof(u32) * lhs.spirv.size()) == 0 &&
-            memcmp(reinterpret_cast<const void*>(lhs.glsl.data()), reinterpret_cast<const void*>(rhs.glsl.data()), sizeof(u8) * lhs.glsl.size()) == 0;
+            lhs.slang.size() == rhs.slang.size() && lhs.macros.size() == rhs.macros.size() &&
+            memcmp(reinterpret_cast<const void*>(lhs.spirv.data()), reinterpret_cast<const void*>(rhs.spirv.data()), sizeof(u32) * lhs.spirv.size()) == 0;
     if (!result)
         return result;
     for (u32 i = 0; i < lhs.macros.size(); i++) {
@@ -106,63 +102,8 @@ auto canta::PipelineManager::create(canta::PipelineManager::CreateInfo info) -> 
 
     registerEmbededShadersCanta(manager);
 
-#ifdef CANTA_USE_SLANG
     slang::createGlobalSession(manager._slangGlobalSession.writeRef());
-#endif
 
-    const char* cantaGLSLFile = R"(
-#ifndef CANTA_INCLUDE_GLSL
-#define CANTA_INCLUDE_GLSL
-
-#ifndef __cplusplus
-
-#extension GL_EXT_nonuniform_qualifier : enable
-#extension GL_GOOGLE_include_directive : enable
-#extension GL_EXT_buffer_reference2 : enable
-#extension GL_EXT_scalar_block_layout : enable
-#extension GL_EXT_shader_explicit_arithmetic_types : enable
-
-#endif
-
-#define CANTA_BINDLESS_SAMPLERS 0
-#define CANTA_BINDLESS_SAMPLED_IMAGES 1
-#define CANTA_BINDLESS_STORAGE_IMAGES 2
-#define CANTA_BINDLESS_STORAGE_BUFFERS 3
-
-#ifndef __cplusplus
-
-layout (set = 0, binding = CANTA_BINDLESS_SAMPLERS) uniform sampler samplers[];
-
-#define declareSampledImages(name, type) layout (set = 0, binding = CANTA_BINDLESS_SAMPLED_IMAGES) uniform type name[];
-#define declareStorageImages(name, type, qualifiers) layout (set = 0, binding = CANTA_BINDLESS_STORAGE_IMAGES) uniform qualifiers type name[];
-#define declareStorageImagesFormat(name, type, qualifiers, format) layout (format, set = 0, binding = CANTA_BINDLESS_STORAGE_IMAGES) uniform qualifiers type name[];
-
-#define sampled1D(name, imageIndex, samplerIndex) sampler1D(name[imageIndex], samplers[samplerIndex])
-#define sampled2D(name, imageIndex, samplerIndex) sampler2D(name[imageIndex], samplers[samplerIndex])
-#define sampled3D(name, imageIndex, samplerIndex) sampler3D(name[imageIndex], samplers[samplerIndex])
-
-#endif
-
-#ifndef __cplusplus
-
-#define declareBufferReferenceAlignQualifier(name, align, qualifiers, body) layout (scalar, buffer_reference, buffer_reference_align = align) qualifiers buffer name { body };
-
-#else
-
-#define declareBufferReferenceAlignQualifier(name, align, qualifiers, body) using name = u64;
-
-#endif
-
-#define declareBufferReferenceQualifier(name, qualifiers, body) declareBufferReferenceAlignQualifier(name, 4, qualifiers, body)
-#define declareBufferReferenceAlign(name, align, body) declareBufferReferenceAlignQualifier(name, align, , body)
-#define declareBufferReference(name, body) declareBufferReferenceQualifier(name, , body)
-#define declareBufferReferenceReadonly(name, body) declareBufferReferenceQualifier(name, readonly, body)
-#define declareBufferReferenceWriteonly(name, body) declareBufferReferenceQualifier(name, writeonly, body)
-
-#endif
-)";
-    manager.addVirtualFile("canta.glsl", cantaGLSLFile);
-    manager.addVirtualFile("Canta/canta.glsl", cantaGLSLFile);
     return manager;
 }
 
@@ -175,9 +116,7 @@ canta::PipelineManager::PipelineManager(canta::PipelineManager &&rhs) noexcept {
     std::swap(_fileWatcher, rhs._fileWatcher);
     std::swap(_watchedPipelines, rhs._watchedPipelines);
     std::swap(_virtualFiles, rhs._virtualFiles);
-#ifdef CANTA_USE_SLANG
     std::swap(_slangGlobalSession, rhs._slangGlobalSession);
-#endif
 }
 
 auto canta::PipelineManager::operator=(canta::PipelineManager &&rhs) noexcept -> PipelineManager & {
@@ -189,9 +128,7 @@ auto canta::PipelineManager::operator=(canta::PipelineManager &&rhs) noexcept ->
     std::swap(_fileWatcher, rhs._fileWatcher);
     std::swap(_watchedPipelines, rhs._watchedPipelines);
     std::swap(_virtualFiles, rhs._virtualFiles);
-#ifdef CANTA_USE_SLANG
     std::swap(_slangGlobalSession, rhs._slangGlobalSession);
-#endif
     return *this;
 }
 
@@ -427,23 +364,12 @@ auto canta::PipelineManager::createShader(canta::ShaderDescription info, ShaderH
                     _device->logger().error("Shader VulkanError: {}", error.c_str());
                     return Error::InvalidShader;
                 }));
-        } else {
-            spirv = TRY(compileGLSL(info.path.stem().string(), source, info.stage, info.macros)
-                .transform_error([this](const auto& error) {
-                    _device->logger().error("Shader VulkanError: {}", error.c_str());
-                    return Error::InvalidShader;
-                }));
         }
         if (!handle) {
             auto watcher = _watchedPipelines.find(info.path);
             if (watcher == _watchedPipelines.end())
                 _fileWatcher.addWatch(_rootPath / info.path);
         }
-    } else if (!info.glsl.empty()) {
-        spirv = TRY(compileGLSL(info.name, info.glsl, info.stage).transform_error([this](const auto& error) {
-            _device->logger().error("Shader VulkanError: {}", error.c_str());
-            return Error::InvalidShader;
-        }));
     } else if (!info.slang.empty()) {
         spirv = TRY(compileSlang(info.name, info.slang, info.stage).transform_error([this](const auto& error) {
             _device->logger().error("Shader VulkanError: {}", error.c_str());
@@ -564,114 +490,9 @@ private:
 
 };
 
-class FileIncluder : public shaderc::CompileOptions::IncluderInterface {
-public:
-
-    explicit FileIncluder(const FileFinder* fileFinder)
-        : _fileFinder(fileFinder)
-    {}
-
-    ~FileIncluder() override = default;
-
-    shaderc_include_result* GetInclude(const char* requestedSource, shaderc_include_type type, const char* requestingSource, size_t includeDepth) override {
-
-        auto file = (type == shaderc_include_type_relative) ? _fileFinder->findRelativeReadableFilepath(requestingSource, requestedSource)
-                                                            : _fileFinder->findReadableFilepath(requestedSource);
-
-        if (!file) return new shaderc_include_result{"", 0, "unable to open file", 15};
-        auto result = new shaderc_include_result{file->path.data(), file->path.size(), file->contents.data(), file->contents.size(), file};
-        return result;
-    }
-
-    void ReleaseInclude(shaderc_include_result* result) override {
-        delete static_cast<FileInfo*>(result->user_data);
-        delete result;
-    }
-
-private:
-
-    const FileFinder* _fileFinder = nullptr;
-
-};
-
-auto canta::PipelineManager::compileGLSL(std::string_view name, std::string_view glsl, canta::ShaderStage stage, std::span<const Macro> macros) -> std::expected<std::vector<u32>, std::string> {
-    shaderc_shader_kind kind = {};
-    switch (stage) {
-        case ShaderStage::VERTEX:
-            kind = shaderc_shader_kind::shaderc_vertex_shader;
-            break;
-        case ShaderStage::TESS_CONTROL:
-            kind = shaderc_shader_kind::shaderc_tess_control_shader;
-            break;
-        case ShaderStage::TESS_EVAL:
-            kind = shaderc_shader_kind::shaderc_tess_evaluation_shader;
-            break;
-        case ShaderStage::GEOMETRY:
-            kind = shaderc_shader_kind::shaderc_geometry_shader;
-            break;
-        case ShaderStage::FRAGMENT:
-            kind = shaderc_shader_kind::shaderc_fragment_shader;
-            break;
-        case ShaderStage::COMPUTE:
-            kind = shaderc_shader_kind::shaderc_compute_shader;
-            break;
-        case ShaderStage::RAYGEN:
-            kind = shaderc_shader_kind::shaderc_raygen_shader;
-            break;
-        case ShaderStage::ANY_HIT:
-            kind = shaderc_shader_kind::shaderc_anyhit_shader;
-            break;
-        case ShaderStage::CLOSEST_HIT:
-            kind = shaderc_shader_kind::shaderc_closesthit_shader;
-            break;
-        case ShaderStage::MISS:
-            kind = shaderc_shader_kind::shaderc_miss_shader;
-            break;
-        case ShaderStage::INTERSECTION:
-            kind = shaderc_shader_kind::shaderc_intersection_shader;
-            break;
-        case ShaderStage::CALLABLE:
-            kind = shaderc_shader_kind::shaderc_callable_shader;
-            break;
-        case ShaderStage::TASK:
-            kind = shaderc_shader_kind::shaderc_task_shader;
-            break;
-        case ShaderStage::MESH:
-            kind = shaderc_shader_kind::shaderc_mesh_shader;
-            break;
-        default:
-            return std::unexpected("invalid shader stage used for compilation");
-    }
-
-
-    shaderc::Compiler compiler = {};
-    shaderc::CompileOptions options = {};
-
-    options.SetTargetEnvironment(shaderc_target_env_vulkan, shaderc_env_version_vulkan_1_3);
-    options.SetTargetSpirv(shaderc_spirv_version_1_6);
-
-    FileFinder finder(&_virtualFiles);
-    finder.addSearchPath(_rootPath);
-    options.SetIncluder(std::make_unique<FileIncluder>(&finder));
-
-    for (auto& macro : macros)
-        options.AddMacroDefinition(macro.name, macro.value);
-
-    shaderc::SpvCompilationResult result = compiler.CompileGlslToSpv(glsl.data(), kind, name.data(), options);
-    if (result.GetCompilationStatus() != shaderc_compilation_status_success) {
-        return std::unexpected(std::format("Failed to compiler shader :\nErrors: {}\nWarnings: {}\nMessage: {}", result.GetNumErrors(), result.GetNumWarnings(), result.GetErrorMessage()));
-    }
-
-    return std::vector<u32>(result.cbegin(), result.cend());
-}
-
 #define DIAGNOSE(diagnostics) if (diagnostics != nullptr) return std::unexpected(reinterpret_cast<const char*>(diagnostics->getBufferPointer()));
 
 auto canta::PipelineManager::compileSlang(std::string_view name, std::string_view slang, canta::ShaderStage stage, std::span<const Macro> macros) -> std::expected<std::vector<u32>, std::string> {
-#ifndef CANTA_USE_SLANG
-    return std::unexpected("Attempted to compile slang shader without linking slang");
-#else
-
     auto session = TRY(createSlangSession());
 
     Slang::ComPtr<slang::IModule> slangModule = {};
@@ -698,7 +519,6 @@ auto canta::PipelineManager::compileSlang(std::string_view name, std::string_vie
     std::vector<u32> spirv = {};
     spirv.insert(spirv.begin(), (u32*)kernelBlob->getBufferPointer(), (u32*)((u8*)kernelBlob->getBufferPointer() + kernelBlob->getBufferSize()));
     return spirv;
-#endif
 }
 
 auto canta::PipelineManager::createSlangSession(std::span<const Macro> macros) -> std::expected<Slang::ComPtr<slang::ISession>, std::string> {
@@ -778,13 +598,6 @@ auto loadShaderDescription(canta::PipelineManager& manager, rapidjson::Value& no
         assert(node["path"].IsString());
         description.path = node["path"].GetString();
     }
-//    if (node.HasMember("spirv")) {
-//        assert(node["path"].Is)
-//    }
-    if (node.HasMember("glsl")) {
-        assert(node["glsl"].IsString());
-        description.glsl = node["glsl"].GetString();
-    }
     if (node.HasMember("slang")) {
         assert(node["slang"].IsString());
         description.slang = node["slang"].GetString();
@@ -796,6 +609,8 @@ auto loadShaderDescription(canta::PipelineManager& manager, rapidjson::Value& no
             macro.name = node["macros"][i]["name"].GetString();
             macro.value = node["macros"][i]["value"].GetString();
         }
+    }
+    if (node.HasMember("entryPoint")) {
     }
     description.macros.insert(description.macros.end(), additionalMacros.begin(), additionalMacros.end());
     if (node.HasMember("stage")) {

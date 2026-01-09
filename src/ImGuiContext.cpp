@@ -1,69 +1,68 @@
 #include "Canta/ImGuiContext.h"
 #include <Canta/Device.h>
-#include <Canta/util.h>
+#include <Canta/PipelineManager.h>
 #include <Canta/SDLWindow.h>
 #include <backends/imgui_impl_sdl2.h>
 #include <imnodes.h>
+#include <Ende/filesystem/File.h>
 
-const char* vertexGLSL = R"(
-#version 450 core
-layout(location = 0) in vec2 aPos;
-layout(location = 1) in vec2 aUV;
-layout(location = 2) in vec4 aColor;
 
-layout(push_constant) uniform uPushConstant {
-    vec2 uScale;
-    vec2 uTranslate;
-} pc;
+const char* vertexSlang = R"(
 
-out gl_PerVertex {
-    vec4 gl_Position;
+struct VSOutput {
+    float4 position : SV_Position;
+    float2 uv : TEXCOORD;
+    float4 colour: COLOUR;
 };
 
-layout(location = 0) out struct {
-    vec4 Color;
-    vec2 UV;
-} Out;
-
-void main()
-{
-    Out.Color = aColor;
-    Out.UV = aUV;
-    gl_Position = vec4(aPos * pc.uScale + pc.uTranslate, 0, 1);
+[shader("vertex")]
+VSOutput main(
+    float2 pos : POSITION,
+    float2 uv : TEXCOORD,
+    float4 colour,
+    uniform float2 scale,
+    uniform float2 translate,
+    uniform int samplerIndex,
+    uniform int sampledIndex,
+) {
+    VSOutput out;
+    out.position = float4(pos * scale + translate, 0, 1);
+    out.uv = uv;
+    out.colour = colour;
+    return out;
 }
 )";
 
-const char* fragmentGLSL = R"(
-#version 450 core
+const char* fragmentSlang = R"(
+import canta;
 
-#extension GL_EXT_nonuniform_qualifier : enable
+struct VSOutput {
+    float4 position : SV_Position;
+    float2 uv : TEXCOORD;
+    float4 colour: COLOUR;
+};
 
-layout(location = 0) out vec4 fColor;
-
-layout (set = 0, binding = 0) uniform sampler bindlessSamplers[];
-layout (set = 0, binding = 1) uniform texture2D bindlessSampledImages[];
-
-layout(location = 0) in struct {
-    vec4 Color;
-    vec2 UV;
-} In;
-
-layout(push_constant) uniform uPushConstant {
-    layout(offset = 16) int samplerIndex;
-    layout(offset = 20) int sampledIndex;
-} pc;
-
-void main()
-{
-    vec4 colour = texture(sampler2D(bindlessSampledImages[pc.sampledIndex], bindlessSamplers[pc.samplerIndex]), In.UV.st);
-    fColor = In.Color * colour;
+[shader("fragment")]
+float4 main(
+    in VSOutput input,
+    uniform float2 scale,
+    uniform float2 translate,
+    uniform canta.Sampler sampler,
+    uniform canta.Image2D<float4> image,
+) {
+    float4 colour = image.get().Sample(sampler.get(), input.uv);
+    return input.colour * colour;
 }
 )";
 
 auto canta::ImGuiContext::create(canta::ImGuiContext::CreateInfo info) -> ImGuiContext {
     ImGuiContext context = {};
 
+    assert(info.device);
+    assert(info.pipelineManager);
+
     context._device = info.device;
+    context._pipelineManager = info.pipelineManager;
     context._sampler = info.device->createSampler({});
 
     IMGUI_CHECKVERSION();
@@ -300,16 +299,6 @@ void canta::ImGuiContext::setupRenderState(ImDrawData *drawData, canta::CommandB
 }
 
 auto canta::ImGuiContext::createPipeline(canta::Format format) -> PipelineHandle {
-    static auto vertexSpirv = util::compileGLSLToSpirv("imgui_vertex", vertexGLSL, ShaderStage::VERTEX).transform_error([](const auto& error) {
-        std::printf("%s", error.c_str());
-        return error;
-    }).value();
-    static auto fragmentSpirv = util::compileGLSLToSpirv("imgui_fragment", fragmentGLSL, ShaderStage::FRAGMENT).transform_error([](const auto& error) {
-        std::printf("%s", error.c_str());
-        return error;
-    }).value();
-
-
     auto inputBindings = std::vector{
         VertexInputBinding {
             .binding = 0,
@@ -339,18 +328,18 @@ auto canta::ImGuiContext::createPipeline(canta::Format format) -> PipelineHandle
     };
     auto colourFormats = std::vector{ format };
 
-    return _device->createPipeline({
+    return _pipelineManager->getPipeline({
         .vertex = {
-            .module = _device->createShaderModule({
-                .spirv = vertexSpirv,
+            .module = _pipelineManager->getShader({
+                .slang = vertexSlang,
                 .stage = ShaderStage::VERTEX
-            })
+            }).value()
         },
         .fragment = {
-            .module = _device->createShaderModule({
-                .spirv = fragmentSpirv,
+            .module = _pipelineManager->getShader({
+                .slang = fragmentSlang,
                 .stage = ShaderStage::FRAGMENT
-            })
+            }).value()
         },
         .rasterState = {
             .cullMode = CullMode::NONE,
@@ -367,5 +356,5 @@ auto canta::ImGuiContext::createPipeline(canta::Format format) -> PipelineHandle
         .inputAttributes = inputAttributes,
         .topology = PrimitiveTopology::TRIANGLE_LIST,
         .colourFormats = colourFormats
-    });
+    }).value();
 }

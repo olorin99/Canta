@@ -5,7 +5,8 @@
   "geometry": {},
   "fragment": {},
   "compute": {
-    "path": "/home/christian/Documents/Projects/Canta/examples/particles.comp",
+    "path": "/home/christian/Documents/Projects/Canta/examples/particles.slang",
+    "entryPoint": "moveMain",
     "macros": [{
       "name": "CANTA_TEST",
       "value": "HELLO"

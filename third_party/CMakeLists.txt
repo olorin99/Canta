@@ -19,12 +19,6 @@ FetchContent_Declare(
     GIT_TAG         5e43c795daf43dd09398d8307212e85025215052
 )
 
-#FetchContent_Declare(
-#    imgui
-#    GIT_REPOSITORY  https://github.com/ocornut/imgui
-#    GIT_TAG         "docking"
-#)
-
 FetchContent_Declare(
     spdlog
     GIT_REPOSITORY  https://github.com/gabime/spdlog
@@ -47,50 +41,33 @@ set(SPIRV_CROSS_EXCEPTIONS_TO_ASSERTIONS ON CACHE BOOL "" FORCE)
 set(SPIRV_CROSS_ENABLE_TESTS OFF CACHE BOOL "" FORCE)
 set(SPIRV_CROSS_CLI OFF)
 
-FetchContent_Declare(
-    spirv-headers
-    GIT_REPOSITORY https://github.com/KhronosGroup/SPIRV-Headers
-    GIT_TAG        aa6cef192b8e693916eb713e7a9ccadf06062ceb
-)
-set(BUILD_TESTS OFF CACHE BOOL "" FORCE)
+option(SLANG_GIT_REPOSITORY "Repository where we search for the shader slang library." https://github.com/shader-slang/slang.git)
+if(NOT SLANG_GIT_REPOSITORY)
+    set(SLANG_GIT_REPOSITORY "https://github.com/shader-slang/slang.git")
+endif()
 
-FetchContent_Declare(
-    spirv-tools
-    GIT_REPOSITORY https://github.com/KhronosGroup/SPIRV-Tools
-    GIT_TAG        f289d047f49fb60488301ec62bafab85573668cc
-)
-set(SPIRV_SKIP_TESTS ON CACHE BOOL "" FORCE)
-set(SKIP_SPIRV_TOOLS_INSTALL ON CACHE BOOL "" FORCE)
-set(SPIRV_WERROR OFF CACHE BOOL "" FORCE)
-set(SPIRV_WARN_EVERYTHING OFF CACHE BOOL "" FORCE)
-set(ENABLE_EXCEPTIONS_ON_MSVC OFF CACHE BOOL "" FORCE)
-
-FetchContent_Declare(
-    glslang
-    GIT_REPOSITORY https://github.com/KhronosGroup/glslang
-    GIT_TAG        c39c0fea849b42980886b7344119067251ce2bf5
-)
-set(BUILD_EXTERNAL OFF CACHE BOOL "" FORCE)
-set(BUILD_WERROR OFF CACHE BOOL "" FORCE)
-set(ENABLE_GLSLANG_BINARIES OFF CACHE BOOL "" FORCE)
-set(ENABLE_RTTI OFF CACHE BOOL "" FORCE)
-set(ENABLE_EXCEPTIONS OFF CACHE BOOL "" FORCE)
-
-FetchContent_Declare(
-    shaderc
-    GIT_REPOSITORY https://github.com/google/shaderc
-    GIT_TAG        aaa44b544909600381e1a180074ed7f544e48410
-)
-set(SHADERC_SKIP_TESTS ON CACHE BOOL "" FORCE)
-set(SHADERC_SKIP_INSTALL ON CACHE BOOL "" FORCE)
-set(SHADERC_SKIP_EXAMPLES ON CACHE BOOL "" FORCE)
-set(SHADERC_ENABLE_WERROR_COMPILE OFF CACHE BOOL "" FORCE)
-set(SPIRV_CROSS_EXCEPTIONS_TO_ASSERTIONS ON CACHE BOOL "" FORCE)
-
-
-FetchContent_MakeAvailable(Ende volk vma spdlog tsl_map spirv_cross spirv-headers spirv-tools glslang shaderc)
+option(SLANG_GIT_TAG "Version of the slang library we are fetching." v2025.24.3)
+if(NOT SLANG_GIT_TAG)
+    set(SLANG_GIT_TAG "v2025.24.3")
+endif()
 
 set(IMGUI_PATH imgui)
+
+set(SLANG_EMBED_CORE_MODULE ON CACHE BOOL "" FORCE)
+set(SLANG_EMBED_CORE_MODULE_SOURCE ON CACHE BOOL "" FORCE)
+set(SLANG_LIB_TYPE STATIC)
+set(SLANG_ENABLE_TESTS OFF CACHE BOOL "" FORCE)
+set(SLANG_ENABLE_EXAMPLES OFF CACHE BOOL "" FORCE)
+set(SLANG_ENABLE_GFX OFF CACHE BOOL "" FORCE)
+set(SLANG_ENABLE_SLANG_RHI OFF CACHE BOOL "" FORCE)
+
+FetchContent_Declare(slang
+        GIT_REPOSITORY "${SLANG_GIT_REPOSITORY}"
+        GIT_TAG "${SLANG_GIT_TAG}"
+)
+
+FetchContent_MakeAvailable(Ende volk vma spdlog tsl_map spirv_cross slang)
+
 set(IMGUI_SOURCES ${IMGUI_PATH}/imgui.cpp ${IMGUI_PATH}/imgui_demo.cpp ${IMGUI_PATH}/imgui_tables.cpp ${IMGUI_PATH}/imgui_widgets.cpp ${IMGUI_PATH}/imgui_draw.cpp ${IMGUI_PATH}/backends/imgui_impl_vulkan.cpp ${IMGUI_PATH}/backends/imgui_impl_sdl2.cpp)
 add_library(imgui ${IMGUI_SOURCES})
 target_include_directories(imgui PUBLIC ${IMGUI_PATH})

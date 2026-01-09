@@ -11,13 +11,6 @@
 
 namespace canta::util {
 
-    struct Macro {
-        std::string name;
-        std::string value;
-    };
-
-    auto compileGLSLToSpirv(std::string_view name, std::string_view glsl, ShaderStage stage, std::span<Macro> macros = {}) -> std::expected<std::vector<u32>, std::string>;
-
     template<class... Ts>
     constexpr auto maxSize() noexcept -> size_t {
         size_t _maxSize{ 0 };

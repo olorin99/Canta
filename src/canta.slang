@@ -5,12 +5,29 @@ module canta;
 #define CANTA_BINDLESS_STORAGE_IMAGES 2
 #define CANTA_BINDLESS_STORAGE_BUFFERS 3
 
-[[vk::binding(0, CANTA_BINDLESS_SAMPLERS)]] uniform SamplerState samplers[];
+[[vk::binding(CANTA_BINDLESS_SAMPLERS, 0)]] SamplerState samplers[];
 
 [[vk::binding(CANTA_BINDLESS_SAMPLED_IMAGES, 0)]] __DynamicResource g_sampledImages[];
 [[vk::binding(CANTA_BINDLESS_STORAGE_IMAGES, 0)]] __DynamicResource g_storageImages[];
 
 namespace canta {
+
+public struct Sampler {
+    private int index;
+
+    public __init(uint samplerIndex) {
+        index = samplerIndex;
+    }
+
+    public func isValid() -> bool {
+        return index >= 0;
+    }
+
+    public func get() -> SamplerState {
+        return samplers[index];
+    }
+
+}
 
 public struct Image1D<T : ITexelElement> {
 
