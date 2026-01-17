@@ -10,7 +10,7 @@ namespace canta {
     public:
 
         struct CreateInfo {
-            RenderGraph* renderGraph = nullptr;
+            RenderGraph* renderGraph;
         };
         static auto create(const CreateInfo& info) -> RenderGraphDebugger;
 

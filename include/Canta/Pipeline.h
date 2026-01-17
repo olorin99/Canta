@@ -113,7 +113,7 @@ namespace canta {
             bool primitiveRestart = false;
             std::vector<Format> colourFormats = {};
             Format depthFormat = Format::UNDEFINED;
-            std::string_view name = {};
+            std::string name = {};
         };
 
         Pipeline() = default;

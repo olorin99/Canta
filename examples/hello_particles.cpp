@@ -10,7 +10,8 @@
 #include <Canta/ImGuiContext.h>
 #include <Canta/UploadBuffer.h>
 
-#include "Canta/RenderGraphDebugger.h"
+#include "../include/Canta/debug/PipelineManagerDebugger.h"
+#include "../include/Canta/debug/RenderGraphDebugger.h"
 
 int main() {
 
@@ -63,7 +64,8 @@ int main() {
             }).value(),
             .entryPoint = "drawMain"
         },
-        .specializationConstants = {canta::SpecializationConstant{.id = 1, .name = "screen_width", .value = 780}}
+        .specializationConstants = {canta::SpecializationConstant{.id = 1, .name = "screen_width", .value = 780}},
+        .name = "particles_draw"
     }).value();
 
     auto testModule = pipelineManager.getShader({
@@ -122,6 +124,10 @@ int main() {
 
     auto renderGraphDebugger = canta::RenderGraphDebugger::create({
         .renderGraph = &renderGraph,
+    });
+
+    auto pipelineManagerDebugger = canta::PipelineManagerDebugger::create({
+        .pipelineManager = &pipelineManager,
     });
 
     f64 dt = 1.f / 60;
@@ -300,6 +306,8 @@ int main() {
 
         renderGraphDebugger.render();
         renderGraphDebugger.drawRenderGraph();
+
+        pipelineManagerDebugger.render();
 
         ImGui::Render();
 

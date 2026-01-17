@@ -1,4 +1,4 @@
-#include <Canta/RenderGraphDebugger.h>
+#include <../../include/Canta/debug/RenderGraphDebugger.h>
 #include <imgui/imgui.h>
 
 #include "imnodes.h"

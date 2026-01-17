@@ -276,6 +276,9 @@ auto loadFromFile(canta::PipelineManager& manager, const std::filesystem::path &
 auto canta::PipelineManager::getPipeline(const std::filesystem::path &path, std::span<const Macro> additionalMacros, const std::vector<SpecializationConstant>& specializationConstants) -> std::expected<PipelineHandle, Error> {
     auto createInfo = loadFromFile(*this, path, additionalMacros);
     createInfo.specializationConstants = specializationConstants;
+    if (createInfo.name.empty()) {
+        createInfo.name = path.filename().string();
+    }
     return getPipeline(createInfo);
 }
 
