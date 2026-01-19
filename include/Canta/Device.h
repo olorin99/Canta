@@ -159,7 +159,7 @@ namespace canta {
 
         void gc();
 
-        void beginFrame();
+        auto beginFrame() -> std::expected<bool, VulkanError>;
         auto endFrame() -> f64;
 
         template <typename Func>

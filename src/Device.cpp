@@ -702,9 +702,13 @@ canta::Device::~Device() {
     _graphicsQueue->_timeline = {};
     _computeQueue->_timeline = {};
     _transferQueue->_timeline = {};
-    _semaphoreList.clearAll([](auto& resource) {
-        if (resource.isTimeline() && resource.value() != std::numeric_limits<u64>::max())
-            resource.signal(std::numeric_limits<u64>::max());
+    _semaphoreList.clearAll([this](auto& resource) {
+        if (resource.isTimeline() && resource.value() != std::numeric_limits<u64>::max()) {
+            auto result = resource.signal(std::numeric_limits<u64>::max());
+            if (!result) {
+                logger().error("Signal on invalid timeline. Current value: {}, signaled value: {}", resource.value(), std::numeric_limits<u64>::max());
+            }
+        }
         resource = {};
     });
     vkDeviceWaitIdle(_logicalDevice);
@@ -795,10 +799,9 @@ void canta::Device::gc() {
     _samplerList.clearQueue();
 }
 
-void canta::Device::beginFrame() {
-    const u64 frameValue = std::max(0l, static_cast<i64>(_frameTimeline->increment()) - (FRAMES_IN_FLIGHT));
-    _frameTimeline->wait(frameValue);
-    // _frameTimeline->increment();
+auto canta::Device::beginFrame() -> std::expected<bool, VulkanError> {
+    const u64 frameValue = std::max(0l, static_cast<i64>(_frameTimeline->increment()) - FRAMES_IN_FLIGHT);
+    TRY(_frameTimeline->wait(frameValue));
 
 #ifndef NDEBUG
     _markerOffset = 0;
@@ -808,6 +811,7 @@ void canta::Device::beginFrame() {
 #endif
 
     updateBindlessDescriptors();
+    return true;
 }
 
 auto canta::Device::endFrame() -> f64 {
