@@ -104,7 +104,7 @@ auto canta::ShaderInterface::create(std::span<CreateInfo> infos) -> ShaderInterf
             u32 x = compiler.get_execution_mode_argument(spv::ExecutionModeLocalSize, 0);
             u32 y = compiler.get_execution_mode_argument(spv::ExecutionModeLocalSize, 1);
             u32 z = compiler.get_execution_mode_argument(spv::ExecutionModeLocalSize, 2);
-            interface._localSizes.push_back(std::make_pair(ende::math::Vec<3, u32>{ x, y, z }, info.stage));
+            interface._localSizes.emplace_back(ende::math::Vec<3, u32>{ x, y, z }, info.stage);
         }
 
         for (auto &c : compiler.get_specialization_constants())

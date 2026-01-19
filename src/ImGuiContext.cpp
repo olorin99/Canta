@@ -22,8 +22,6 @@ VSOutput main(
     float4 colour,
     uniform float2 scale,
     uniform float2 translate,
-    uniform int samplerIndex,
-    uniform int sampledIndex,
 ) {
     VSOutput out;
     out.position = float4(pos * scale + translate, 0, 1);
@@ -42,15 +40,19 @@ struct VSOutput {
     float4 colour: COLOUR;
 };
 
+struct Push {
+    [[vk::offset(16)]] canta.Sampler sampler;
+    [[vk::offset(20)]] canta.Image2D<float4> image;
+}
+
+[[vk::push_constant]]
+Push push;
+
 [shader("fragment")]
 float4 main(
     in VSOutput input,
-    uniform float2 scale,
-    uniform float2 translate,
-    uniform canta.Sampler sampler,
-    uniform canta.Image2D<float4> image,
 ) {
-    float4 colour = image.get().Sample(sampler.get(), input.uv);
+    float4 colour = push.image.get().Sample(push.sampler.get(), input.uv);
     return input.colour * colour;
 }
 )";
