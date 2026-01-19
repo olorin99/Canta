@@ -16,7 +16,8 @@ namespace canta {
         CYCLICAL_GRAPH,
         INVALID_PIPELINE,
         INVALID_SUBMISSION,
-        INVALID_PASS
+        INVALID_PASS,
+        API_ERROR,
     };
 
     enum ResourceType {
@@ -231,28 +232,28 @@ namespace canta {
             return *this;
         }
 
-        auto aliasImageOutput(i32 index) -> std::expected<ImageIndex, i32>;
-        auto aliasBufferOutput(i32 index) -> std::expected<BufferIndex, i32>;
+        [[nodiscard]] auto aliasImageOutput(i32 index) -> std::expected<ImageIndex, i32>;
+        [[nodiscard]] auto aliasBufferOutput(i32 index) -> std::expected<BufferIndex, i32>;
 
-        auto aliasImageOutput(ImageIndex index) -> std::expected<ImageIndex, i32>;
-        auto aliasBufferOutput(BufferIndex index) -> std::expected<BufferIndex, i32>;
+        [[nodiscard]] auto aliasImageOutput(ImageIndex index) -> std::expected<ImageIndex, i32>;
+        [[nodiscard]] auto aliasBufferOutput(BufferIndex index) -> std::expected<BufferIndex, i32>;
 
-        auto aliasImageOutputs() -> std::vector<ImageIndex>;
-        auto aliasBufferOutputs() -> std::vector<BufferIndex>;
+        [[nodiscard]] auto aliasImageOutputs() -> std::vector<ImageIndex>;
+        [[nodiscard]] auto aliasBufferOutputs() -> std::vector<BufferIndex>;
 
         template <u8 N>
-        auto aliasImageOutputs() -> std::array<ImageIndex, N>;
+        [[nodiscard]] auto aliasImageOutputs() -> std::array<ImageIndex, N>;
         template <u8 N>
-        auto aliasBufferOutputs() -> std::array<BufferIndex, N>;
+        [[nodiscard]] auto aliasBufferOutputs() -> std::array<BufferIndex, N>;
 
-        auto name() const -> std::string_view { return _name; }
-        auto inputs() const -> std::span<const ResourceAccess> { return _inputs; }
-        auto output() const -> std::span<const ResourceAccess> { return _outputs; }
+        [[nodiscard]] auto name() const -> std::string_view { return _name; }
+        [[nodiscard]] auto inputs() const -> std::span<const ResourceAccess> { return _inputs; }
+        [[nodiscard]] auto outputs() const -> std::span<const ResourceAccess> { return _outputs; }
 
-        auto isInput(ImageIndex index) const -> bool;
-        auto isInput(BufferIndex index) const -> bool;
-        auto isOutput(ImageIndex index) const -> bool;
-        auto isOutput(BufferIndex index) const -> bool;
+        [[nodiscard]] auto isInput(ImageIndex index) const -> bool;
+        [[nodiscard]] auto isInput(BufferIndex index) const -> bool;
+        [[nodiscard]] auto isOutput(ImageIndex index) const -> bool;
+        [[nodiscard]] auto isOutput(BufferIndex index) const -> bool;
 
         struct Barrier {
             u32 index = 0;
@@ -266,7 +267,7 @@ namespace canta {
             QueueType srcQueue = QueueType::NONE;
             QueueType dstQueue = QueueType::NONE;
         };
-        auto barriers() const -> std::span<const Barrier> { return _barriers; }
+        [[nodiscard]] auto barriers() const -> std::span<const Barrier> { return _barriers; }
 
     private:
         friend RenderGraph;
@@ -345,7 +346,7 @@ namespace canta {
             std::string_view name = {};
         };
 
-        static auto create(const CreateInfo &info) -> RenderGraph;
+        [[nodiscard]] static auto create(const CreateInfo &info) -> std::expected<RenderGraph, VulkanError>;
 
         RenderGraph() = default;
 
@@ -377,49 +378,49 @@ namespace canta {
         }
         auto addReadbackPass(const std::string_view name, const BufferIndex src, std::span<u8> data, const RenderGroup group = {}) -> RenderPass&;
 
-        auto getGroup(const std::string_view name, const std::array<f32, 4>& colour = { 0, 1, 0, 1 }) -> RenderGroup;
-        auto getGroupName(const RenderGroup) -> std::string;
-        auto getGroupColour(const RenderGroup) -> std::array<f32, 4>;
+        [[nodiscard]] auto getGroup(const std::string_view name, const std::array<f32, 4>& colour = { 0, 1, 0, 1 }) -> RenderGroup;
+        [[nodiscard]] auto getGroupName(const RenderGroup) -> std::string;
+        [[nodiscard]] auto getGroupColour(const RenderGroup) -> std::array<f32, 4>;
 
-        auto addImage(const ImageDescription &description) -> ImageIndex;
-        auto addBuffer(const BufferDescription &description) -> BufferIndex;
+        [[nodiscard]] auto addImage(const ImageDescription &description) -> ImageIndex;
+        [[nodiscard]] auto addBuffer(const BufferDescription &description) -> BufferIndex;
 
-        auto addAlias(const ImageIndex index) -> ImageIndex;
-        auto addAlias(const BufferIndex index) -> BufferIndex;
+        [[nodiscard]] auto addAlias(const ImageIndex index) -> ImageIndex;
+        [[nodiscard]] auto addAlias(const BufferIndex index) -> BufferIndex;
 
-        auto getImage(const ImageIndex index) -> ImageHandle;
-        auto getBuffer(const BufferIndex index) -> BufferHandle;
+        [[nodiscard]] auto getImage(const ImageIndex index) -> ImageHandle;
+        [[nodiscard]] auto getBuffer(const BufferIndex index) -> BufferHandle;
 
         void setBackbuffer(const ImageIndex index, const ImageLayout finalLayout = ImageLayout::UNDEFINED);
         void setBackbuffer(const BufferIndex index);
 
         void reset();
-        auto compile() -> std::expected<bool, RenderGraphError>;
-        auto execute(std::span<SemaphorePair> waits, std::span<SemaphorePair> signals, std::span<ImageBarrier> imagesToAcquire = {}, bool synchronous = false) -> std::expected<bool, RenderGraphError>;
+        [[nodiscard]] auto compile() -> std::expected<bool, RenderGraphError>;
+        [[nodiscard]] auto execute(std::span<SemaphorePair> waits, std::span<SemaphorePair> signals, std::span<ImageBarrier> imagesToAcquire = {}, bool synchronous = false) -> std::expected<bool, RenderGraphError>;
 
-        auto timers() -> std::span<std::pair<std::string, Timer>> {
+        [[nodiscard]] auto timers() -> std::span<std::pair<std::string, Timer>> {
             std::size_t count = _timerCount;
             if (!_timingEnabled) count = 0;
             if (_timingEnabled && _timingMode == TimingMode::SINGLE) count = 1;
             count = std::min(_timers[_device->flyingIndex()].size(), count);
             return { _timers[_device->flyingIndex()].data(), count };
         }
-        auto pipelineStatistics() -> std::span<std::pair<std::string, PipelineStatistics>> {
+        [[nodiscard]] auto pipelineStatistics() -> std::span<std::pair<std::string, PipelineStatistics>> {
             auto count = _orderedPasses.size();
             if (!_pipelineStatisticsEnabled) count = 0;
             if (_pipelineStatisticsEnabled && !_individualPipelineStatistics) count = 1;
             count = std::min(_pipelineStats[_device->flyingIndex()].size(), count);
-            return std::span(_pipelineStats[_device->flyingIndex()].data(), count);
+            return {_pipelineStats[_device->flyingIndex()].data(), count};
         }
 
-        auto multiQueueEnabled() const -> bool { return _multiQueue; }
+        [[nodiscard]] auto multiQueueEnabled() const -> bool { return _multiQueue; }
         void setMultiQueueEnabled(const bool enabled) { _multiQueue = enabled; }
 
-        auto timingEnabled() const -> bool { return _timingEnabled; }
-        auto pipelineStatisticsEnabled() const -> bool { return _pipelineStatisticsEnabled; }
+        [[nodiscard]] auto timingEnabled() const -> bool { return _timingEnabled; }
+        [[nodiscard]] auto pipelineStatisticsEnabled() const -> bool { return _pipelineStatisticsEnabled; }
 
-        auto timingMode() const -> TimingMode { return _timingMode; }
-        auto individualPipelineStatistics() const -> bool { return _individualPipelineStatistics; }
+        [[nodiscard]] auto timingMode() const -> TimingMode { return _timingMode; }
+        [[nodiscard]] auto individualPipelineStatistics() const -> bool { return _individualPipelineStatistics; }
 
         void setTimingEnabled(const bool enabled) { _timingEnabled = enabled; }
         void setPipelineStatisticsEnabled(const bool enabled) { _pipelineStatisticsEnabled = enabled; }
@@ -434,18 +435,18 @@ namespace canta {
             u32 buffers = 0;
             u32 commandBuffers = 0;
         };
-        auto statistics() const -> Statistics;
+        [[nodiscard]] auto statistics() const -> Statistics;
 
-        auto resources() const -> std::span<const std::unique_ptr<Resource>> { return _resources; }
-        auto buffers() const -> std::span<const BufferHandle> { return _buffers; }
-        auto images() const -> std::span<const ImageHandle> { return _images; }
+        [[nodiscard]] auto resources() const -> std::span<const std::unique_ptr<Resource>> { return _resources; }
+        [[nodiscard]] auto buffers() const -> std::span<const BufferHandle> { return _buffers; }
+        [[nodiscard]] auto images() const -> std::span<const ImageHandle> { return _images; }
 
-        auto orderedPasses() -> std::span<RenderPass*> { return _orderedPasses; }
-        auto getPass(std::string_view name) const -> std::optional<RenderPass*>;
+        [[nodiscard]] auto orderedPasses() -> std::span<RenderPass*> { return _orderedPasses; }
+        [[nodiscard]] auto getPass(std::string_view name) const -> std::optional<RenderPass*>;
 
-        auto findNextAccess(const i32 startIndex, const u32 resource, bool prioritiseInputs = false) const -> std::tuple<i32, i32, ResourceAccess>;
-        auto findCurrAccess(const RenderPass& pass, const u32 resource) const -> std::tuple<bool, ResourceAccess>;
-        auto findPrevAccess(const i32 startIndex, const u32 resource) const -> std::tuple<i32, i32, ResourceAccess>;
+        [[nodiscard]] auto findNextAccess(const i32 startIndex, const u32 resource, bool prioritiseInputs = false) const -> std::tuple<i32, i32, ResourceAccess>;
+        [[nodiscard]] auto findCurrAccess(const RenderPass& pass, const u32 resource) const -> std::tuple<bool, ResourceAccess>;
+        [[nodiscard]] auto findPrevAccess(const i32 startIndex, const u32 resource) const -> std::tuple<i32, i32, ResourceAccess>;
 
     private:
         friend RenderPass;

@@ -32,12 +32,12 @@ namespace canta {
         Swapchain(Swapchain&& rhs) noexcept;
         auto operator=(Swapchain&& rhs) noexcept -> Swapchain&;
 
-        auto acquire() -> std::expected<ImageHandle, VulkanError>;
+        [[nodiscard]] auto acquire() -> std::expected<ImageHandle, VulkanError>;
 
-        auto present() -> std::expected<u32, VulkanError>;
+        [[nodiscard]] auto present() -> std::expected<u32, VulkanError>;
 
-        auto acquireSemaphore() -> SemaphoreHandle { return _semaphores[_semaphoreIndex].acquire; }
-        auto presentSemaphore() -> SemaphoreHandle { return _semaphores[_semaphoreIndex].present; }
+        [[nodiscard]] auto acquireSemaphore() -> SemaphoreHandle { return _semaphores[_semaphoreIndex].acquire; }
+        [[nodiscard]] auto presentSemaphore() -> SemaphoreHandle { return _semaphores[_semaphoreIndex].present; }
 
         void setPresentMode(PresentMode mode);
         auto getPresentMode() const -> PresentMode { return _presentMode; }

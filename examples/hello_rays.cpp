@@ -30,22 +30,16 @@ private:
 
 
 int main() {
-    // auto window = canta::SDLWindow("Hello Rays", 1920, 1080);
-    auto device = canta::Device::create({
+    auto device = TRY_MAIN(canta::Device::create({
         .applicationName = "hello_rays",
         .headless = true,
         .enableMeshShading = false,
-        // .instanceExtensions = window.requiredExtensions(),
         .enableRenderDoc = true,
-    }).value();
+    }));
 
     const auto aspectRatio = 16.f / 9.f;
     u32 imageWidth = 400;
     u32 imageHeight = imageWidth / aspectRatio;
-
-    // auto swapchain = device->createSwapchain({
-    //     .window = &window
-    // });
 
     device->triggerCapture();
     device->startFrameCapture();
@@ -55,11 +49,11 @@ int main() {
         .rootPath = CANTA_SRC_DIR
     });
 
-    auto renderGraph = canta::RenderGraph::create({
+    auto renderGraph = TRY_MAIN(canta::RenderGraph::create({
         .device = device.get(),
         .multiQueue = false,
         .name = "graph"
-    });
+    }));
 
     auto camera = Camera({ 0, 0, 0 }, aspectRatio);
 

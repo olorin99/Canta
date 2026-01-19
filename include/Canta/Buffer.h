@@ -32,13 +32,13 @@ namespace canta {
         Buffer(Buffer&& rhs) noexcept;
         auto operator=(Buffer&& rhs) noexcept -> Buffer&;
 
-        auto buffer() const -> VkBuffer { return _buffer; }
-        auto address() const -> u64 { return _deviceAddress; }
-        auto type() const -> MemoryType { return _type; }
-        auto usage() const -> BufferUsage { return _usage; }
-        auto size() const -> u32 { return _size; }
-        auto persitentlyMapped() const -> bool { return _mapped._address; }
-        auto name() const -> std::string_view { return _name; }
+        [[nodiscard]] auto buffer() const -> VkBuffer { return _buffer; }
+        [[nodiscard]] auto address() const -> u64 { return _deviceAddress; }
+        [[nodiscard]] auto type() const -> MemoryType { return _type; }
+        [[nodiscard]] auto usage() const -> BufferUsage { return _usage; }
+        [[nodiscard]] auto size() const -> u32 { return _size; }
+        [[nodiscard]] auto persistentlyMapped() const -> bool { return _mapped._address; }
+        [[nodiscard]] auto name() const -> std::string_view { return _name; }
 
         class Mapped {
         public:
@@ -49,7 +49,7 @@ namespace canta {
             Mapped(Mapped&& rhs) noexcept;
             auto operator=(Mapped&& rhs) noexcept -> Mapped&;
 
-            auto address() const -> void* { return _address; }
+            [[nodiscard]] auto address() const -> void* { return _address; }
 
             template <typename T>
             auto as() const -> T* { return static_cast<T*>(_address); }
@@ -65,19 +65,19 @@ namespace canta {
 
         auto map(u32 offset = 0, u32 size = 0) -> Mapped;
 
-        auto mapped() const -> const Mapped& { return _mapped; }
+        [[nodiscard]] auto mapped() const -> const Mapped& { return _mapped; }
 
-        auto data(std::span<const u8> data, u32 offset = 0) -> u32 {
+        auto data(const std::span<const u8> data, const u32 offset = 0) -> u32 {
             return _data(data, offset);
         }
 
         template <typename T>
-        auto data(const T& data, u32 offset = 0) -> u32 {
+        auto data(const T& data, const u32 offset = 0) -> u32 {
             return _data(std::span<const u8>(reinterpret_cast<const u8*>(&data), sizeof(T)), offset);
         }
 
         template <std::ranges::range Range>
-        auto data(const Range& range, u32 offset = 0) -> u32 {
+        auto data(const Range& range, const u32 offset = 0) -> u32 {
             return _data(std::span<const u8>(reinterpret_cast<const u8*>(std::ranges::data(range)), std::ranges::size(range) * sizeof(std::ranges::range_value_t<Range>)), offset);
         }
 

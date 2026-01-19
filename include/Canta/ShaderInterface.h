@@ -18,9 +18,9 @@ namespace canta {
             ShaderStage stage = ShaderStage::NONE;
         };
 
-        static auto create(std::span<CreateInfo> infos) -> ShaderInterface;
+        [[nodiscard]] static auto create(std::span<CreateInfo> infos) -> ShaderInterface;
 
-        static auto merge(std::span<ShaderInterface> inputs) -> ShaderInterface;
+        [[nodiscard]] static auto merge(std::span<ShaderInterface> inputs) -> ShaderInterface;
 
         ShaderInterface() = default;
 
@@ -86,33 +86,33 @@ namespace canta {
             MemberType type = MemberType::INT;
         };
 
-        auto getSpecConstant(std::string_view name) const -> std::optional<SpecConstant>;
+        [[nodiscard]] auto getSpecConstant(std::string_view name) const -> std::optional<SpecConstant>;
 
-        auto getPushRange(u32 range) const -> const PushRange& { return _pushRanges[range]; }
+        [[nodiscard]] auto getPushRange(u32 range) const -> const PushRange& { return _pushRanges[range]; }
 
-        auto getSet(u32 set) const -> const Set& { return _sets[set]; }
+        [[nodiscard]] auto getSet(u32 set) const -> const Set& { return _sets[set]; }
 
-        auto getBinding(u32 set, u32 binding) const -> const Binding& { return _sets[set].bindings[binding]; }
+        [[nodiscard]] auto getBinding(u32 set, u32 binding) const -> const Binding& { return _sets[set].bindings[binding]; }
 
-        auto bindingHasMember(u32 set, u32 binding, std::string_view name) const -> bool;
+        [[nodiscard]] auto bindingHasMember(u32 set, u32 binding, std::string_view name) const -> bool;
 
-        auto getBindingMember(u32 set, u32 binding, std::string_view name) const -> Member;
+        [[nodiscard]] auto getBindingMember(u32 set, u32 binding, std::string_view name) const -> Member;
 
-        auto getBindingMemberList(u32 set, u32 binding) const -> std::vector<Member>;
+        [[nodiscard]] auto getBindingMemberList(u32 set, u32 binding) const -> std::vector<Member>;
 
-        auto getType(std::string_view name) const -> Member;
+        [[nodiscard]] auto getType(std::string_view name) const -> Member;
 
-        auto getTypeList() const -> std::vector<Member>;
+        [[nodiscard]] auto getTypeList() const -> std::vector<Member>;
 
-        auto pushRangeCount() const -> u32 { return _pushRanges.size(); }
+        [[nodiscard]] auto pushRangeCount() const -> u32 { return _pushRanges.size(); }
 
-        auto setCount() const -> u32 { return _setCount; }
+        [[nodiscard]] auto setCount() const -> u32 { return _setCount; }
 
-        auto bindingCount(u32 set) const -> u32 { return _sets[set].bindingCount; }
+        [[nodiscard]] auto bindingCount(u32 set) const -> u32 { return _sets[set].bindingCount; }
 
-        auto localSize(ShaderStage stage) const -> ende::math::Vec<3, u32>;
+        [[nodiscard]] auto localSize(ShaderStage stage) const -> ende::math::Vec<3, u32>;
 
-        auto stagePresent(ShaderStage stage) const -> bool;
+        [[nodiscard]] auto stagePresent(ShaderStage stage) const -> bool;
 
     private:
 

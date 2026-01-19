@@ -28,11 +28,11 @@ namespace canta {
         ShaderModule(ShaderModule&& rhs) noexcept;
         auto operator=(ShaderModule&& rhs) noexcept -> ShaderModule&;
 
-        auto stage() const -> ShaderStage { return _stage; }
+        [[nodiscard]] auto stage() const -> ShaderStage { return _stage; }
 
-        auto module() const -> VkShaderModule { return _module; }
+        [[nodiscard]] auto module() const -> VkShaderModule { return _module; }
 
-        auto interface() -> ShaderInterface& { return _interface; }
+        [[nodiscard]] auto interface() -> ShaderInterface& { return _interface; }
 
     private:
         friend Device;

@@ -15,13 +15,13 @@ namespace canta {
 
         ~SDLWindow() override;
 
-        auto requiredExtensions() -> std::vector<const char*> override;
+        [[nodiscard]] auto requiredExtensions() -> std::vector<const char*> override;
 
-        auto surface(Device& device) -> VkSurfaceKHR override;
+        [[nodiscard]] auto surface(Device& device) -> VkSurfaceKHR override;
 
-        auto extent() -> ende::math::Vec<2, u32> override;
+        [[nodiscard]] auto extent() -> ende::math::Vec<2, u32> override;
 
-        auto window() -> SDL_Window* { return _window; }
+        [[nodiscard]] auto window() -> SDL_Window* { return _window; }
 
     private:
 

@@ -152,7 +152,7 @@ namespace canta {
         using ResourceHandle =  Handle<T, ResourceList<T>>;
         using ResourceData = ResourceHandle::Data;
 
-        static auto create(i32 destructionDelay = 3, spdlog::logger* logger = nullptr, std::function<u64()> getTimelineValue = [] { return 0; }) -> ResourceList<T> {
+        [[nodiscard]] static auto create(i32 destructionDelay = 3, spdlog::logger* logger = nullptr, std::function<u64()> getTimelineValue = [] { return 0; }) -> ResourceList<T> {
             ResourceList<T> list = {};
             list._destructionDelay = destructionDelay;
             list._logger = logger;
@@ -172,7 +172,7 @@ namespace canta {
             _getTimelineValue = getTimelineValue;
         }
 
-        auto allocate() -> ResourceHandle {
+        [[nodiscard]] auto allocate() -> ResourceHandle {
             i32 index = -1;
             std::unique_lock lock(_mutex);
             if (!_freeResources.empty()) {
@@ -200,7 +200,7 @@ namespace canta {
             return getHandle(index);
         }
 
-        auto reallocate(ResourceHandle handle) -> ResourceHandle {
+        [[nodiscard]] auto reallocate(ResourceHandle handle) -> ResourceHandle {
             i32 oldIndex = handle.index();
             auto newHandle = allocate();
             std::unique_lock lock(_mutex);
@@ -253,7 +253,7 @@ namespace canta {
             }
         }
 
-        auto getHandle(i32 index) -> ResourceHandle {
+        [[nodiscard]] auto getHandle(i32 index) -> ResourceHandle {
             if (index >= _resources.size())
                 return {};
             ++_resources[index]->second.count;

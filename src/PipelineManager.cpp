@@ -149,43 +149,43 @@ auto canta::PipelineManager::getPipeline(Pipeline::CreateInfo info) -> std::expe
     if (const auto it = _pipelines.find(info); it != _pipelines.end())
         return it->second;
 
-    const auto evalShader = [&](ShaderStage stage, ShaderInfo shaderInfo) -> ShaderInfo {
-        const auto shader = shaderInfo.module ? shaderInfo.module : getShader({
+    const auto evalShader = [&](ShaderStage stage, ShaderInfo shaderInfo) -> std::expected<ShaderInfo, Error> {
+        const auto shader = shaderInfo.module ? shaderInfo.module : TRY(getShader({
             .path = shaderInfo.path,
             .stage = stage
-        }).value();
+        }));
         shaderInfo.module = shader;
         return shaderInfo;
     };
 
     if (info.vertex)
-        info.vertex = evalShader(ShaderStage::VERTEX, info.vertex);
+        info.vertex = TRY(evalShader(ShaderStage::VERTEX, info.vertex));
     if (info.tesselationControl)
-        info.tesselationControl = evalShader(ShaderStage::TESS_CONTROL, info.tesselationControl);
+        info.tesselationControl = TRY(evalShader(ShaderStage::TESS_CONTROL, info.tesselationControl));
     if (info.tesselationEvaluation)
-        info.tesselationEvaluation = evalShader(ShaderStage::TESS_EVAL, info.tesselationEvaluation);
+        info.tesselationEvaluation = TRY(evalShader(ShaderStage::TESS_EVAL, info.tesselationEvaluation));
     if (info.geometry)
-        info.geometry = evalShader(ShaderStage::GEOMETRY, info.geometry);
+        info.geometry = TRY(evalShader(ShaderStage::GEOMETRY, info.geometry));
     if (info.fragment)
-        info.fragment = evalShader(ShaderStage::FRAGMENT, info.fragment);
+        info.fragment = TRY(evalShader(ShaderStage::FRAGMENT, info.fragment));
     if (info.compute)
-        info.compute = evalShader(ShaderStage::COMPUTE, info.compute);
+        info.compute = TRY(evalShader(ShaderStage::COMPUTE, info.compute));
     if (info.rayGen)
-        info.rayGen = evalShader(ShaderStage::RAYGEN, info.rayGen);
+        info.rayGen = TRY(evalShader(ShaderStage::RAYGEN, info.rayGen));
     if (info.anyHit)
-        info.anyHit = evalShader(ShaderStage::ANY_HIT, info.anyHit);
+        info.anyHit = TRY(evalShader(ShaderStage::ANY_HIT, info.anyHit));
     if (info.closestHit)
-        info.closestHit = evalShader(ShaderStage::CLOSEST_HIT, info.closestHit);
+        info.closestHit = TRY(evalShader(ShaderStage::CLOSEST_HIT, info.closestHit));
     if (info.miss)
-        info.miss = evalShader(ShaderStage::MISS, info.miss);
+        info.miss = TRY(evalShader(ShaderStage::MISS, info.miss));
     if (info.intersection)
-        info.intersection = evalShader(ShaderStage::INTERSECTION, info.intersection);
+        info.intersection = TRY(evalShader(ShaderStage::INTERSECTION, info.intersection));
     if (info.callable)
-        info.callable = evalShader(ShaderStage::CALLABLE, info.callable);
+        info.callable = TRY(evalShader(ShaderStage::CALLABLE, info.callable));
     if (info.task)
-        info.task = evalShader(ShaderStage::TASK, info.task);
+        info.task = TRY(evalShader(ShaderStage::TASK, info.task));
     if (info.mesh)
-        info.mesh = evalShader(ShaderStage::MESH, info.mesh);
+        info.mesh = TRY(evalShader(ShaderStage::MESH, info.mesh));
 
     const auto addShaderDependency = [&](ShaderHandle shader, PipelineHandle pipeline) {
         ShaderDescription description = {};
@@ -272,9 +272,9 @@ auto canta::PipelineManager::getPipeline(const canta::Pipeline &old, Pipeline::C
     return getPipeline(info);
 }
 
-auto loadFromFile(canta::PipelineManager& manager, const std::filesystem::path &path, std::span<const canta::Macro> additionalMacros = {}) -> canta::Pipeline::CreateInfo;
+auto loadFromFile(canta::PipelineManager& manager, const std::filesystem::path &path, std::span<const canta::Macro> additionalMacros = {}) -> std::expected<canta::Pipeline::CreateInfo, canta::Error>;
 auto canta::PipelineManager::getPipeline(const std::filesystem::path &path, std::span<const Macro> additionalMacros, const std::vector<SpecializationConstant>& specializationConstants) -> std::expected<PipelineHandle, Error> {
-    auto createInfo = loadFromFile(*this, path, additionalMacros);
+    auto createInfo = TRY(loadFromFile(*this, path, additionalMacros));
     createInfo.specializationConstants = specializationConstants;
     if (createInfo.name.empty()) {
         createInfo.name = path.filename().string();
@@ -771,7 +771,7 @@ auto loadFormat(std::string_view format) -> canta::Format {
     return canta::Format::UNDEFINED;
 }
 
-auto loadFromFile(canta::PipelineManager& manager, const std::filesystem::path &path, std::span<const canta::Macro> additionalMacros) -> canta::Pipeline::CreateInfo {
+auto loadFromFile(canta::PipelineManager& manager, const std::filesystem::path &path, std::span<const canta::Macro> additionalMacros) -> std::expected<canta::Pipeline::CreateInfo, canta::Error> {
     auto file = ende::fs::File::open(path);
 
     rapidjson::Document document;
@@ -788,7 +788,7 @@ auto loadFromFile(canta::PipelineManager& manager, const std::filesystem::path &
             entryPoint = vertexShader["entryPoint"].GetString();
         }
         createInfo.vertex = {
-            .module = manager.getShader(loadShaderDescription(manager, vertexShader, additionalMacros)).value(),
+            .module = TRY(manager.getShader(loadShaderDescription(manager, vertexShader, additionalMacros))),
             .entryPoint = entryPoint
         };
     }
@@ -800,7 +800,7 @@ auto loadFromFile(canta::PipelineManager& manager, const std::filesystem::path &
             entryPoint = tesselationControl["entryPoint"].GetString();
         }
         createInfo.tesselationControl = {
-            .module = manager.getShader(loadShaderDescription(manager, tesselationControl, additionalMacros)).value(),
+            .module = TRY(manager.getShader(loadShaderDescription(manager, tesselationControl, additionalMacros))),
             .entryPoint = entryPoint
         };
     }
@@ -812,7 +812,7 @@ auto loadFromFile(canta::PipelineManager& manager, const std::filesystem::path &
             entryPoint = tesselationEvaluation["entryPoint"].GetString();
         }
         createInfo.tesselationEvaluation = {
-            .module = manager.getShader(loadShaderDescription(manager, tesselationEvaluation, additionalMacros)).value(),
+            .module = TRY(manager.getShader(loadShaderDescription(manager, tesselationEvaluation, additionalMacros))),
             .entryPoint = entryPoint
         };
     }
@@ -824,7 +824,7 @@ auto loadFromFile(canta::PipelineManager& manager, const std::filesystem::path &
             entryPoint = geometry["entryPoint"].GetString();
         }
         createInfo.geometry = {
-            .module = manager.getShader(loadShaderDescription(manager, geometry, additionalMacros)).value(),
+            .module = TRY(manager.getShader(loadShaderDescription(manager, geometry, additionalMacros))),
             .entryPoint = entryPoint
         };
     }
@@ -836,7 +836,7 @@ auto loadFromFile(canta::PipelineManager& manager, const std::filesystem::path &
             entryPoint = fragment["entryPoint"].GetString();
         }
         createInfo.fragment = {
-            .module = manager.getShader(loadShaderDescription(manager, fragment, additionalMacros)).value(),
+            .module = TRY(manager.getShader(loadShaderDescription(manager, fragment, additionalMacros))),
             .entryPoint = entryPoint
         };
     }
@@ -848,7 +848,7 @@ auto loadFromFile(canta::PipelineManager& manager, const std::filesystem::path &
             entryPoint = compute["entryPoint"].GetString();
         }
         createInfo.compute = {
-            .module = manager.getShader(loadShaderDescription(manager, compute, additionalMacros)).value(),
+            .module = TRY(manager.getShader(loadShaderDescription(manager, compute, additionalMacros))),
             .entryPoint = entryPoint
         };
     }
@@ -860,7 +860,7 @@ auto loadFromFile(canta::PipelineManager& manager, const std::filesystem::path &
             entryPoint = rayGen["entryPoint"].GetString();
         }
         createInfo.rayGen = {
-            .module = manager.getShader(loadShaderDescription(manager, rayGen, additionalMacros)).value(),
+            .module = TRY(manager.getShader(loadShaderDescription(manager, rayGen, additionalMacros))),
             .entryPoint = entryPoint
         };
     }
@@ -872,7 +872,7 @@ auto loadFromFile(canta::PipelineManager& manager, const std::filesystem::path &
             entryPoint = anyHit["entryPoint"].GetString();
         }
         createInfo.anyHit = {
-            .module = manager.getShader(loadShaderDescription(manager, anyHit, additionalMacros)).value(),
+            .module = TRY(manager.getShader(loadShaderDescription(manager, anyHit, additionalMacros))),
             .entryPoint = entryPoint
         };
     }
@@ -884,7 +884,7 @@ auto loadFromFile(canta::PipelineManager& manager, const std::filesystem::path &
             entryPoint = closestHit["entryPoint"].GetString();
         }
         createInfo.closestHit = {
-            .module = manager.getShader(loadShaderDescription(manager, closestHit, additionalMacros)).value(),
+            .module = TRY(manager.getShader(loadShaderDescription(manager, closestHit, additionalMacros))),
             .entryPoint = entryPoint
         };
     }
@@ -896,7 +896,7 @@ auto loadFromFile(canta::PipelineManager& manager, const std::filesystem::path &
             entryPoint = miss["entryPoint"].GetString();
         }
         createInfo.miss = {
-            .module = manager.getShader(loadShaderDescription(manager, miss, additionalMacros)).value(),
+            .module = TRY(manager.getShader(loadShaderDescription(manager, miss, additionalMacros))),
             .entryPoint = entryPoint
         };
     }
@@ -908,7 +908,7 @@ auto loadFromFile(canta::PipelineManager& manager, const std::filesystem::path &
             entryPoint = intersection["entryPoint"].GetString();
         }
         createInfo.intersection = {
-            .module = manager.getShader(loadShaderDescription(manager, intersection, additionalMacros)).value(),
+            .module = TRY(manager.getShader(loadShaderDescription(manager, intersection, additionalMacros))),
             .entryPoint = entryPoint
         };
     }
@@ -920,7 +920,7 @@ auto loadFromFile(canta::PipelineManager& manager, const std::filesystem::path &
             entryPoint = callable["entryPoint"].GetString();
         }
         createInfo.callable = {
-            .module = manager.getShader(loadShaderDescription(manager, callable, additionalMacros)).value(),
+            .module = TRY(manager.getShader(loadShaderDescription(manager, callable, additionalMacros))),
             .entryPoint = entryPoint
         };
     }
@@ -932,7 +932,7 @@ auto loadFromFile(canta::PipelineManager& manager, const std::filesystem::path &
             entryPoint = task["entryPoint"].GetString();
         }
         createInfo.task = {
-            .module = manager.getShader(loadShaderDescription(manager, task, additionalMacros)).value(),
+            .module = TRY(manager.getShader(loadShaderDescription(manager, task, additionalMacros))),
             .entryPoint = entryPoint
         };
     }
@@ -944,7 +944,7 @@ auto loadFromFile(canta::PipelineManager& manager, const std::filesystem::path &
             entryPoint = mesh["entryPoint"].GetString();
         }
         createInfo.mesh = {
-            .module = manager.getShader(loadShaderDescription(manager, mesh, additionalMacros)).value(),
+            .module = TRY(manager.getShader(loadShaderDescription(manager, mesh, additionalMacros))),
             .entryPoint = entryPoint
         };
     }

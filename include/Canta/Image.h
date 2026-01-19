@@ -32,7 +32,7 @@ namespace canta {
         ImageView(ImageView&& rhs) noexcept;
         auto operator=(ImageView&& rhs) noexcept -> ImageView&;
 
-        auto view() const -> VkImageView { return _view; }
+        [[nodiscard]] auto view() const -> VkImageView { return _view; }
 
     private:
         friend Image;

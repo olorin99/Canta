@@ -80,7 +80,7 @@ namespace canta {
         CommandBuffer(CommandBuffer&& rhs) noexcept;
         auto operator=(CommandBuffer&& rhs) noexcept -> CommandBuffer&;
 
-        auto buffer() const -> VkCommandBuffer { return _buffer; }
+        [[nodiscard]] auto buffer() const -> VkCommandBuffer { return _buffer; }
 
         auto begin() -> bool;
         auto end() -> bool;
@@ -177,7 +177,7 @@ namespace canta {
             u32 dispatchCalls = 0;
             u32 barriers = 0;
         };
-        auto statistics() const -> Stats { return _stats; }
+        [[nodiscard]] auto statistics() const -> Stats { return _stats; }
 
     private:
         friend CommandPool;

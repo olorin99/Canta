@@ -150,7 +150,7 @@ namespace canta {
             bool enableRenderDoc = false;
         };
 
-        static auto create(CreateInfo info) noexcept -> std::expected<std::unique_ptr<Device>, VulkanError>;
+        [[nodiscard]] static auto create(CreateInfo info) noexcept -> std::expected<std::unique_ptr<Device>, VulkanError>;
 
         ~Device();
 
@@ -171,9 +171,8 @@ namespace canta {
             auto wait = std::to_array({
                 SemaphorePair(_immediateTimeline)
             });
-            _immediateTimeline->increment();
             auto signal = std::to_array({
-                SemaphorePair(_immediateTimeline)
+                SemaphorePair(_immediateTimeline, _immediateTimeline->increment())
             });
             queue(queueType)->submit({ &cmd, 1 }, wait, signal).and_then([&](auto result) {
                 return _immediateTimeline->wait(_immediateTimeline->value());
@@ -185,61 +184,61 @@ namespace canta {
             _deferredCommands.push_back(func);
         }
 
-        auto frameSemaphore() -> SemaphoreHandle { return _frameTimeline; }
-        auto frameValue() const -> u64 { return _frameTimeline->value(); }
-        auto framePrevValue() const -> u64 { return std::max(0l, static_cast<i64>(_frameTimeline->value()) - 1); }
-        auto flyingIndex() const -> u32 { return _frameTimeline->value() % FRAMES_IN_FLIGHT; }
+        [[nodiscard]] auto frameSemaphore() -> SemaphoreHandle { return _frameTimeline; }
+        [[nodiscard]] auto frameValue() const -> u64 { return _frameTimeline->value(); }
+        [[nodiscard]] auto framePrevValue() const -> u64 { return std::max(0l, static_cast<i64>(_frameTimeline->value()) - 1); }
+        [[nodiscard]] auto flyingIndex() const -> u32 { return _frameTimeline->value() % FRAMES_IN_FLIGHT; }
 
-        auto resourceTimeline() const -> SemaphoreHandle { return _resourceTimeline; }
+        [[nodiscard]] auto resourceTimeline() const -> SemaphoreHandle { return _resourceTimeline; }
 
-        auto instance() const -> VkInstance { return _instance; }
-        auto physicalDevice() const -> VkPhysicalDevice { return _physicalDevice; }
-        auto logicalDevice() const -> VkDevice { return _logicalDevice; }
-        auto allocator() const -> VmaAllocator { return _allocator; }
+        [[nodiscard]] auto instance() const -> VkInstance { return _instance; }
+        [[nodiscard]] auto physicalDevice() const -> VkPhysicalDevice { return _physicalDevice; }
+        [[nodiscard]] auto logicalDevice() const -> VkDevice { return _logicalDevice; }
+        [[nodiscard]] auto allocator() const -> VmaAllocator { return _allocator; }
 
-        auto properties() const -> const Properties& { return _properties; }
-        auto limits() const -> const Limits& { return _properties.limits; }
+        [[nodiscard]] auto properties() const -> const Properties& { return _properties; }
+        [[nodiscard]] auto limits() const -> const Limits& { return _properties.limits; }
         // avoid - loops all supported extensions
-        auto isExtensionEnabled(std::string_view extensionName) -> bool;
-        auto meshShadersEnabled() const -> bool { return _meshShadersEnabled; }
-        auto taskShadersEnabled() const -> bool { return _taskShadersEnabled; }
+        [[nodiscard]] auto isExtensionEnabled(std::string_view extensionName) -> bool;
+        [[nodiscard]] auto meshShadersEnabled() const -> bool { return _meshShadersEnabled; }
+        [[nodiscard]] auto taskShadersEnabled() const -> bool { return _taskShadersEnabled; }
 
-        auto bindlessSet() const -> VkDescriptorSet { return _bindlessSets[flyingIndex()]; }
+        [[nodiscard]] auto bindlessSet() const -> VkDescriptorSet { return _bindlessSets[flyingIndex()]; }
 
-        auto queue(QueueType type) -> std::shared_ptr<Queue>;
+        [[nodiscard]] auto queue(QueueType type) -> std::shared_ptr<Queue>;
 
-        auto waitIdle() const -> std::expected<bool, VulkanError>;
-
-
-        auto createSwapchain(Swapchain::CreateInfo info) -> std::expected<Swapchain, VulkanError>;
-
-        auto createSemaphore(Semaphore::CreateInfo info) -> std::expected<SemaphoreHandle, VulkanError>;
-
-        auto createCommandPool(CommandPool::CreateInfo info) -> std::expected<CommandPool, VulkanError>;
+        [[nodiscard]] auto waitIdle() const -> std::expected<bool, VulkanError>;
 
 
-        auto createShaderModule(ShaderModule::CreateInfo info, ShaderHandle oldHandle = {}) -> ShaderHandle;
-        auto createPipeline(Pipeline::CreateInfo info, PipelineHandle oldHandle = {}) -> PipelineHandle;
-        auto createImage(Image::CreateInfo info, ImageHandle oldHandle = {}) -> ImageHandle;
-        auto createImageView(ImageView::CreateInfo info, ImageViewHandle oldHandle = {}) -> ImageViewHandle;
-        auto createBuffer(Buffer::CreateInfo info, BufferHandle oldHandle = {}) -> BufferHandle;
-        auto createSampler(Sampler::CreateInfo info, SamplerHandle oldHandle = {}) -> SamplerHandle;
+        [[nodiscard]] auto createSwapchain(Swapchain::CreateInfo info) -> std::expected<Swapchain, VulkanError>;
 
-        auto registerImage(Image::CreateInfo info, VkImage image, VkImageView view) -> ImageHandle;
-        auto resizeBuffer(BufferHandle handle, u32 newSize) -> BufferHandle;
+        [[nodiscard]] auto createSemaphore(Semaphore::CreateInfo info) -> std::expected<SemaphoreHandle, VulkanError>;
 
-        auto swapImageBindings(ImageHandle oldHandle, ImageHandle newHandle) -> ImageHandle;
+        [[nodiscard]] auto createCommandPool(CommandPool::CreateInfo info) -> std::expected<CommandPool, VulkanError>;
+
+
+        [[nodiscard]] auto createShaderModule(ShaderModule::CreateInfo info, ShaderHandle oldHandle = {}) -> ShaderHandle;
+        [[nodiscard]] auto createPipeline(Pipeline::CreateInfo info, PipelineHandle oldHandle = {}) -> PipelineHandle;
+        [[nodiscard]] auto createImage(Image::CreateInfo info, ImageHandle oldHandle = {}) -> ImageHandle;
+        [[nodiscard]] auto createImageView(ImageView::CreateInfo info, ImageViewHandle oldHandle = {}) -> ImageViewHandle;
+        [[nodiscard]] auto createBuffer(Buffer::CreateInfo info, BufferHandle oldHandle = {}) -> BufferHandle;
+        [[nodiscard]] auto createSampler(Sampler::CreateInfo info, SamplerHandle oldHandle = {}) -> SamplerHandle;
+
+        [[nodiscard]] auto registerImage(Image::CreateInfo info, VkImage image, VkImageView view) -> ImageHandle;
+        [[nodiscard]] auto resizeBuffer(BufferHandle handle, u32 newSize) -> BufferHandle;
+
+        [[nodiscard]] auto swapImageBindings(ImageHandle oldHandle, ImageHandle newHandle) -> ImageHandle;
 
         void setDebugName(u32 type, u64 object, std::string_view name) const;
 
-        auto timestampPools() -> std::span<VkQueryPool> { return _timestampPools; }
+        [[nodiscard]] auto timestampPools() -> std::span<VkQueryPool> { return _timestampPools; }
 
-        auto createTimer() -> Timer;
+        [[nodiscard]] auto createTimer() -> Timer;
         void destroyTimer(u32 poolIndex, u32 queryIndex);
 
-        auto pipelineStatisticsPools() -> std::span<VkQueryPool> { return _pipelineStatisticsPools; }
+        [[nodiscard]] auto pipelineStatisticsPools() -> std::span<VkQueryPool> { return _pipelineStatisticsPools; }
 
-        auto createPipelineStatistics() -> PipelineStatistics;
+        [[nodiscard]] auto createPipelineStatistics() -> PipelineStatistics;
         void destroyPipelineStatistics(u32 poolIndex, u32 queryIndex);
 
         struct ResourceStats {
@@ -256,7 +255,7 @@ namespace canta {
             u32 timestampQueryPools = 0;
             u32 pipelineStatsPools = 0;
         };
-        auto resourceStats() const -> ResourceStats;
+        [[nodiscard]] auto resourceStats() const -> ResourceStats;
 
         struct MemoryUsage {
             u64 budget = 0;
@@ -264,18 +263,18 @@ namespace canta {
         };
 
         // memory info retrieved by vma
-        auto memoryUsage() const -> MemoryUsage;
+        [[nodiscard]] auto memoryUsage() const -> MemoryUsage;
         // memory info tracked by engine. less accurate
-        auto softMemoryUsage() const -> MemoryUsage;
+        [[nodiscard]] auto softMemoryUsage() const -> MemoryUsage;
 
         void setMemoryLimit(u64 limit) { _memoryLimit = limit; }
 
-        auto getFrameDebugMarkers(u8 frame) const -> const std::vector<std::array<u8, util::debugMarkerSize>>& {
+        [[nodiscard]] auto getFrameDebugMarkers(u8 frame) const -> const std::vector<std::array<u8, util::debugMarkerSize>>& {
             assert(frame < FRAMES_IN_FLIGHT);
             return _markerCommands[frame];
         }
 
-        auto logger() -> spdlog::logger& { return _logger; }
+        [[nodiscard]] auto logger() -> spdlog::logger& { return _logger; }
 
         void startFrameCapture() const;;
 

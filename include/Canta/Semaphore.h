@@ -28,19 +28,19 @@ namespace canta {
         Semaphore(Semaphore&& rhs) noexcept;
         auto operator=(Semaphore&& rhs) noexcept -> Semaphore&;
 
-        auto semaphore() const -> VkSemaphore { return _semaphore; }
+        [[nodiscard]] auto semaphore() const -> VkSemaphore { return _semaphore; }
 
-        auto isTimeline() const -> bool { return _isTimeline; }
+        [[nodiscard]] auto isTimeline() const -> bool { return _isTimeline; }
 
-        auto value() const -> u64 { return _value; }
+        [[nodiscard]] auto value() const -> u64 { return _value; }
 
-        auto gpuValue() const -> u64;
+        [[nodiscard]] auto gpuValue() const -> u64;
 
-        auto increment() -> u64 { return ++_value; }
+        [[nodiscard]] auto increment() -> u64 { return ++_value; }
 
-        auto wait(u64 value, u64 timeout = 1000000000) -> std::expected<bool, VulkanError>;
+        [[nodiscard]] auto wait(u64 value, u64 timeout = 1000000000) -> std::expected<bool, VulkanError>;
 
-        auto signal(u64 value) -> std::expected<bool, VulkanError>;
+        [[nodiscard]] auto signal(u64 value) -> std::expected<bool, VulkanError>;
 
     private:
         friend Device;

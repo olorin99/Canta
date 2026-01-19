@@ -35,7 +35,7 @@ namespace canta {
             u64 tessellationEvaluationShaderInvocations = 0;
             u64 computeShaderInvocations = 0;
         };
-        auto result() -> std::expected<Stats, VulkanError>;
+        [[nodiscard]] auto result() -> std::expected<Stats, VulkanError>;
 
     private:
         friend Device;

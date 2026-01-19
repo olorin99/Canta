@@ -6,12 +6,11 @@
 #include <Canta/PipelineManager.h>
 #include <Canta/RenderGraph.h>
 #include <imgui.h>
-#include <imnodes.h>
 #include <Canta/ImGuiContext.h>
 #include <Canta/UploadBuffer.h>
 
-#include "../include/Canta/debug/PipelineManagerDebugger.h"
-#include "../include/Canta/debug/RenderGraphDebugger.h"
+#include <Canta/debug/PipelineManagerDebugger.h>
+#include <Canta/debug/RenderGraphDebugger.h>
 
 int main() {
 
@@ -23,11 +22,11 @@ int main() {
 
     canta::SDLWindow window("Hello Triangle", 1920, 1080);
 
-    auto device = canta::Device::create({
+    auto device = TRY_MAIN(canta::Device::create({
         .applicationName = "hello_triangle",
         .enableMeshShading = false,
         .instanceExtensions = window.requiredExtensions()
-    }).value();
+    }));
 
     auto swapchain = device->createSwapchain({
         .window = &window
@@ -44,29 +43,29 @@ int main() {
         .pipelineManager = &pipelineManager,
     });
 
-    auto pipeline = pipelineManager.getPipeline(CANTA_SRC_DIR"/examples/particles_update.pipeline", std::to_array({
+    auto pipeline = TRY_MAIN(pipelineManager.getPipeline(CANTA_SRC_DIR"/examples/particles_update.pipeline", std::to_array({
         canta::Macro{
             .name = "ADDITIONAL",
             .value = "TEST"
         }
-    }), {canta::SpecializationConstant{.name = "screen_width", .value = 780}}).value();
+    }), {canta::SpecializationConstant{.name = "screen_width", .value = 780}}));
 
     for (auto& type : pipeline->interface().getTypeList()) {
         std::printf("%s - size: %d\n", type.name.c_str(), type.size);
     }
 
-    auto pipelineDraw = pipelineManager.getPipeline(canta::Pipeline::CreateInfo{
+    auto pipelineDraw = TRY_MAIN(pipelineManager.getPipeline(canta::Pipeline::CreateInfo{
         .compute = {
-            .module = pipelineManager.getShader({
+            .module = TRY_MAIN(pipelineManager.getShader({
                 .path = "examples/particles.slang",
                 .stage = canta::ShaderStage::COMPUTE,
                 .name = "particleDraw"
-            }).value(),
+            })),
             .entryPoint = "drawMain"
         },
         .specializationConstants = {canta::SpecializationConstant{.id = 1, .name = "screen_width", .value = 780}},
         .name = "particles_draw"
-    }).value();
+    }));
 
     auto testModule = pipelineManager.getShader({
         .path = CANTA_SRC_DIR"/examples/hello.slang",
@@ -108,19 +107,19 @@ int main() {
         };
     }
 
-    auto uploadBuffer = canta::UploadBuffer::create({
+    auto uploadBuffer = TRY_MAIN(canta::UploadBuffer::create({
         .device = device.get(),
         .size = 1 << 16
-    });
+    }));
     uploadBuffer.upload(buffer, particles);
     uploadBuffer.flushStagedData();
-    uploadBuffer.wait();
+    if (!uploadBuffer.wait()) return -1;
 
-    auto renderGraph = canta::RenderGraph::create({
+    auto renderGraph = TRY_MAIN(canta::RenderGraph::create({
         .device = device.get(),
         .multiQueue = false,
         .name = "Renderer"
-    });
+    }));
 
     auto renderGraphDebugger = canta::RenderGraphDebugger::create({
         .renderGraph = &renderGraph,
@@ -168,7 +167,7 @@ int main() {
                     break;
             }
             if (ImGui::Combo("PresentMode", &refreshModeIndex, refreshModes, 3)) {
-                device->waitIdle();
+                TRY_MAIN(device->waitIdle());
                 switch (refreshModeIndex) {
                     case 0:
                         swapchain->setPresentMode(canta::PresentMode::FIFO);
@@ -213,12 +212,12 @@ int main() {
 
             auto timers = renderGraph.timers();
             for (auto& timer : timers) {
-                ImGui::Text("%s: %f ms", timer.first.data(), timer.second.result().value() / 1000000.f);
+                ImGui::Text("%s: %f ms", timer.first.data(), TRY_MAIN(timer.second.result()) / 1000000.f);
             }
             auto pipelineStatistics = renderGraph.pipelineStatistics();
             for (auto& pipelineStats : pipelineStatistics) {
                 if (ImGui::TreeNode(pipelineStats.first.c_str())) {
-                    auto stats = pipelineStats.second.result().value();
+                    auto stats = TRY_MAIN(pipelineStats.second.result());
                     ImGui::Text("Input Assembly Vertices: %lu", stats.inputAssemblyVertices);
                     ImGui::Text("Input Assembly Primitives: %lu", stats.inputAssemblyPrimitives);
                     ImGui::Text("Vertex Shader Invocations: %lu", stats.vertexShaderInvocations);
@@ -313,7 +312,7 @@ int main() {
 
 
 
-        auto swapImage = swapchain->acquire().value();
+        auto swapImage = TRY_MAIN(swapchain->acquire());
 
         renderGraph.reset();
 
@@ -340,15 +339,15 @@ int main() {
         //     });
 
         // renderGraph.addClearPass("clear_image", imageAlias);
-        auto imageAlias = renderGraph.addClearPass("clear_image", imageIndex).aliasImageOutput(0).value();
+        auto imageAlias = TRY_MAIN(renderGraph.addClearPass("clear_image", imageIndex).aliasImageOutput(0));
 
         auto particleGroup = renderGraph.getGroup("particles");
 
-        auto particlesMovePassOutputs = renderGraph.addPass({.name = "particles_move"})
+        auto particlesMovePassOutputs = TRY_MAIN(renderGraph.addPass({.name = "particles_move"})
             .setGroup(particleGroup)
             .setPipeline(pipeline)
             .pushConstants(canta::Write(particleBufferIndex), numParticles, static_cast<f32>(dt))
-            .dispatchThreads(numParticles).aliasBufferOutput(particleBufferIndex).value();
+            .dispatchThreads(numParticles).aliasBufferOutput(particleBufferIndex));
 
         // renderGraph.addPass({.name = "copy", .type = canta::PassType::HOST})
             // .addDummyRead(particlesMovePassOutputs)
@@ -398,11 +397,11 @@ int main() {
         if (!renderGraph.execute(waits, signals, {}, false))
             return -2;
 
-        swapchain->present();
+        TRY_MAIN(swapchain->present());
 
         dt = device->endFrame();
     }
 
-    device->waitIdle();
+    TRY_MAIN(device->waitIdle());
     return 0;
 }

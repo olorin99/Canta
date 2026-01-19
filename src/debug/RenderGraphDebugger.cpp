@@ -81,7 +81,7 @@ void canta::RenderGraphDebugger::drawRenderGraph() {
                 ImNodes::EndInputAttribute();
             }
 
-            for (auto& output : pass->output()) {
+            for (auto& output : pass->outputs()) {
                 const auto resource = _renderGraph->resources()[output.index].get();
                 ImNodes::BeginOutputAttribute(passId + output.id);
                 ImGui::Text("%s: %d, %d", resource->name.data(), output.id, passId + output.id);
@@ -171,7 +171,7 @@ void canta::RenderGraphDebugger::render() {
                 }
             }
             ImGui::Text("Outputs:");
-            for (auto& output : (*pass)->output()) {
+            for (auto& output : (*pass)->outputs()) {
                 if (const auto resource = _renderGraph->resources()[output.index].get(); ImGui::Selectable(std::format("\t{}_output", resource->name).c_str(), _selectedResource.index == output.index)) {
                     _selectedResource = output;
                 }

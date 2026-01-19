@@ -1,18 +1,18 @@
 #include <cstring>
 #include "Canta/UploadBuffer.h"
 
-auto canta::UploadBuffer::create(canta::UploadBuffer::CreateInfo info) -> UploadBuffer {
+auto canta::UploadBuffer::create(canta::UploadBuffer::CreateInfo info) -> std::expected<UploadBuffer, VulkanError> {
     UploadBuffer buffer = {};
 
     buffer._device = info.device;
-    buffer._commandPool = info.device->createCommandPool({
+    buffer._commandPool = TRY(info.device->createCommandPool({
         .queueType = QueueType::TRANSFER,
         .name = "upload_buffer_command_pool"
-    }).value();
-    buffer._timelineSemaphore = info.device->createSemaphore({
+    }));
+    buffer._timelineSemaphore = TRY(info.device->createSemaphore({
         .initialValue = 0,
         .name = "upload_buffer_semaphore"
-    }).value();
+    }));
     buffer._buffer = info.device->createBuffer({
         .size = info.size,
         .usage = BufferUsage::TRANSFER_SRC | BufferUsage::TRANSFER_DST,
@@ -253,9 +253,8 @@ auto canta::UploadBuffer::flushStagedData() -> UploadBuffer& {
         auto waits = std::to_array({
             SemaphorePair(_timelineSemaphore)
         });
-        _timelineSemaphore->increment();
         auto signals = std::to_array({
-             SemaphorePair(_timelineSemaphore)
+             SemaphorePair(_timelineSemaphore, _timelineSemaphore->increment())
         });
         if (!_device->queue(QueueType::TRANSFER)->submit({ &commandBuffer, 1 }, waits, signals)) {
             _device->logger().error("Failed to submit queue");
@@ -270,18 +269,18 @@ auto canta::UploadBuffer::flushStagedData() -> UploadBuffer& {
     return *this;
 }
 
-void canta::UploadBuffer::wait(u64 timeout) {
+auto canta::UploadBuffer::wait(u64 timeout) -> std::expected<bool, VulkanError> {
     if (_submitted.empty())
-        return;
-    auto maxSignal = std::max_element(_submitted.begin(), _submitted.end());
-    _timelineSemaphore->wait(*maxSignal);
+        return false;
+    const auto maxSignal = std::ranges::max_element(_submitted);
+    return _timelineSemaphore->wait(*maxSignal);
 }
 
 auto canta::UploadBuffer::clearSubmitted() -> u32 {
-    auto gpuTimelineValue = _timelineSemaphore->gpuValue();
+    const auto gpuTimelineValue = _timelineSemaphore->gpuValue();
     u32 clearedCount = 0;
     std::unique_lock lock(*_mutex);
-    for (auto it = _submitted.begin(); it != _submitted.end(); it++) {
+    for (auto it = _submitted.begin(); it != _submitted.end(); ++it) {
         if (*it < gpuTimelineValue) {
             _submitted.erase(it--);
             clearedCount++;

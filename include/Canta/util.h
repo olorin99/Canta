@@ -9,6 +9,22 @@
 #include <span>
 #include <Canta/Enums.h>
 
+#define TRY(expr)\
+({\
+auto&& tmp = (expr);\
+if(!tmp.has_value())\
+return std::unexpected(tmp.error());\
+std::move(tmp.value());\
+})
+
+#define TRY_MAIN(expr)\
+({\
+auto&& tmp = (expr);\
+if(!tmp.has_value())\
+return static_cast<i32>(tmp.error());\
+std::move(tmp.value());\
+})
+
 namespace canta::util {
 
     template<class... Ts>

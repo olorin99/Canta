@@ -9,14 +9,6 @@
 #define STRINGIFY(str) #str
 #define TO_STRING_ENUM(e) case e: return STRINGIFY(e);
 
-#define TRY(expr)\
-({\
- auto&& tmp = (expr);\
- if(!tmp.has_value())\
-   return std::unexpected(tmp.error());\
- tmp.value();\
-})
-
 namespace canta {
 
     enum class Error {

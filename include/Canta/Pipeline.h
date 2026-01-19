@@ -123,11 +123,11 @@ namespace canta {
         Pipeline(Pipeline&& rhs) noexcept;
         auto operator=(Pipeline&& rhs) noexcept -> Pipeline&;
 
-        auto pipeline() const -> VkPipeline { return _pipeline; }
-        auto layout() const -> VkPipelineLayout { return _layout; }
-        auto mode() const -> PipelineMode { return _mode; }
-        auto interface() const -> const ShaderInterface& { return _interface; }
-        auto info() const -> const CreateInfo& { return _info; }
+        [[nodiscard]] auto pipeline() const -> VkPipeline { return _pipeline; }
+        [[nodiscard]] auto layout() const -> VkPipelineLayout { return _layout; }
+        [[nodiscard]] auto mode() const -> PipelineMode { return _mode; }
+        [[nodiscard]] auto interface() const -> const ShaderInterface& { return _interface; }
+        [[nodiscard]] auto info() const -> const CreateInfo& { return _info; }
 
     private:
         friend Device;

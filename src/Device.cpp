@@ -464,10 +464,10 @@ auto canta::Device::create(canta::Device::CreateInfo info) noexcept -> std::expe
         device->_graphicsQueue->_queue = graphicsQueue;
         device->_graphicsQueue->_familyIndex = graphicsFamilyIndex;
         device->_graphicsQueue->_queueIndex = graphicsQueueIndex;
-        device->_graphicsQueue->_timeline = device->createSemaphore({
+        device->_graphicsQueue->_timeline = TRY(device->createSemaphore({
             .initialValue = 0,
             .name = "graphics_timeline"
-        }).value();
+        }));
     }
     if (info.enableAsyncComputeQueue) {
         VkQueue computeQueue;
@@ -477,10 +477,10 @@ auto canta::Device::create(canta::Device::CreateInfo info) noexcept -> std::expe
         device->_computeQueue->_queue = computeQueue;
         device->_computeQueue->_familyIndex = computeFamilyIndex;
         device->_computeQueue->_queueIndex = computeQueueIndex;
-        device->_computeQueue->_timeline = device->createSemaphore({
+        device->_computeQueue->_timeline = TRY(device->createSemaphore({
             .initialValue = 0,
             .name = "compute_timeline"
-        }).value();
+        }));
     } else {
         device->_computeQueue = device->_graphicsQueue;
     }
@@ -492,10 +492,10 @@ auto canta::Device::create(canta::Device::CreateInfo info) noexcept -> std::expe
         device->_transferQueue->_queue = transferQueue;
         device->_transferQueue->_familyIndex = transferFamilyIndex;
         device->_transferQueue->_queueIndex = transferQueueIndex;
-        device->_transferQueue->_timeline = device->createSemaphore({
+        device->_transferQueue->_timeline = TRY(device->createSemaphore({
             .initialValue = 0,
             .name = "transfer_timeline"
-        }).value();
+        }));
     } else {
         device->_transferQueue = device->_graphicsQueue;
     }
@@ -546,18 +546,18 @@ auto canta::Device::create(canta::Device::CreateInfo info) noexcept -> std::expe
     VK_TRY(vmaCreateAllocator(&allocatorCreateInfo, &device->_allocator));
 
 
-    device->_frameTimeline = device->createSemaphore({
+    device->_frameTimeline = TRY(device->createSemaphore({
         .initialValue = 0,
         .name = "frameTimelineSemaphore"
-    }).value();
-    device->_immediateTimeline = device->createSemaphore({
+    }));
+    device->_immediateTimeline = TRY(device->createSemaphore({
         .initialValue = 0,
         .name = "immediateTimelineSemaphore"
-    }).value();
-    device->_resourceTimeline = device->createSemaphore({
+    }));
+    device->_resourceTimeline = TRY(device->createSemaphore({
         .initialValue = 0,
         .name = "resourceTimelineSemaphore"
-    }).value();
+    }));
 
     VkDescriptorPoolSize poolSizes[] = {
             { VK_DESCRIPTOR_TYPE_SAMPLER, device->limits().maxBindlessSamplers * FRAMES_IN_FLIGHT },
@@ -651,9 +651,9 @@ auto canta::Device::create(canta::Device::CreateInfo info) noexcept -> std::expe
     }
 #endif
 
-    device->_immediatePool = device->createCommandPool({
+    device->_immediatePool = TRY(device->createCommandPool({
         .queueType = QueueType::GRAPHICS
-    }).value();
+    }));
 
 
     const auto rawDevicePtr = device.get();
@@ -796,9 +796,9 @@ void canta::Device::gc() {
 }
 
 void canta::Device::beginFrame() {
-    u64 frameValue = std::max(0l, static_cast<i64>(_frameTimeline->value()) - (FRAMES_IN_FLIGHT - 1));
+    const u64 frameValue = std::max(0l, static_cast<i64>(_frameTimeline->increment()) - (FRAMES_IN_FLIGHT));
     _frameTimeline->wait(frameValue);
-    _frameTimeline->increment();
+    // _frameTimeline->increment();
 
 #ifndef NDEBUG
     _markerOffset = 0;
@@ -1502,7 +1502,7 @@ auto canta::Device::createImageView(ImageView::CreateInfo info, canta::ImageView
 auto canta::Device::createBuffer(Buffer::CreateInfo info, BufferHandle oldHandle) -> BufferHandle {
     if (oldHandle) {
         info.type = oldHandle->type();
-        info.persistentlyMapped = oldHandle->persitentlyMapped();
+        info.persistentlyMapped = oldHandle->persistentlyMapped();
         info.requiredFlags = oldHandle->_requiredFlags;
         info.preferredFlags = oldHandle->_preferredFlags;
         info.name = oldHandle->name();
@@ -1622,7 +1622,7 @@ auto canta::Device::resizeBuffer(canta::BufferHandle handle, u32 newSize) -> Buf
         .type = handle->type(),
         .requiredFlags = handle->_requiredFlags,
         .preferredFlags = handle->_preferredFlags,
-        .persistentlyMapped = handle->persitentlyMapped(),
+        .persistentlyMapped = handle->persistentlyMapped(),
         .name = handle->name()
     }, handle);
 }

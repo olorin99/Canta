@@ -28,9 +28,9 @@ namespace canta {
 
         void reset();
 
-        auto getBuffer() -> CommandBuffer&;
+        [[nodiscard]] auto getBuffer() -> CommandBuffer&;
 
-        auto buffers() -> std::span<CommandBuffer> { return _buffers; }
+        [[nodiscard]] auto buffers() -> std::span<CommandBuffer> { return _buffers; }
 
         auto bufferCount() const -> u32 { return _buffers.size(); }
 

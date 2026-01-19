@@ -56,10 +56,10 @@ namespace canta {
 
         PipelineManager() = default;
 
-        auto getShader(ShaderDescription info) -> std::expected<ShaderHandle, Error>;
-        auto getPipeline(Pipeline::CreateInfo info) -> std::expected<PipelineHandle, Error>;
-        auto getPipeline(const Pipeline& old, Pipeline::CreateInfo overrideInfo) -> std::expected<PipelineHandle, Error>;
-        auto getPipeline(const std::filesystem::path& path, std::span<const Macro> additionalMacros = {}, const std::vector<SpecializationConstant>& specializationConstants = {}) -> std::expected<PipelineHandle, Error>;
+        [[nodiscard]] auto getShader(ShaderDescription info) -> std::expected<ShaderHandle, Error>;
+        [[nodiscard]] auto getPipeline(Pipeline::CreateInfo info) -> std::expected<PipelineHandle, Error>;
+        [[nodiscard]] auto getPipeline(const Pipeline& old, Pipeline::CreateInfo overrideInfo) -> std::expected<PipelineHandle, Error>;
+        [[nodiscard]] auto getPipeline(const std::filesystem::path& path, std::span<const Macro> additionalMacros = {}, const std::vector<SpecializationConstant>& specializationConstants = {}) -> std::expected<PipelineHandle, Error>;
 
         auto reload(ShaderHandle shader) -> std::expected<ShaderHandle, Error>;
         auto reload(PipelineHandle pipeline) -> std::expected<PipelineHandle, Error>;
@@ -70,20 +70,20 @@ namespace canta {
         void reloadAll(bool force = false);
 
         void addVirtualFile(const std::filesystem::path& path, const std::string& contents);
-        auto shaders() const -> const tsl::robin_map<ShaderDescription, ShaderHandle>& { return _shaders; }
+        [[nodiscard]] auto shaders() const -> const tsl::robin_map<ShaderDescription, ShaderHandle>& { return _shaders; }
 
-        auto pipelines() const -> const tsl::robin_map<Pipeline::CreateInfo, PipelineHandle, std::hash<Pipeline::CreateInfo>>& { return _pipelines; }
+        [[nodiscard]] auto pipelines() const -> const tsl::robin_map<Pipeline::CreateInfo, PipelineHandle, std::hash<Pipeline::CreateInfo>>& { return _pipelines; }
 
     private:
 
-        auto createShader(ShaderDescription info, ShaderHandle handle = {}) -> std::expected<ShaderHandle, Error>;
+        [[nodiscard]] auto createShader(ShaderDescription info, ShaderHandle handle = {}) -> std::expected<ShaderHandle, Error>;
 
         // auto compileGLSL(std::string_view name, std::string_view glsl, ShaderStage stage, std::span<const Macro> macros = {}) -> std::expected<std::vector<u32>, std::string>;
-        auto compileSlang(std::string_view name, std::string_view slang, ShaderStage stage, std::span<const Macro> macros = {}) -> std::expected<std::vector<u32>, std::string>;
+        [[nodiscard]] auto compileSlang(std::string_view name, std::string_view slang, ShaderStage stage, std::span<const Macro> macros = {}) -> std::expected<std::vector<u32>, std::string>;
 
-        auto createSlangSession(std::span<const Macro> macros = {}) -> std::expected<Slang::ComPtr<slang::ISession>, std::string>;
+        [[nodiscard]] auto createSlangSession(std::span<const Macro> macros = {}) -> std::expected<Slang::ComPtr<slang::ISession>, std::string>;
 
-        auto findVirtualFile(const std::filesystem::path& path) -> std::expected<std::string, Error>;
+        [[nodiscard]] auto findVirtualFile(const std::filesystem::path& path) -> std::expected<std::string, Error>;
 
         Device* _device = nullptr;
         std::filesystem::path _rootPath = {};

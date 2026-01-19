@@ -34,7 +34,7 @@ namespace canta {
         Sampler(Sampler&& rhs) noexcept;
         auto operator=(Sampler&& rhs) noexcept -> Sampler&;
 
-        auto sampler() const -> VkSampler { return _sampler; }
+        [[nodiscard]] auto sampler() const -> VkSampler { return _sampler; }
 
     private:
         friend Device;

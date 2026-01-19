@@ -46,31 +46,31 @@ namespace canta {
         };
         static auto create(CreateOrthographicInfo info) -> Camera;
 
-        auto view() const -> ende::math::Mat4f;
-        auto projection() const -> const ende::math::Mat4f& { return _projection; }
-        auto viewProjection() const -> ende::math::Mat4f { return projection() * view(); }
+        [[nodiscard]] auto view() const -> ende::math::Mat4f;
+        [[nodiscard]] auto projection() const -> const ende::math::Mat4f& { return _projection; }
+        [[nodiscard]] auto viewProjection() const -> ende::math::Mat4f { return projection() * view(); }
 
         void setProjection(const ende::math::Mat4f& projection) { _projection = projection; }
 
         void setPosition(const ende::math::Vec3f& pos) { _position = pos; }
-        auto position() const -> const ende::math::Vec3f& { return _position; }
+        [[nodiscard]] auto position() const -> const ende::math::Vec3f& { return _position; }
 
         void setRotation(const ende::math::Quaternion& rot) { _rotation = rot; }
-        auto rotation() const -> const ende::math::Quaternion& { return _rotation; }
+        [[nodiscard]] auto rotation() const -> const ende::math::Quaternion& { return _rotation; }
 
         void setNear(f32 near);
-        auto near() const -> f32 { return _near; }
+        [[nodiscard]] auto near() const -> f32 { return _near; }
 
         void setFar(f32 far);
-        auto far() const -> f32 { return _far; }
+        [[nodiscard]] auto far() const -> f32 { return _far; }
 
         void setFov(f32 fov);
-        auto fov() const -> f32 { return _fov; }
+        [[nodiscard]] auto fov() const -> f32 { return _fov; }
 
-        auto gpuCamera() const -> GPUCamera;
+        [[nodiscard]] auto gpuCamera() const -> GPUCamera;
 
-        auto frustum() const -> const ende::math::Frustum& { return _frustum; }
-        auto frustumCorners() const -> std::array<ende::math::Vec4f, 8>;
+        [[nodiscard]] auto frustum() const -> const ende::math::Frustum& { return _frustum; }
+        [[nodiscard]] auto frustumCorners() const -> std::array<ende::math::Vec4f, 8>;
         void updateFrustum() { _frustum.update(viewProjection()); }
 
     private:

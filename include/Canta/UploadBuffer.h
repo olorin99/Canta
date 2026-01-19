@@ -15,7 +15,7 @@ namespace canta {
             u32 size = 0;
         };
 
-        static auto create(CreateInfo info) -> UploadBuffer;
+        [[nodiscard]] static auto create(CreateInfo info) -> std::expected<UploadBuffer, VulkanError>;
 
         UploadBuffer() = default;
 
@@ -54,15 +54,15 @@ namespace canta {
 
         auto flushStagedData() -> UploadBuffer&;
 
-        void wait(u64 timeout = 1000000000);
+        auto wait(u64 timeout = 1000000000) -> std::expected<bool, VulkanError>;
 
-        auto submitted() const -> std::span<const u64> { return _submitted; }
+        [[nodiscard]] auto submitted() const -> std::span<const u64> { return _submitted; }
 
-        auto timeline() const -> const SemaphoreHandle { return _timelineSemaphore; }
+        [[nodiscard]] auto timeline() const -> SemaphoreHandle { return _timelineSemaphore; }
 
         auto clearSubmitted() -> u32;
 
-        auto releasedImages() -> std::vector<ImageBarrier>;
+        [[nodiscard]] auto releasedImages() -> std::vector<ImageBarrier>;
 
     private:
 
