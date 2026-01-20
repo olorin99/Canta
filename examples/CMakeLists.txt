@@ -9,3 +9,6 @@ target_link_libraries(hello_rays Canta imgui)
 
 add_executable(matrix_multiply matrix_multiply.cpp)
 target_link_libraries(matrix_multiply Canta)
+
+add_executable(hello_sort hello_sort.cpp)
+target_link_libraries(hello_sort Canta)
