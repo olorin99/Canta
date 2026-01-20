@@ -188,6 +188,7 @@ namespace canta {
         [[nodiscard]] auto frameValue() const -> u64 { return _frameTimeline->value(); }
         [[nodiscard]] auto framePrevValue() const -> u64 { return std::max(0l, static_cast<i64>(_frameTimeline->value()) - 1); }
         [[nodiscard]] auto flyingIndex() const -> u32 { return _frameTimeline->value() % FRAMES_IN_FLIGHT; }
+        [[nodiscard]] auto prevFlyingIndex() const -> u32 { return (static_cast<i32>(flyingIndex()) - 1) % FRAMES_IN_FLIGHT; }
 
         [[nodiscard]] auto resourceTimeline() const -> SemaphoreHandle { return _resourceTimeline; }
 

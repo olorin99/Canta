@@ -199,11 +199,6 @@ namespace canta::util {
     static auto getMarkerStage(const std::array<u8, debugMarkerSize>& data) -> PipelineStage {
         return reinterpret_cast<const Marker*>(&data)->stage;
     }
-//#else
-//
-//    constexpr const size_t debugMarkerSize = 0;
-//
-//#endif
 
 }
 

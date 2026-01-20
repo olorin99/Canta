@@ -12,6 +12,8 @@
 #include <Canta/debug/PipelineManagerDebugger.h>
 #include <Canta/debug/RenderGraphDebugger.h>
 
+#include "Canta/debug/CommandQueueDebugger.h"
+
 int main() {
 
     std::printf("%s", canta::formatString(canta::Format::RGBA8_UNORM));
@@ -63,7 +65,7 @@ int main() {
             })),
             .entryPoint = "drawMain"
         },
-        .localSize = ende::math::Vec<3, u32>{ 32, 1, 1 },
+        .localSize = ende::math::Vec<3, u32>{ 64, 1, 1 },
         .specializationConstants = {
             canta::SpecializationConstant{.id = 0, .name = "screen_width", .value = 780}
         },
@@ -130,6 +132,10 @@ int main() {
 
     auto pipelineManagerDebugger = canta::PipelineManagerDebugger::create({
         .pipelineManager = &pipelineManager,
+    });
+
+    auto commandQueueDebugger = canta::CommandQueueDebugger::create({
+        .device = device.get(),
     });
 
     f64 dt = 1.f / 60;
@@ -310,6 +316,8 @@ int main() {
         renderGraphDebugger.drawRenderGraph();
 
         pipelineManagerDebugger.render();
+
+        commandQueueDebugger.render();
 
         ImGui::Render();
 

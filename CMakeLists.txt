@@ -102,6 +102,8 @@ add_library(Canta
         include/Canta/debug/RenderGraphDebugger.h
         src/debug/PipelineManagerDebugger.cpp
         include/Canta/debug/PipelineManagerDebugger.h
+        src/debug/CommandQueueDebugger.cpp
+        src/debug/CommandQueueDebugger.h
 )
 
 add_subdirectory(third_party)
