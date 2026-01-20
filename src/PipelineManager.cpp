@@ -499,9 +499,9 @@ auto canta::PipelineManager::compileSlang(std::string_view name, std::string_vie
     auto session = TRY(createSlangSession(macros));
 
     std::string source = R"(
-#define GROUP_SIZE(x,y,z) [vk::constant_id(0)] const uint x_size = 32;\
-[vk::constant_id(1)] const uint y_size = 1;\
-[vk::constant_id(2)] const uint z_size = 1;\
+#define GROUP_SIZE(x,y,z) [vk::constant_id(0)] const uint x_size = x;\
+[vk::constant_id(1)] const uint y_size = y;\
+[vk::constant_id(2)] const uint z_size = z;\
 static const uint3 groupSize = uint3(x_size, y_size, z_size);
 
 #define NUM_THREADS [numthreads(x_size, y_size, z_size)]
