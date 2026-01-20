@@ -227,12 +227,15 @@ void canta::CommandBuffer::drawMeshTasksWorkgroups(u32 x, u32 y, u32 z) {
 }
 
 void canta::CommandBuffer::drawMeshTasksThreads(u32 x, u32 y, u32 z) {
-    ende::math::Vec<3, u32> localSize = { 1, 1, 1 };
+    std::optional<ende::math::Vec<3, u32>> localSize;
     if (_currentPipeline->interface().stagePresent(ShaderStage::TASK))
-        localSize = _currentPipeline->interface().localSize(ShaderStage::TASK);
+        localSize = _currentPipeline->localSize(ShaderStage::TASK);
     else
-        localSize = _currentPipeline->interface().localSize(ShaderStage::MESH);
-    drawMeshTasksWorkgroups(std::ceil(static_cast<f32>(x) / static_cast<f32>(localSize.x())), std::ceil(static_cast<f32>(y) / static_cast<f32>(localSize.y())), std::ceil(static_cast<f32>(z) / static_cast<f32>(localSize.z())));
+        localSize = _currentPipeline->localSize(ShaderStage::MESH);
+
+    if (!localSize) localSize = { 1, 1, 1 };
+
+    drawMeshTasksWorkgroups(std::ceil(static_cast<f32>(x) / static_cast<f32>(localSize->x())), std::ceil(static_cast<f32>(y) / static_cast<f32>(localSize->y())), std::ceil(static_cast<f32>(z) / static_cast<f32>(localSize->z())));
 }
 
 void canta::CommandBuffer::drawMeshTasksIndirect(canta::BufferHandle commands, u32 offset, u32 drawCount, u32 stride) {
@@ -268,8 +271,9 @@ void canta::CommandBuffer::dispatchWorkgroups(u32 x, u32 y, u32 z) {
 }
 
 void canta::CommandBuffer::dispatchThreads(u32 x, u32 y, u32 z) {
-    auto localSize = _currentPipeline->interface().localSize(ShaderStage::COMPUTE);
-    dispatchWorkgroups(std::ceil(static_cast<f32>(x) / static_cast<f32>(localSize.x())), std::ceil(static_cast<f32>(y) / static_cast<f32>(localSize.y())), std::ceil(static_cast<f32>(z) / static_cast<f32>(localSize.z())));
+    auto localSize = _currentPipeline->localSize(ShaderStage::COMPUTE);
+    if (!localSize) localSize = { 1, 1, 1 };
+    dispatchWorkgroups(std::ceil(static_cast<f32>(x) / static_cast<f32>(localSize->x())), std::ceil(static_cast<f32>(y) / static_cast<f32>(localSize->y())), std::ceil(static_cast<f32>(z) / static_cast<f32>(localSize->z())));
 }
 
 void canta::CommandBuffer::dispatchIndirect(canta::BufferHandle commands, u32 offset) {

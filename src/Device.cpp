@@ -967,11 +967,76 @@ auto canta::Device::createPipeline(Pipeline::CreateInfo info, PipelineHandle old
     std::vector<u8> specializationConstantsData = {};
     std::vector<VkSpecializationMapEntry> specializationMapEntries = {};
 
+    if (info.localSize) {
+        info.specializationConstants.emplace_back(SpecializationConstant{
+            .id = 0,
+            .name = "x_size",
+            .value = info.localSize->x(),
+        });
+
+        info.specializationConstants.emplace_back(SpecializationConstant{
+            .id = 1,
+            .name = "y_size",
+            .value = info.localSize->y(),
+        });
+
+        info.specializationConstants.emplace_back(SpecializationConstant{
+            .id = 2,
+            .name = "z_size",
+            .value = info.localSize->z(),
+        });
+    }
+
+    for (auto& spec : info.specializationConstants) {
+        if (!spec.name.empty()) {
+            if (auto constant = interface.getSpecConstant(spec.name))
+                spec.id = constant->id;
+        }
+    }
+
+    const auto isGroupSizeSpec = [] (const SpecializationConstant& constant) {
+        return constant.name == "x_size" || constant.name == "y_size" || constant.name == "z_size";
+    };
+
+    // clear duplicate ids from spec constants.
+    // final defined is the one that counts
+    for (i32 i = 0; i < info.specializationConstants.size(); ++i) {
+        auto& specA = info.specializationConstants[i];
+        for (u32 j = i + 1; j < info.specializationConstants.size(); ++j) {
+            if (auto& specB = info.specializationConstants[j]; specA.id == specB.id) {
+                if (isGroupSizeSpec(specA) && !isGroupSizeSpec(specB)) {
+                    specB.id += 3;
+                } else if (!isGroupSizeSpec(specA) && isGroupSizeSpec(specB)) {
+                    specA.id += 3;
+                } else {
+                    info.specializationConstants.erase(info.specializationConstants.begin() + i);
+                    i--;
+                    break;
+                }
+            }
+        }
+    }
+
+    std::optional<ende::math::Vec<3, u32>> localSize;
+    std::ranges::sort(info.specializationConstants, [](const auto& lhs, const auto& rhs) {
+        return lhs.id < rhs.id;
+    });
+
     for (auto& specConstant : info.specializationConstants) {
         u32 id = specConstant.id;
-        if (!specConstant.name.empty()) {
-            if (auto constant = interface.getSpecConstant(specConstant.name))
-                id = constant->id;
+
+        if (specConstant.name == "x_size") {
+            u32 x = specConstant.value.uintValue;
+            if (!localSize) localSize = {1, 1, 1};
+            (*localSize)[0] = x;
+        } else if (specConstant.name == "y_size") {
+            u32 y = specConstant.value.uintValue;
+            if (!localSize) localSize = {1, 1, 1};
+            (*localSize)[1] = y;
+        } else if (specConstant.name == "z_size") {
+            u32 z = specConstant.value.uintValue;
+            if (!localSize) localSize = {1, 1, 1};
+            (*localSize)[2] = z;
         }
 
         specializationMapEntries.push_back(VkSpecializationMapEntry{
@@ -1291,7 +1356,8 @@ auto canta::Device::createPipeline(Pipeline::CreateInfo info, PipelineHandle old
     handle->_mode = mode;
     handle->_interface = interface;
     handle->_name = info.name;
-//    handle->_info = info;
+    handle->_info = info;
+    handle->_size = localSize;
 
     logger().info("{} pipeline {} created", mode == PipelineMode::GRAPHICS ? "Graphics" : "Compute", info.name);
 

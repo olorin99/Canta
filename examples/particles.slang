@@ -1,7 +1,7 @@
 import canta;
 
-layout (constant_id = 0) const int x_size = 32;
-layout (constant_id = 1) const int screen_width = 1920;
+GROUP_SIZE(32, 1, 1);
+[vk::constant_id(SPEC_CONSTANT_INDEX(0))] const int screen_width = 1920;
 
 struct Particle {
     float2 position;
@@ -24,7 +24,7 @@ struct Push {
 }
 
 [shader("compute")]
-[numthreads(x_size, 1, 1)]
+NUM_THREADS
 void moveMain(
     uint3 threadId: SV_DispatchThreadID,
     uniform Particle* particles,
@@ -52,7 +52,7 @@ void moveMain(
 }
 
 [shader("compute")]
-[numthreads(x_size, 1, 1)]
+NUM_THREADS
 void drawMain(
     uint3 threadId: SV_DispatchThreadID,
     uniform Particle* particles,

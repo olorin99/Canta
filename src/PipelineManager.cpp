@@ -496,12 +496,26 @@ private:
 #define DIAGNOSE(diagnostics) if (diagnostics != nullptr) return std::unexpected(reinterpret_cast<const char*>(diagnostics->getBufferPointer()));
 
 auto canta::PipelineManager::compileSlang(std::string_view name, std::string_view slang, canta::ShaderStage stage, std::span<const Macro> macros) -> std::expected<std::vector<u32>, std::string> {
-    auto session = TRY(createSlangSession());
+    auto session = TRY(createSlangSession(macros));
+
+    std::string source = R"(
+#define GROUP_SIZE(x,y,z) [vk::constant_id(0)] const uint x_size = 32;\
+[vk::constant_id(1)] const uint y_size = 1;\
+[vk::constant_id(2)] const uint z_size = 1;\
+static const uint3 groupSize = uint3(x_size, y_size, z_size);
+
+#define NUM_THREADS [numthreads(x_size, y_size, z_size)]
+
+#define SPEC_CONSTANT_INDEX(index) 3 + index
+
+)";
+
+    source += slang;
 
     Slang::ComPtr<slang::IModule> slangModule = {};
     {
         Slang::ComPtr<slang::IBlob> diagnostics = {};
-        slangModule = session->loadModuleFromSourceString(name.data(), name.data(), slang.data(), diagnostics.writeRef());
+        slangModule = session->loadModuleFromSourceString(name.data(), name.data(), source.data(), diagnostics.writeRef());
         DIAGNOSE(diagnostics);
     }
 
@@ -531,7 +545,7 @@ auto canta::PipelineManager::createSlangSession(std::span<const Macro> macros) -
 
     slang::SessionDesc sessionDesc = {};
     const auto rootPath = _rootPath.string();
-    const char* searchPaths[] = { rootPath.c_str() };
+    const char* searchPaths[] = { CANTA_SRC_DIR"/src", rootPath.c_str() };
     sessionDesc.searchPaths = searchPaths;
     sessionDesc.searchPathCount = 1;
     std::vector<slang::PreprocessorMacroDesc> slangMacros = {};

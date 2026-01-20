@@ -28,3 +28,20 @@ auto canta::Pipeline::operator=(canta::Pipeline &&rhs) noexcept -> Pipeline & {
     std::swap(_info, rhs._info);
     return *this;
 }
+
+auto canta::Pipeline::localSize(ShaderStage stage) const -> std::optional<ende::math::Vec<3, u32>> {
+    const auto interfaceLocalSize = _interface.localSize(stage);
+
+    auto localSize = interfaceLocalSize ? interfaceLocalSize : ende::math::Vec<3, u32>{1, 1, 1};
+
+    if (const auto specializationLocalSize = _size) {
+        if (specializationLocalSize->x() != 1)
+            (*localSize)[0] = specializationLocalSize->x();
+        if (specializationLocalSize->y() != 1)
+            (*localSize)[1] = specializationLocalSize->z();
+        if (specializationLocalSize->z() != 1)
+            (*localSize)[2] = specializationLocalSize->z();
+    }
+
+    return localSize;
+}

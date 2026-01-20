@@ -27,9 +27,10 @@ namespace canta {
     struct SpecializationConstant {
         u32 id = 0;
         std::string name = "";
+        // std::variant<u32, i32, f32> value = 0;
         union {
-            i32 intValue = 0;
-            u32 uintValue;
+            u32 uintValue = 0;
+            i32 intValue;
             f32 f32Value;
         } value = {};
     };
@@ -103,6 +104,7 @@ namespace canta {
             ShaderInfo callable = {};
             ShaderInfo task = {};
             ShaderInfo mesh = {};
+            std::optional<ende::math::Vec<3, u32>> localSize = {};
             std::vector<SpecializationConstant> specializationConstants = {};
             RasterState rasterState = {};
             DepthState depthState = {};
@@ -128,6 +130,7 @@ namespace canta {
         [[nodiscard]] auto mode() const -> PipelineMode { return _mode; }
         [[nodiscard]] auto interface() const -> const ShaderInterface& { return _interface; }
         [[nodiscard]] auto info() const -> const CreateInfo& { return _info; }
+        [[nodiscard]] auto localSize(ShaderStage stage) const -> std::optional<ende::math::Vec<3, u32>>;
 
     private:
         friend Device;
@@ -139,6 +142,7 @@ namespace canta {
         ShaderInterface _interface = {};
         std::string _name = {};
         CreateInfo _info = {};
+        std::optional<ende::math::Vec<3, u32>> _size;
 
 
     };

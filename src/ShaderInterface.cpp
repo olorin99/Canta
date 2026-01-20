@@ -354,12 +354,12 @@ auto canta::ShaderInterface::getTypeList() const -> std::vector<Member> {
     return members;
 }
 
-auto canta::ShaderInterface::localSize(canta::ShaderStage stage) const -> ende::math::Vec<3, u32> {
+auto canta::ShaderInterface::localSize(canta::ShaderStage stage) const -> std::optional<ende::math::Vec<3, u32>> {
     for (auto& sizePair : _localSizes) {
         if (sizePair.second == stage)
             return sizePair.first;
     }
-    return { 1, 1, 1 };
+    return std::nullopt;
 }
 
 auto canta::ShaderInterface::stagePresent(canta::ShaderStage stage) const -> bool {

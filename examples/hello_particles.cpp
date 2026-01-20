@@ -63,7 +63,10 @@ int main() {
             })),
             .entryPoint = "drawMain"
         },
-        .specializationConstants = {canta::SpecializationConstant{.id = 1, .name = "screen_width", .value = 780}},
+        .localSize = ende::math::Vec<3, u32>{ 32, 1, 1 },
+        .specializationConstants = {
+            canta::SpecializationConstant{.id = 0, .name = "screen_width", .value = 780}
+        },
         .name = "particles_draw"
     }));
 

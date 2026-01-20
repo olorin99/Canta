@@ -110,7 +110,7 @@ namespace canta {
 
         [[nodiscard]] auto bindingCount(u32 set) const -> u32 { return _sets[set].bindingCount; }
 
-        [[nodiscard]] auto localSize(ShaderStage stage) const -> ende::math::Vec<3, u32>;
+        [[nodiscard]] auto localSize(ShaderStage stage) const -> std::optional<ende::math::Vec<3, u32>>;
 
         [[nodiscard]] auto stagePresent(ShaderStage stage) const -> bool;
 
