@@ -1,4 +1,4 @@
-
+import struct
 import sys
 
 def main():
@@ -18,12 +18,34 @@ def main():
         print(paths)
         virtual_path = paths[0]
         shader_path = paths[1]
-        with open(shader_path, "r") as shader_file:
-            shaders.append([virtual_path, shader_path, shader_file.read()])
+        open_params = "r"
+        if shader_path.endswith(".spv"):
+            open_params += "b"
+        with open(shader_path, open_params) as shader_file:
+            shader = shader_file.read()
+            if shader_path.endswith(".spv"):
+                shader_binary = struct.unpack("i" * int((len(shader) / 4)), shader)
+                shader = ""
+                for op in shader_binary:
+                    shader += str(op) + ", "
+                shader = shader[:-2]
+                print(shader)
+            shaders.append([virtual_path, shader_path, shader])
 
-    output = "static inline void registerEmbededShaders{}(canta::PipelineManager& manager) ".format(name) + "{\n"
+    output = ""
     for shader in shaders:
-        output += "manager.addVirtualFile(R\"({})\", R\"({})\");\n".format(shader[0], shader[2])
+        if shader[0].endswith(".spv"):
+            count = len(shader[2].split(","))
+            output += "constexpr std::array<const u32, {}> {}_embedded = {{{}}};\n".format(count, shader[0].replace(".", "_").replace("/", "_"), shader[2])
+        else:
+            output += "constexpr const char* {}_embedded = R\"({})\";\n".format(shader[0].replace(".", "_").replace("/", "_"), shader[2])
+
+    output += "\n"
+    output += "static inline void registerEmbededShaders{}(canta::PipelineManager& manager) ".format(name) + "{\n"
+    for shader in shaders:
+        if shader[0].endswith(".spv"):
+            continue
+        output += "manager.addVirtualFile(R\"({})\", {}_embedded);\n".format(shader[0], shader[0].replace(".", "_").replace("/", "_"))
 
     output += "}"
 

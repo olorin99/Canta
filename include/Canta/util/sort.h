@@ -10,11 +10,11 @@ namespace canta {
         BufferIndex values;
     };
 
-    auto sort(PipelineManager& manager, RenderGraph& renderGraph, BufferIndex keys, BufferIndex values, u32 count, u32 typeSize) -> SortOutput;
+    auto sort(RenderGraph& renderGraph, BufferIndex keys, BufferIndex values, u32 count, u32 typeSize) -> SortOutput;
 
     template <typename T>
-    auto sort(PipelineManager& manager, RenderGraph& renderGraph, BufferIndex keys, BufferIndex values, u32 count) -> SortOutput {
-        return sort(manager, renderGraph, keys, values, count, sizeof(T));
+    auto sort(RenderGraph& renderGraph, const BufferIndex keys, const BufferIndex values, const u32 count) -> SortOutput {
+        return sort(renderGraph, keys, values, count, sizeof(T));
     }
 
 }

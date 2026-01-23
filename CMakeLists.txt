@@ -49,7 +49,7 @@ endfunction()
 
 embed_shaders(
         NAME Canta
-        SHADERS "canta.slang:${CMAKE_CURRENT_SOURCE_DIR}/src/canta.slang" "examples/particles.slang:${CMAKE_CURRENT_SOURCE_DIR}/examples/particles.slang"
+        SHADERS "canta.slang:${CMAKE_CURRENT_SOURCE_DIR}/src/canta.slang" "canta_sort.slang:${CMAKE_CURRENT_SOURCE_DIR}/src/util/sort.slang" "canta_sort.spv:${CMAKE_CURRENT_SOURCE_DIR}/src/util/sort.spv" "examples/particles.slang:${CMAKE_CURRENT_SOURCE_DIR}/examples/particles.slang"
 )
 
 add_library(Canta

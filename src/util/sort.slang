@@ -3,8 +3,11 @@
 import canta;
 
 #define WORKGROUP_SIZE 256
-GROUP_SIZE(WORKGROUP_SIZE, 1, 1)
-[vk::constant_id(SPEC_CONSTANT_INDEX(0))] const uint typeSize = sizeof(uint);
+[vk::constant_id(0)] const uint x_size = WORKGROUP_SIZE;
+[vk::constant_id(1)] const uint y_size = 1;
+[vk::constant_id(2)] const uint z_size = 1;
+static const uint3 groupSize = uint3(x_size, y_size, z_size);
+[vk::constant_id(3)] const uint typeSize = sizeof(uint);
 
 #define radixSortBins 256
 #define subGroupSize 64 // 32 for nvidia and 64 for amd
@@ -54,7 +57,7 @@ void setKey(uint* keys, uint* tmpKeys, uint index, uint iteration, uint key) {
 }
 
 [shader("compute")]
-NUM_THREADS
+[numthreads(x_size, y_size, z_size)]
 void main(
     uint3 groupThread : SV_GroupThreadID,
     uint3 groupId : SV_GroupID,

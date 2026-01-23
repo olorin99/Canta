@@ -451,6 +451,8 @@ namespace canta {
         [[nodiscard]] auto findCurrAccess(const RenderPass& pass, const u32 resource) const -> std::tuple<bool, ResourceAccess>;
         [[nodiscard]] auto findPrevAccess(const i32 startIndex, const u32 resource) const -> std::tuple<i32, i32, ResourceAccess>;
 
+        [[nodiscard]] auto device() const -> Device* { return _device; }
+
     private:
         friend RenderPass;
 

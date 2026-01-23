@@ -62,7 +62,7 @@ int main() {
     const auto keys = TRY_MAIN(renderGraph.addUploadPass("data_upload", buffer, data).aliasBufferOutput(0));
     const auto values = TRY_MAIN(renderGraph.addUploadPass("data_upload_second", buffer1, valueData).aliasBufferOutput(0));
 
-    const auto sortOutputs = canta::sort<Value>(pipelineManager, renderGraph, keys, values, N);
+    const auto sortOutputs = canta::sort<Value>(renderGraph, keys, values, N);
 
 
     const auto output = TRY_MAIN(renderGraph.addReadbackPass("data_read", sortOutputs.keys, outputData).aliasBufferOutput(0));
