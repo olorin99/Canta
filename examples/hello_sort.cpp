@@ -1,8 +1,14 @@
 #include <Canta/Device.h>
 #include <Canta/RenderGraph.h>
 #include <Canta/PipelineManager.h>
+#include <Canta/util/sort.h>
+#include <Ende/math/random.h>
 
-#include "../cmake-build-debug-clang/_deps/ende-src/include/Ende/math/random.h"
+struct Value {
+    u32 value1;
+    u32 value2;
+    u32 value3;
+};
 
 int main() {
 
@@ -29,37 +35,37 @@ int main() {
         .name = "graph"
     }));
 
-    constexpr auto N = 1000;
+    constexpr auto N = 10000;
 
     const auto buffer = renderGraph.addBuffer({
         .size = N * sizeof(u32),
         .name = "data"
     });
     const auto buffer1 = renderGraph.addBuffer({
-        .size = N * sizeof(u32),
-        .name = "pingpong"
+        .size = N * sizeof(Value),
+        .name = "values"
     });
 
     u32 data[N] = {};
+    Value valueData[N] = {};
     u32 outputData[N] = {};
     for (auto& d : data) {
         d = ende::math::rand(0, N);
     }
+    for (u32 i = 0; i < N; ++i) {
+        auto& v = valueData[i];
+        v.value1 = data[i];
+        v.value2 = data[i];
+        v.value3 = data[i];
+    }
 
-    renderGraph.addUploadPass("data_upload", buffer, data);
+    const auto keys = TRY_MAIN(renderGraph.addUploadPass("data_upload", buffer, data).aliasBufferOutput(0));
+    const auto values = TRY_MAIN(renderGraph.addUploadPass("data_upload_second", buffer1, valueData).aliasBufferOutput(0));
 
-    renderGraph.addPass({.name = "sort_pass"})
-        .setPipeline(TRY_MAIN(pipelineManager.getPipeline(canta::Pipeline::CreateInfo{
-            .compute = {
-                .path = "sort.slang"
-            },
-            // .localSize = ende::math::Vec<3, u32>{256, 1, 1}
-        })))
-        .pushConstants(canta::Write(buffer), canta::Write(buffer1), N)
-        .dispatchThreads(N);
+    const auto sortOutputs = canta::sort<Value>(pipelineManager, renderGraph, keys, values, N);
 
-    auto output = TRY_MAIN(renderGraph.addReadbackPass("data_read", buffer, outputData).aliasBufferOutput(0));
 
+    const auto output = TRY_MAIN(renderGraph.addReadbackPass("data_read", sortOutputs.keys, outputData).aliasBufferOutput(0));
     renderGraph.setBackbuffer(output);
 
     if (!renderGraph.compile()) return -1;
@@ -81,27 +87,35 @@ int main() {
     }
     printf("\n");
 
-    for (u32 i = 0; i < N; ++i) {
-        auto& d = data[i];
+    // for (u32 i = 0; i < N; ++i) {
+    //     auto& d = data[i];
+    //
+    //     u32 count = 0;
+    //
+    //     for (u32 j = 0; j < N; ++j) {
+    //         auto& dd = data[j];
+    //         if (d == dd)
+    //             count++;
+    //     }
+    //
+    //     u32 outputCount = 0;
+    //     for (u32 j = 0; j < N; ++j) {
+    //         auto& o = outputData[j];
+    //         if (d == o)
+    //             outputCount++;
+    //     }
+    //     if (count != outputCount) {
+    //         printf("different counts for index: %d, value: %d. %d in input and %d in output.\n", i, d, count, outputCount);
+    //     }
+    // }
 
-        u32 count = 0;
-
-        for (u32 j = 0; j < N; ++j) {
-            auto& dd = data[j];
-            if (d == dd)
-                count++;
-        }
-
-        u32 outputCount = 0;
-        for (u32 j = 0; j < N; ++j) {
-            auto& o = outputData[j];
-            if (d == o)
-                outputCount++;
-        }
-        if (count != outputCount) {
-            printf("different counts for index: %d, value: %d. %d in input and %d in output.\n", i, d, count, outputCount);
-        }
+    u64 totalTime = 0;
+    for (auto timers = renderGraph.timers(); auto&[name, timer] : timers) {
+        const auto time = TRY_MAIN(timer.result());
+        printf("Pass: %s (%fms)\n", name.c_str(), time / 1e6);
+        totalTime += time;
     }
+    printf("Total time: %fms\n", totalTime / 1e6);
 
     device->endFrameCapture();
 

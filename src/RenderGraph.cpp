@@ -871,6 +871,31 @@ auto canta::RenderGraph::addBuffer(const canta::BufferDescription &description) 
     };
 }
 
+auto canta::RenderGraph::duplicate(const ImageIndex index) -> ImageIndex {
+    const auto image = dynamic_cast<ImageResource*>(_resources[index.index].get());
+    const auto description = ImageDescription{
+        .matchesBackbuffer = image->matchesBackbuffer,
+        .width = image->width,
+        .height = image->height,
+        .depth = image->depth,
+        .mipLevels = image->mipLevels,
+        .format = image->format,
+        .usage = image->usage,
+        .initialLayout = image->initialLayout,
+    };
+    return addImage(description);
+}
+
+auto canta::RenderGraph::duplicate(const BufferIndex index) -> BufferIndex {
+    const auto buffer = dynamic_cast<BufferResource*>(_resources[index.index].get());
+    const auto description = BufferDescription{
+        .size = buffer->size,
+        .usage = buffer->usage,
+        .name = std::format("duplicateBuffer{}__{}", index.index, index.id),
+    };
+    return addBuffer(description);
+}
+
 auto canta::RenderGraph::addAlias(const canta::ImageIndex index) -> ImageIndex {
     return {
         .id = _resourceId++,

@@ -385,6 +385,9 @@ namespace canta {
         [[nodiscard]] auto addImage(const ImageDescription &description) -> ImageIndex;
         [[nodiscard]] auto addBuffer(const BufferDescription &description) -> BufferIndex;
 
+        [[nodiscard]] auto duplicate(const ImageIndex index) -> ImageIndex;
+        [[nodiscard]] auto duplicate(const BufferIndex index) -> BufferIndex;
+
         [[nodiscard]] auto addAlias(const ImageIndex index) -> ImageIndex;
         [[nodiscard]] auto addAlias(const BufferIndex index) -> BufferIndex;
 

@@ -104,6 +104,8 @@ add_library(Canta
         include/Canta/debug/PipelineManagerDebugger.h
         src/debug/CommandQueueDebugger.cpp
         include/Canta/debug/CommandQueueDebugger.h
+        src/util/sort.cpp
+        include/Canta/util/sort.h
 )
 
 add_subdirectory(third_party)
