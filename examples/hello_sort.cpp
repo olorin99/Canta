@@ -35,20 +35,46 @@ int main() {
         .name = "graph"
     }));
 
-    constexpr auto N = 10000;
+    constexpr auto N = 1000000;
 
     const auto buffer = renderGraph.addBuffer({
         .size = N * sizeof(u32),
-        .name = "data"
+        .name = "keys"
     });
     const auto buffer1 = renderGraph.addBuffer({
         .size = N * sizeof(Value),
         .name = "values"
     });
 
-    u32 data[N] = {};
-    Value valueData[N] = {};
-    u32 outputData[N] = {};
+    // for 10 million keys
+    // 1 -> 2603
+    // 2 -> 661
+    // 4 -> 171
+    // 8 -> 49
+    // 16 -> 16
+    // 32 -> 6
+    // 64 -> 4.8
+    // 128 -> 3.9
+    // 256 -> 4.2
+    // 512 -> 4.5
+    // 1024 -> 7.35
+    // best value for numBlocksPerWorkGroup = 128
+    u32 numBlocksPerWorkgroup = 32;
+    u32 totalThreads = N / numBlocksPerWorkgroup;
+    uint32_t remainder = N % numBlocksPerWorkgroup;
+    totalThreads += remainder > 0 ? 1 : 0;
+    u32 numWorkgroups = (totalThreads + 256 - 1) / 256;
+    const auto histograms = renderGraph.addBuffer({
+        .size = static_cast<u32>(numWorkgroups * 256 * sizeof(u32)),
+        .name = "histograms"
+    });
+
+    std::vector<u32> data = {};
+    data.resize(N);
+    std::vector<Value> valueData = {};
+    valueData.resize(N);
+    std::vector<u32> outputData = {};
+    outputData.resize(N);
     for (auto& d : data) {
         d = ende::math::rand(0, N);
     }
@@ -62,10 +88,36 @@ int main() {
     const auto keys = TRY_MAIN(renderGraph.addUploadPass("data_upload", buffer, data).aliasBufferOutput(0));
     const auto values = TRY_MAIN(renderGraph.addUploadPass("data_upload_second", buffer1, valueData).aliasBufferOutput(0));
 
-    const auto sortOutputs = canta::sort<Value>(renderGraph, keys, values);
+    // const auto sortOutputs = canta::sort<Value>(renderGraph, keys, values);
+
+    auto index = keys;
+    for (u32 iteration = 0; iteration < 4; iteration++) {
+        u32 shift = 8 * iteration;
+        auto histogramOutput = TRY_MAIN(renderGraph.addPass({.name = "histogram_pass"})
+            .addStorageBufferRead(index)
+            .setPipeline(pipelineManager.getPipeline({
+                .compute = {
+                    .path = "multi_sort_histograms.slang"
+                }
+            }).value())
+            .pushConstants(canta::Read(iteration % 2 == 0 ? keys : values), canta::Read(iteration % 2 == 0 ? values : keys), canta::Write(histograms), N, shift, numWorkgroups, numBlocksPerWorkgroup)
+            .dispatchThreads(totalThreads).aliasBufferOutput(0));
+
+        auto sortOutput = renderGraph.addPass({.name = "sort_pass"})
+            .setPipeline(pipelineManager.getPipeline({
+                .compute = {
+                    .path = "multi_sort.slang"
+                }
+            }).value())
+            .pushConstants(canta::Write(iteration % 2 == 0 ? keys : values), canta::Write(iteration % 2 == 0 ? values : keys), canta::Read(histogramOutput), N, shift, numWorkgroups, numBlocksPerWorkgroup)
+            .dispatchThreads(totalThreads).aliasBufferOutputs();
+        index = sortOutput[0];
+    }
 
 
-    const auto output = TRY_MAIN(renderGraph.addReadbackPass("data_read", sortOutputs.keys, outputData).aliasBufferOutput(0));
+    // const auto output = TRY_MAIN(renderGraph.addReadbackPass("data_read", sortOutputs.keys, outputData).aliasBufferOutput(0));
+    // const auto output = TRY_MAIN(renderGraph.addReadbackPass("data_read", histogramOutput, outputData).aliasBufferOutput(0));
+    const auto output = TRY_MAIN(renderGraph.addReadbackPass("data_read", index, outputData).aliasBufferOutput(0));
     renderGraph.setBackbuffer(output);
 
     if (!renderGraph.compile()) return -1;
@@ -73,19 +125,22 @@ int main() {
 
     TRY_MAIN(device->waitIdle());
 
+    bool totalSorted = true;
     bool sorted = true;
     u32 prevValue = 0;
     for (i32 i = 0; i < N; ++i) {
         const auto& d = data[i];
         const auto& o = outputData[i];
-        printf("(%d, %d), ", d, o);
+        // printf("(%d, %d), ", d, o);
         sorted = prevValue <= o;
         prevValue = o;
         if (!sorted) {
-            printf("\nnot sorted properly\n");
+            totalSorted = sorted;
+            // printf("\nnot sorted properly\n");
         }
     }
     printf("\n");
+    printf("%s\n", totalSorted ? "Sorted" : "Unsorted");
 
     // for (u32 i = 0; i < N; ++i) {
     //     auto& d = data[i];
