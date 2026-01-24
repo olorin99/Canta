@@ -1,8 +1,12 @@
 #include <Canta/util/sort.h>
-#include "embeded_shaders_Canta.h"
 
-auto canta::sort(RenderGraph &renderGraph, const BufferIndex keys, const BufferIndex values, const u32 count, const u32 typeSize) -> SortOutput {
+auto canta::sort(RenderGraph &renderGraph, const BufferIndex keys, const BufferIndex values, u32 count, const u32 typeSize) -> SortOutput {
     assert(typeSize % sizeof(u32) == 0);
+
+    if (count == 0) {
+        const auto keysInfo = renderGraph.getBufferInfo(keys);
+        count = keysInfo.size / sizeof(u32);
+    }
 
     const auto tmpKeys = renderGraph.duplicate(keys);
     const auto tmpValues = renderGraph.duplicate(values);

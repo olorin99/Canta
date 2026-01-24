@@ -920,6 +920,16 @@ auto canta::RenderGraph::getBuffer(const canta::BufferIndex index) -> BufferHand
     return _buffers[bufferIndex];
 }
 
+auto canta::RenderGraph::getImageInfo(const ImageIndex index) const -> ImageResource {
+    const auto imageIndex = dynamic_cast<ImageResource*>(_resources[index.index].get());
+    return *imageIndex;
+}
+
+auto canta::RenderGraph::getBufferInfo(const BufferIndex index) const -> BufferResource {
+    const auto bufferIndex = dynamic_cast<BufferResource*>(_resources[index.index].get());
+    return *bufferIndex;
+}
+
 void canta::RenderGraph::setBackbuffer(const canta::ImageIndex index, const ImageLayout finalLayout) {
     _backbufferId = index.id;
     _backbufferIndex = index.index;

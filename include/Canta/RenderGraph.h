@@ -394,6 +394,9 @@ namespace canta {
         [[nodiscard]] auto getImage(const ImageIndex index) -> ImageHandle;
         [[nodiscard]] auto getBuffer(const BufferIndex index) -> BufferHandle;
 
+        [[nodiscard]] auto getImageInfo(ImageIndex index) const -> ImageResource;
+        [[nodiscard]] auto getBufferInfo(BufferIndex index) const -> BufferResource;
+
         void setBackbuffer(const ImageIndex index, const ImageLayout finalLayout = ImageLayout::UNDEFINED);
         void setBackbuffer(const BufferIndex index);
 

@@ -13,7 +13,7 @@ namespace canta {
     auto sort(RenderGraph& renderGraph, BufferIndex keys, BufferIndex values, u32 count, u32 typeSize) -> SortOutput;
 
     template <typename T>
-    auto sort(RenderGraph& renderGraph, const BufferIndex keys, const BufferIndex values, const u32 count) -> SortOutput {
+    auto sort(RenderGraph& renderGraph, const BufferIndex keys, const BufferIndex values, const u32 count = 0) -> SortOutput {
         return sort(renderGraph, keys, values, count, sizeof(T));
     }
 
