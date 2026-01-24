@@ -10,11 +10,23 @@ namespace canta {
         BufferIndex values;
     };
 
-    auto sort(RenderGraph& renderGraph, BufferIndex keys, BufferIndex values, u32 count, u32 typeSize) -> SortOutput;
+    auto singleSort(RenderGraph& renderGraph, BufferIndex keys, BufferIndex values, u32 count, u32 typeSize) -> SortOutput;
+
+    template <typename T>
+    auto singleSort(RenderGraph& renderGraph, const BufferIndex keys, const BufferIndex values, const u32 count = 0) -> SortOutput {
+        return singleSort(renderGraph, keys, values, count, sizeof(T));
+    }
+
+    auto multiSort(RenderGraph& renderGraph, BufferIndex keys, BufferIndex values, u32 count, u32 typeSize) -> SortOutput;
+
+    template <typename T>
+    auto multiSort(RenderGraph& renderGraph, const BufferIndex keys, const BufferIndex values, const u32 count = 0) -> SortOutput {
+        return multiSort(renderGraph, keys, values, count, sizeof(T));
+    }
 
     template <typename T>
     auto sort(RenderGraph& renderGraph, const BufferIndex keys, const BufferIndex values, const u32 count = 0) -> SortOutput {
-        return sort(renderGraph, keys, values, count, sizeof(T));
+        return multiSort(renderGraph, keys, values, count, sizeof(T));
     }
 
 }

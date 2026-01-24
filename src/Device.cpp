@@ -696,9 +696,27 @@ auto canta::Device::create(canta::Device::CreateInfo info) noexcept -> std::expe
     device->_singleSort = device->createPipeline({
         .compute = {
             .module = device->createShaderModule({
-                .spirv = canta_sort_spv_embedded,
+                .spirv = canta_single_sort_spv_embedded,
                 .stage = ShaderStage::COMPUTE,
                 .name = "canta_single_sort"
+            })
+        }
+    });
+    device->_multiSort = device->createPipeline({
+        .compute = {
+            .module = device->createShaderModule({
+                .spirv = canta_multi_sort_spv_embedded,
+                .stage = ShaderStage::COMPUTE,
+                .name = "canta_multi_sort"
+            })
+        }
+    });
+    device->_multiSortHistograms = device->createPipeline({
+        .compute = {
+            .module = device->createShaderModule({
+                .spirv = canta_multi_sort_histograms_spv_embedded,
+                .stage = ShaderStage::COMPUTE,
+                .name = "canta_multi_sort_histograms"
             })
         }
     });

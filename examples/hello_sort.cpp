@@ -90,40 +90,42 @@ int main() {
 
     // const auto sortOutputs = canta::sort<Value>(renderGraph, keys, values);
 
-    auto index = keys;
-    for (u32 iteration = 0; iteration < 4; iteration++) {
-        u32 shift = 8 * iteration;
-        auto histogramOutput = TRY_MAIN(renderGraph.addPass({.name = "histogram_pass"})
-            .addStorageBufferRead(index)
-            .setPipeline(pipelineManager.getPipeline({
-                .compute = {
-                    .path = "multi_sort_histograms.slang"
-                }
-            }).value())
-            .pushConstants(canta::Read(iteration % 2 == 0 ? keys : values), canta::Read(iteration % 2 == 0 ? values : keys), canta::Write(histograms), N, shift, numWorkgroups, numBlocksPerWorkgroup)
-            .dispatchThreads(totalThreads).aliasBufferOutput(0));
+    const auto sortOutputs = canta::multiSort<Value>(renderGraph, keys, values);
 
-        auto sortOutput = renderGraph.addPass({.name = "sort_pass"})
-            .setPipeline(pipelineManager.getPipeline({
-                .compute = {
-                    .path = "multi_sort.slang"
-                }
-            }).value())
-            .pushConstants(canta::Write(iteration % 2 == 0 ? keys : values), canta::Write(iteration % 2 == 0 ? values : keys), canta::Read(histogramOutput), N, shift, numWorkgroups, numBlocksPerWorkgroup)
-            .dispatchThreads(totalThreads).aliasBufferOutputs();
-        index = sortOutput[0];
-    }
+    // auto index = keys;
+    // for (u32 iteration = 0; iteration < 4; iteration++) {
+    //     u32 shift = 8 * iteration;
+    //     auto histogramOutput = TRY_MAIN(renderGraph.addPass({.name = "histogram_pass"})
+    //         .addStorageBufferRead(index)
+    //         .setPipeline(pipelineManager.getPipeline({
+    //             .compute = {
+    //                 .path = "multi_sort_histograms.slang"
+    //             }
+    //         }).value())
+    //         .pushConstants(canta::Read(iteration % 2 == 0 ? keys : values), canta::Read(iteration % 2 == 0 ? values : keys), canta::Write(histograms), N, shift, numWorkgroups, numBlocksPerWorkgroup)
+    //         .dispatchThreads(totalThreads).aliasBufferOutput(0));
+    //
+    //     auto sortOutput = renderGraph.addPass({.name = "sort_pass"})
+    //         .setPipeline(pipelineManager.getPipeline({
+    //             .compute = {
+    //                 .path = "multi_sort.slang"
+    //             }
+    //         }).value())
+    //         .pushConstants(canta::Write(iteration % 2 == 0 ? keys : values), canta::Write(iteration % 2 == 0 ? values : keys), canta::Read(histogramOutput), N, shift, numWorkgroups, numBlocksPerWorkgroup)
+    //         .dispatchThreads(totalThreads).aliasBufferOutputs();
+    //     index = sortOutput[0];
+    // }
 
 
-    // const auto output = TRY_MAIN(renderGraph.addReadbackPass("data_read", sortOutputs.keys, outputData).aliasBufferOutput(0));
+    const auto output = TRY_MAIN(renderGraph.addReadbackPass("data_read", sortOutputs.keys, outputData).aliasBufferOutput(0));
     // const auto output = TRY_MAIN(renderGraph.addReadbackPass("data_read", histogramOutput, outputData).aliasBufferOutput(0));
-    const auto output = TRY_MAIN(renderGraph.addReadbackPass("data_read", index, outputData).aliasBufferOutput(0));
+    // const auto output = TRY_MAIN(renderGraph.addReadbackPass("data_read", index, outputData).aliasBufferOutput(0));
     renderGraph.setBackbuffer(output);
 
     if (!renderGraph.compile()) return -1;
     if (!renderGraph.execute({}, {}, {}, true)) return -2;
 
-    TRY_MAIN(device->waitIdle());
+    // TRY_MAIN(device->waitIdle());
 
     bool totalSorted = true;
     bool sorted = true;
@@ -136,7 +138,7 @@ int main() {
         prevValue = o;
         if (!sorted) {
             totalSorted = sorted;
-            // printf("\nnot sorted properly\n");
+            printf("\nnot sorted properly\n");
         }
     }
     printf("\n");

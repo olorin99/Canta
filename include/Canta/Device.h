@@ -286,6 +286,8 @@ namespace canta {
         void updateBindlessDescriptors();
 
         auto singleSortPipeline() -> PipelineHandle { return _singleSort; }
+        auto multiSortPipeline() -> PipelineHandle { return _multiSort; }
+        auto multiSortHistogramsPipeline() -> PipelineHandle { return _multiSortHistograms; }
 
     private:
         friend CommandBuffer;
@@ -378,6 +380,8 @@ namespace canta {
         std::vector<std::function<void(CommandBuffer&)>> _deferredCommands = {};
 
         PipelineHandle _singleSort = {};
+        PipelineHandle _multiSort = {};
+        PipelineHandle _multiSortHistograms = {};
 
     };
 
