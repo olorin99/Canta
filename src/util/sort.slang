@@ -7,7 +7,6 @@ import canta;
 [vk::constant_id(1)] const uint y_size = 1;
 [vk::constant_id(2)] const uint z_size = 1;
 static const uint3 groupSize = uint3(x_size, y_size, z_size);
-[vk::constant_id(3)] const uint typeSize = sizeof(uint);
 
 #define radixSortBins 256
 #define subGroupSize 64 // 32 for nvidia and 64 for amd
@@ -23,7 +22,7 @@ struct BinFlags {
 };
 groupshared BinFlags[radixSortBins] binFlags;
 
-void setValue(uint* dst, uint* src, uint srcIndex, uint dstIndex) {
+void setValue(uint* dst, uint* src, uint srcIndex, uint dstIndex, uint typeSize) {
     let count = typeSize / sizeof(uint);
     for (uint i = 0; i < count; i++) {
         let d = dstIndex * count + i;
@@ -32,11 +31,11 @@ void setValue(uint* dst, uint* src, uint srcIndex, uint dstIndex) {
     }
 }
 
-void swapValue(uint* values, uint* tmpValues, uint srcIndex, uint dstIndex, uint iteration) {
+void swapValue(uint* values, uint* tmpValues, uint srcIndex, uint dstIndex, uint iteration, uint typeSize) {
     if (iteration % 2 == 0) {
-        setValue(tmpValues, values, srcIndex, dstIndex);
+        setValue(tmpValues, values, srcIndex, dstIndex, typeSize);
     } else {
-        setValue(values, tmpValues, srcIndex, dstIndex);
+        setValue(values, tmpValues, srcIndex, dstIndex, typeSize);
     }
 }
 
@@ -66,6 +65,7 @@ void main(
     uniform uint* values,
     uniform uint* tmpValues,
     uniform uint numElements,
+    uniform uint typeSize,
 ) {
     let waveIndex = groupThread.x / WaveGetLaneCount();
     let waveId = WaveGetLaneIndex();
@@ -146,7 +146,7 @@ void main(
 
                 if (binOffset + prefix < numElements) {
                     setKey(keys, tmpKeys, binOffset + prefix, iteration, key);
-                    swapValue(values, tmpValues, ID, binOffset + prefix, iteration);
+                    swapValue(values, tmpValues, ID, binOffset + prefix, iteration, typeSize);
                 }
                 if (prefix == count - 1) {
                     InterlockedAdd(globalOffsets[binId], count);

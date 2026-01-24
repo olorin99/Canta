@@ -11,6 +11,9 @@
 #include <vk_mem_alloc.h>
 #include <dlfcn.h>
 
+#define EMBEDDED_SHADERS_NO_REGISTER
+#include "embeded_shaders_Canta.h"
+
 template<> u32 canta::ShaderHandle::s_hash = 0;
 template<> u32 canta::PipelineHandle::s_hash = 0;
 template<> u32 canta::ImageHandle::s_hash = 0;
@@ -689,6 +692,16 @@ auto canta::Device::create(canta::Device::CreateInfo info) noexcept -> std::expe
     device->_samplerList.setLogger(&device->_logger);
     device->_samplerList.setGetTimelineValue(getResourceTimelineValue);
     device->_samplerList.setDestructionDelay(info.resourceDestructionDelay);
+
+    device->_singleSort = device->createPipeline({
+        .compute = {
+            .module = device->createShaderModule({
+                .spirv = canta_sort_spv_embedded,
+                .stage = ShaderStage::COMPUTE,
+                .name = "canta_single_sort"
+            })
+        }
+    });
 
     device->logger().info("Device creation complete");
 

@@ -285,6 +285,8 @@ namespace canta {
 
         void updateBindlessDescriptors();
 
+        auto singleSortPipeline() -> PipelineHandle { return _singleSort; }
+
     private:
         friend CommandBuffer;
 
@@ -374,6 +376,8 @@ namespace canta {
         ResourceList<Semaphore> _semaphoreList = {};
 
         std::vector<std::function<void(CommandBuffer&)>> _deferredCommands = {};
+
+        PipelineHandle _singleSort = {};
 
     };
 

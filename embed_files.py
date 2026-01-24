@@ -32,7 +32,8 @@ def main():
                 print(shader)
             shaders.append([virtual_path, shader_path, shader])
 
-    output = ""
+    header_guard = output_path.replace(".", "_").replace("/", "_").replace("-", "_")
+    output = "#ifndef {}_H\n#define {}_H\n\n".format(header_guard, header_guard)
     for shader in shaders:
         if shader[0].endswith(".spv"):
             count = len(shader[2].split(","))
@@ -41,13 +42,15 @@ def main():
             output += "constexpr const char* {}_embedded = R\"({})\";\n".format(shader[0].replace(".", "_").replace("/", "_"), shader[2])
 
     output += "\n"
+    output += "#ifndef EMBEDDED_SHADERS_NO_REGISTER\n"
     output += "static inline void registerEmbededShaders{}(canta::PipelineManager& manager) ".format(name) + "{\n"
     for shader in shaders:
         if shader[0].endswith(".spv"):
             continue
         output += "manager.addVirtualFile(R\"({})\", {}_embedded);\n".format(shader[0], shader[0].replace(".", "_").replace("/", "_"))
 
-    output += "}"
+    output += "}\n#endif\n"
+    output += "#endif"
 
     with open(output_path, "w") as output_file:
         output_file.write(output)

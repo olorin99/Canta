@@ -7,22 +7,13 @@ auto canta::sort(RenderGraph &renderGraph, const BufferIndex keys, const BufferI
     const auto tmpKeys = renderGraph.duplicate(keys);
     const auto tmpValues = renderGraph.duplicate(values);
 
-    const auto pipeline = renderGraph.device()->createPipeline( {
-        .compute = {
-            .module = renderGraph.device()->createShaderModule( {
-                .spirv = canta_sort_spv_embedded,
-                .stage = ShaderStage::COMPUTE,
-                .name = "canta_sort"
-            })
-        },
-        .specializationConstants = {SpecializationConstant{.id = 0, .name = "typeSize", .value = typeSize}}
-    });
+    const auto pipeline = renderGraph.device()->singleSortPipeline();
 
     const auto outputs = renderGraph.addPass({.name = "sort"})
         .addStorageBufferRead(keys)
         .addStorageBufferRead(values)
         .setPipeline(pipeline)
-        .pushConstants(canta::Write(keys), canta::Write(tmpKeys), canta::Write(values), canta::Write(tmpValues), count)
+        .pushConstants(canta::Write(keys), canta::Write(tmpKeys), canta::Write(values), canta::Write(tmpValues), count, typeSize)
         .dispatchThreads(count).aliasBufferOutputs();
 
     return {
