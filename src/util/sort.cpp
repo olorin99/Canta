@@ -18,7 +18,7 @@ auto canta::sort(RenderGraph &renderGraph, const BufferIndex keys, const BufferI
         .addStorageBufferRead(values)
         .setPipeline(pipeline)
         .pushConstants(canta::Write(keys), canta::Write(tmpKeys), canta::Write(values), canta::Write(tmpValues), count, typeSize)
-        .dispatchThreads(count).aliasBufferOutputs();
+        .dispatchWorkgroups(1).aliasBufferOutputs();
 
     return {
         .keys = outputs[0],
