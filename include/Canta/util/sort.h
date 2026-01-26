@@ -17,16 +17,16 @@ namespace canta {
         return singleSort(renderGraph, keys, values, count, sizeof(T));
     }
 
-    auto multiSort(RenderGraph& renderGraph, BufferIndex keys, BufferIndex values, u32 count, u32 typeSize) -> SortOutput;
+    auto multiSort(RenderGraph& renderGraph, BufferIndex keys, BufferIndex values, u32 count, u32 numBlocksPerWorkgroup, u32 typeSize) -> SortOutput;
 
     template <typename T>
-    auto multiSort(RenderGraph& renderGraph, const BufferIndex keys, const BufferIndex values, const u32 count = 0) -> SortOutput {
-        return multiSort(renderGraph, keys, values, count, sizeof(T));
+    auto multiSort(RenderGraph& renderGraph, const BufferIndex keys, const BufferIndex values, const u32 count = 0, const u32 numBlocksPerWorkgroup = 0) -> SortOutput {
+        return multiSort(renderGraph, keys, values, count, numBlocksPerWorkgroup, sizeof(T));
     }
 
     template <typename T>
-    auto sort(RenderGraph& renderGraph, const BufferIndex keys, const BufferIndex values, const u32 count = 0) -> SortOutput {
-        return multiSort(renderGraph, keys, values, count, sizeof(T));
+    auto sort(RenderGraph& renderGraph, const BufferIndex keys, const BufferIndex values, const u32 count = 0, const u32 numBlocksPerWorkgroup = 0) -> SortOutput {
+        return multiSort(renderGraph, keys, values, count, numBlocksPerWorkgroup, sizeof(T));
     }
 
 }

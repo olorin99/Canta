@@ -26,15 +26,22 @@ auto canta::singleSort(RenderGraph &renderGraph, const BufferIndex keys, const B
     };
 }
 
-auto canta::multiSort(RenderGraph& graph, const BufferIndex keys, const BufferIndex values, u32 count, const u32 typeSize) -> SortOutput {
+auto canta::multiSort(RenderGraph& graph, const BufferIndex keys, const BufferIndex values, u32 count, u32 numBlocksPerWorkgroup, const u32 typeSize) -> SortOutput {
     assert(typeSize % sizeof(u32) == 0);
 
     if (count == 0) {
         const auto keysInfo = graph.getBufferInfo(keys);
         count = keysInfo.size / sizeof(u32);
     }
+    if (numBlocksPerWorkgroup == 0) {
 
-    constexpr u32 numBlocksPerWorkgroup = 32;
+        // From testing on a rx 6800 xt targeting about 40 workgroups seems to give the best performance across different input counts.
+        // Will probably be different for different hardware.
+        constexpr auto workgroupCount = 40;
+        numBlocksPerWorkgroup = std::max(1u, count / ((256 * workgroupCount) - 255));
+        // numBlocksPerWorkgroup = 32;
+    }
+
     u32 totalThreads = count / numBlocksPerWorkgroup;
     const u32 remainder = count % numBlocksPerWorkgroup;
     totalThreads += remainder > 0 ? 1 : 0;

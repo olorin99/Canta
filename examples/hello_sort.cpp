@@ -46,29 +46,6 @@ int main() {
         .name = "values"
     });
 
-    // for 10 million keys
-    // 1 -> 2603
-    // 2 -> 661
-    // 4 -> 171
-    // 8 -> 49
-    // 16 -> 16
-    // 32 -> 6
-    // 64 -> 4.8
-    // 128 -> 3.9
-    // 256 -> 4.2
-    // 512 -> 4.5
-    // 1024 -> 7.35
-    // best value for numBlocksPerWorkGroup = 128
-    u32 numBlocksPerWorkgroup = 32;
-    u32 totalThreads = N / numBlocksPerWorkgroup;
-    uint32_t remainder = N % numBlocksPerWorkgroup;
-    totalThreads += remainder > 0 ? 1 : 0;
-    u32 numWorkgroups = (totalThreads + 256 - 1) / 256;
-    const auto histograms = renderGraph.addBuffer({
-        .size = static_cast<u32>(numWorkgroups * 256 * sizeof(u32)),
-        .name = "histograms"
-    });
-
     std::vector<u32> data = {};
     data.resize(N);
     std::vector<Value> valueData = {};
