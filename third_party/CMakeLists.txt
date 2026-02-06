@@ -68,6 +68,8 @@ FetchContent_Declare(slang
 
 FetchContent_MakeAvailable(Ende volk vma spdlog tsl_map spirv_cross slang)
 
+set(SLANG_BINARY_DIR ${slang_BINARY_DIR} PARENT_SCOPE)
+
 set(IMGUI_SOURCES ${IMGUI_PATH}/imgui.cpp ${IMGUI_PATH}/imgui_demo.cpp ${IMGUI_PATH}/imgui_tables.cpp ${IMGUI_PATH}/imgui_widgets.cpp ${IMGUI_PATH}/imgui_draw.cpp ${IMGUI_PATH}/backends/imgui_impl_vulkan.cpp ${IMGUI_PATH}/backends/imgui_impl_sdl2.cpp)
 add_library(imgui ${IMGUI_SOURCES})
 target_include_directories(imgui PUBLIC ${IMGUI_PATH})

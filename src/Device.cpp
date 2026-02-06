@@ -12,7 +12,7 @@
 #include <dlfcn.h>
 
 #define EMBEDDED_SHADERS_NO_REGISTER
-#include "embeded_shaders_Canta.h"
+#include "embedded_shaders_Canta.h"
 
 template<> u32 canta::ShaderHandle::s_hash = 0;
 template<> u32 canta::PipelineHandle::s_hash = 0;
@@ -696,7 +696,7 @@ auto canta::Device::create(canta::Device::CreateInfo info) noexcept -> std::expe
     device->_singleSort = device->createPipeline({
         .compute = {
             .module = device->createShaderModule({
-                .spirv = canta_single_sort_spv_embedded,
+                .spirv = single_sort_spv_embedded,
                 .stage = ShaderStage::COMPUTE,
                 .name = "canta_single_sort"
             })
@@ -705,7 +705,7 @@ auto canta::Device::create(canta::Device::CreateInfo info) noexcept -> std::expe
     device->_multiSort = device->createPipeline({
         .compute = {
             .module = device->createShaderModule({
-                .spirv = canta_multi_sort_spv_embedded,
+                .spirv = multi_sort_spv_embedded,
                 .stage = ShaderStage::COMPUTE,
                 .name = "canta_multi_sort"
             })
@@ -714,7 +714,7 @@ auto canta::Device::create(canta::Device::CreateInfo info) noexcept -> std::expe
     device->_multiSortHistograms = device->createPipeline({
         .compute = {
             .module = device->createShaderModule({
-                .spirv = canta_multi_sort_histograms_spv_embedded,
+                .spirv = multi_sort_histograms_spv_embedded,
                 .stage = ShaderStage::COMPUTE,
                 .name = "canta_multi_sort_histograms"
             })

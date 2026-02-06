@@ -4,7 +4,7 @@
 #include <Ende/filesystem/File.h>
 #include <format>
 #include <rapidjson/document.h>
-#include "embeded_shaders_Canta.h"
+#include "embedded_shaders_Canta.h"
 
 size_t std::hash<canta::Pipeline::CreateInfo>::operator()(const canta::Pipeline::CreateInfo &object) const {
     u64 hash = 0;

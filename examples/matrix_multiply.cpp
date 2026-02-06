@@ -4,6 +4,8 @@
 #include <Canta/RenderGraph.h>
 #include <Canta/PipelineManager.h>
 
+#include "embedded_shaders_Matrix.h"
+
 void genMatrix(u32 N, f32* data) {
     std::random_device rd;
     std::mt19937 rng(rd());
@@ -94,33 +96,14 @@ int main() {
     renderGraph.addUploadPass("lhs_upload", lhs, lhsData);
     renderGraph.addUploadPass("rhs_upload", rhs, rhsData);
 
-    const auto outputAlias = TRY_MAIN(renderGraph.addPass({
-        .name = "multiply"
-    })
-        .setPipeline(TRY_MAIN(pipelineManager.getPipeline({
-            .compute = {
-                .path = "matrix_multiply.slang"
-            }
-        })))
-        .pushConstants(canta::Read(lhs), canta::Read(rhs), canta::Write(output), N)
-        .dispatchThreads(N, N).aliasBufferOutput(0));
+    const auto outputAlias = TRY_MAIN(matrix::matrix_multiply(N, N)(pipelineManager)(renderGraph, canta::Read(lhs), canta::Read(rhs), canta::Write(output), N).aliasBufferOutput(0));
+
 
     canta::BufferIndex lhsIndex = rhs;
     canta::BufferIndex rhsIndex = outputAlias;
     canta::BufferIndex outputIndex = lhs;
     for (i32 i = 0; i < 60; i++ ) {
-        outputIndex = TRY_MAIN(renderGraph.addPass({
-            .name = "multiply"
-        })
-        .setPipeline(TRY_MAIN(pipelineManager.getPipeline({
-            .compute = {
-                .path = "matrix_multiply.slang"
-            }
-        })))
-        .addStorageBufferRead(lhsIndex)
-        .pushConstants(canta::Read(lhsIndex), canta::Read(rhsIndex), canta::Write(outputIndex), N)
-        .dispatchThreads(N, N).aliasBufferOutput(0));
-
+        outputIndex = TRY_MAIN(matrix::matrix_multiply(N, N)(pipelineManager)(renderGraph, canta::Read(lhsIndex), canta::Read(rhsIndex), canta::Write(outputIndex), N).aliasBufferOutput(0));
         lhsIndex = rhsIndex;
         rhsIndex = outputIndex;
     }

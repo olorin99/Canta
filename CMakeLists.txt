@@ -20,6 +20,32 @@ add_compile_definitions(CANTA_SRC_DIR="${CMAKE_CURRENT_SOURCE_DIR}")
 find_package(SDL2 REQUIRED)
 find_package(Threads REQUIRED)
 
+add_subdirectory(third_party)
+
+function(compile_shaders)
+    file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/include")
+    set(SHADER_OUTPUTS "")
+    foreach (SHADER ${ARGV})
+        set(SHADER_PATH ${CMAKE_CURRENT_SOURCE_DIR}/${SHADER})
+        message("Path: ${SHADER_PATH}")
+        get_filename_component(file_name ${SHADER_PATH} NAME)
+        get_filename_component(base_name ${SHADER_PATH} NAME_WLE)
+
+        set(OUTPUT_FILE "${CMAKE_CURRENT_BINARY_DIR}/include/${base_name}.spv")
+        list(APPEND SHADER_OUTPUTS ${OUTPUT_FILE})
+
+        set(SLANG_BINARY "${SLANG_BINARY_DIR}/slang-2025.24.3-linux-x86_64/bin/slangc")
+
+        add_custom_command(
+                OUTPUT ${OUTPUT_FILE}
+                DEPENDS slang
+                COMMAND ${SLANG_BINARY} -I${CMAKE_SOURCE_DIR}/src ${SHADER_PATH} -o ${OUTPUT_FILE}
+        )
+    endforeach ()
+    set(COMPILED_SHADER_OUTPUTS ${SHADER_OUTPUTS} PARENT_SCOPE)
+
+endfunction()
+
 function(embed_shaders)
     file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/include")
     cmake_parse_arguments(
@@ -29,27 +55,34 @@ function(embed_shaders)
             "SHADERS"
             ${ARGN}
     )
+    set(OUTPUT_HEADER "${CMAKE_CURRENT_BINARY_DIR}/include/embedded_shaders_${PARSED_ARGS_NAME}.h")
     add_custom_command(
             OUTPUT
-            "${CMAKE_CURRENT_BINARY_DIR}/include/embeded_shaders_${PARSED_ARGS_NAME}.h"
-            COMMAND python ${CMAKE_CURRENT_FUNCTION_LIST_DIR}/embed_files.py ${PARSED_ARGS_NAME} ${CMAKE_CURRENT_BINARY_DIR}/include/embeded_shaders_${PARSED_ARGS_NAME}.h ${PARSED_ARGS_SHADERS}
+            ${OUTPUT_HEADER}
+            COMMAND python ${CMAKE_CURRENT_FUNCTION_LIST_DIR}/embed_files.py ${PARSED_ARGS_NAME} ${OUTPUT_HEADER} ${PARSED_ARGS_SHADERS}
             DEPENDS
-                ${CMAKE_CURRENT_FUNCTION_LIST_DIR}/embed_files.py
+                ${CMAKE_CURRENT_FUNCTION_LIST_DIR}/embed_files.py ${PARSED_ARGS_SHADERS}
             WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/include"
     )
-    add_custom_target(embeded_files_${PARSED_ARGS_NAME}
-            DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/include/embeded_shaders_${PARSED_ARGS_NAME}.h"
+    add_custom_target(embedded_files_${PARSED_ARGS_NAME}
+            DEPENDS ${OUTPUT_HEADER}
     )
     add_library(${PARSED_ARGS_NAME}_SHADERS INTERFACE)
     target_include_directories(${PARSED_ARGS_NAME}_SHADERS
             INTERFACE "${CMAKE_CURRENT_BINARY_DIR}/include"
     )
-    add_dependencies(${PARSED_ARGS_NAME}_SHADERS embeded_files_${PARSED_ARGS_NAME})
+    add_dependencies(${PARSED_ARGS_NAME}_SHADERS embedded_files_${PARSED_ARGS_NAME})
 endfunction()
+
+compile_shaders(
+        src/util/single_sort.slang
+        src/util/multi_sort.slang
+        src/util/multi_sort_histograms.slang
+)
 
 embed_shaders(
         NAME Canta
-        SHADERS "canta.slang:${CMAKE_CURRENT_SOURCE_DIR}/src/canta.slang" "canta_single_sort.slang:${CMAKE_CURRENT_SOURCE_DIR}/src/util/single_sort.slang" "canta_single_sort.spv:${CMAKE_CURRENT_SOURCE_DIR}/src/util/single_sort.spv" "canta_multi_sort.spv:${CMAKE_CURRENT_SOURCE_DIR}/src/util/multi_sort.spv" "canta_multi_sort_histograms.spv:${CMAKE_CURRENT_SOURCE_DIR}/src/util/multi_sort_histograms.spv" "examples/particles.slang:${CMAKE_CURRENT_SOURCE_DIR}/examples/particles.slang"
+        SHADERS "${CMAKE_CURRENT_SOURCE_DIR}/src/canta.slang" "${CMAKE_CURRENT_SOURCE_DIR}/src/util/single_sort.slang" "${CMAKE_CURRENT_SOURCE_DIR}/examples/particles.slang" ${COMPILED_SHADER_OUTPUTS}
 )
 
 add_library(Canta
@@ -106,9 +139,8 @@ add_library(Canta
         include/Canta/debug/CommandQueueDebugger.h
         src/util/sort.cpp
         include/Canta/util/sort.h
+        include/Canta/util/KernelHelper.h
 )
-
-add_subdirectory(third_party)
 
 target_include_directories(Canta
     PUBLIC
