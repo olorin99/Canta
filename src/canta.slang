@@ -247,6 +247,81 @@ public float3 rand3(uint3 v) {
 	return float3(v) * (1.0 / float(0xffffffffu));
 }
 
+    public uint hash(uint x) {
+        x ^= x >> 16;
+        x *= 0x21F0AAADu;
+        x ^= x >> 15;
+        x *= 0xD35A2D97u;
+        x ^= x >> 15;
+        return x;
+    }
+
+    public float uintToNormalizedFloat(uint x) {
+        return asfloat(x >> 9 | 0x3F800000u) - 1.0;
+    }
+
+    namespace random {
+
+        // uints
+        public uint rand(uint x) {
+            return hash(x);
+        }
+
+        public uint rand(uint2 x) {
+            return hash(x.x + hash(x.y));
+        }
+
+        public uint rand(uint3 x) {
+            return hash(x.x + hash(x.y + hash(x.z)));
+        }
+
+        public uint rand(uint4 x) {
+            return hash(x.x + hash(x.y + hash(x.z + hash(x.w))));
+        }
+
+
+
+        // floats
+        public float rand(float x) {
+            return uintToNormalizedFloat(rand(uint(x)));
+        }
+
+        public float rand(float2 x) {
+            return uintToNormalizedFloat(rand(uint2(x)));
+        }
+
+        public float rand(float3 x) {
+            return uintToNormalizedFloat(rand(uint3(x)));
+        }
+
+        public float rand(float4 x) {
+            return uintToNormalizedFloat(rand(uint4(x)));
+        }
+
+
+
+        public float rand(float x, float min, float max) {
+            let diff = max - min;
+            return uintToNormalizedFloat(rand(uint(x))) * diff + min;
+        }
+
+        public float rand(float2 x, float min, float max) {
+            let diff = max - min;
+            return uintToNormalizedFloat(rand(uint2(x))) * diff + min;
+        }
+
+        public float rand(float3 x, float min, float max) {
+            let diff = max - min;
+            return uintToNormalizedFloat(rand(uint3(x))) * diff + min;
+        }
+
+        public float rand(float4 x, float min, float max) {
+            let diff = max - min;
+            return uintToNormalizedFloat(rand(uint4(x))) * diff + min;
+        }
+
+    }
+
 }
 
 // matrix and vec multiplication overload

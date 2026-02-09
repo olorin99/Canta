@@ -291,6 +291,7 @@ namespace canta {
         auto prefixSumExclusive() -> PipelineHandle { return _prefixSumExclusive; }
         auto prefixSumInclusive() -> PipelineHandle { return _prefixSumInclusive; }
         auto randomListGenerator() -> PipelineHandle { return _randomListGenerator; }
+        auto randomListGeneratorFloat() -> PipelineHandle { return _randomListGeneratorFloat; }
 
     private:
         friend CommandBuffer;
@@ -388,6 +389,7 @@ namespace canta {
         PipelineHandle _prefixSumExclusive = {};
         PipelineHandle _prefixSumInclusive = {};
         PipelineHandle _randomListGenerator = {};
+        PipelineHandle _randomListGeneratorFloat = {};
 
     };
 

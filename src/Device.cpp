@@ -747,7 +747,17 @@ auto canta::Device::create(canta::Device::CreateInfo info) noexcept -> std::expe
                 .stage = ShaderStage::COMPUTE,
                 .name = "canta_generate_random_floats"
             }),
-            .entryPoint = "main"
+            .entryPoint = "generateUints"
+        }
+    });
+    device->_randomListGeneratorFloat = device->createPipeline({
+        .compute = {
+            .module = device->createShaderModule({
+                .spirv = random_list_spv_embedded,
+                .stage = ShaderStage::COMPUTE,
+                .name = "canta_generate_random_floats"
+            }),
+            .entryPoint = "generateFloats"
         }
     });
 

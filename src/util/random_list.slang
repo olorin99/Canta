@@ -8,19 +8,38 @@ import canta;
 
 [shader("compute")]
 [numthreads(x_size, y_size, z_size)]
-void main(
+void generateUints(
     uint3 threadId : SV_DispatchThreadID,
-    uniform float* buffer,
+    uniform uint* buffer,
     uniform const uint count,
     uniform const uint offset,
-    uniform const float scale,
-    uniform const float scaleOffset,
-    uniform const float seed,
+    uniform const uint max,
+    uniform const uint min,
+    uniform const uint seed,
 ) {
     if (threadId.x > count)
         return;
 
-    let value = canta.rand(float2(seed, threadId.x));
+    let value = uint(canta.random.rand(seed + threadId.x, min, max));
 
-    buffer[offset + threadId.x] = value * scale + scaleOffset;
+    buffer[offset + threadId.x] = value;
+}
+
+[shader("compute")]
+[numthreads(x_size, y_size, z_size)]
+void generateFloats(
+    uint3 threadId : SV_DispatchThreadID,
+    uniform float* buffer,
+    uniform const uint count,
+    uniform const uint offset,
+    uniform const float max,
+    uniform const float min,
+    uniform const uint seed,
+) {
+    if (threadId.x > count)
+        return;
+
+    let value = canta.random.rand(seed + threadId.x, min, max);
+
+    buffer[offset + threadId.x] = value;
 }

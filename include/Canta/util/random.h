@@ -5,7 +5,9 @@
 
 namespace canta {
 
-    auto randomList(RenderGraph& graph, f32 min, f32 max, u32 count, u32 offset = 0, BufferIndex buffer = {}) -> BufferIndex;
+    auto randomListUint(RenderGraph& graph, u32 min, u32 max, u32 count, u32 offset = 0, BufferIndex buffer = {}) -> BufferIndex;
+
+    auto randomListFloat(RenderGraph& graph, f32 min, f32 max, u32 count, u32 offset = 0, BufferIndex buffer = {}) -> BufferIndex;
 
 }
 

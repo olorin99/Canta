@@ -36,7 +36,7 @@ int main() {
     std::vector<u32> outputData = {};
     outputData.resize(N);
 
-    const auto values = canta::randomList(renderGraph, 0, N, N);
+    const auto values = canta::randomListUint(renderGraph, 100, 5000, N);
 
     const auto summedValues = canta::prefixSumExclusive(renderGraph, values, N);
     // const auto summedValues = canta::prefixSumInclusive(renderGraph, values, N);
