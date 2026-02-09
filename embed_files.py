@@ -23,7 +23,7 @@ def main():
         with open(shader_path, open_params) as shader_file:
             shader = shader_file.read()
             if shader_path.endswith(".spv"):
-                shader_binary = struct.unpack("i" * int((len(shader) / 4)), shader)
+                shader_binary = struct.unpack("I" * int((len(shader) / 4)), shader)
                 shader = ""
                 for op in shader_binary:
                     shader += str(op) + ", "
