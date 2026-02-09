@@ -720,6 +720,26 @@ auto canta::Device::create(canta::Device::CreateInfo info) noexcept -> std::expe
             })
         }
     });
+    device->_prefixSumExclusive = device->createPipeline({
+        .compute = {
+            .module = device->createShaderModule({
+                .spirv = prefix_sum_spv_embedded,
+                .stage = ShaderStage::COMPUTE,
+                .name = "canta_prefix_sum_exclusive"
+            }),
+            .entryPoint = "exclusive"
+        }
+    });
+    device->_prefixSumInclusive = device->createPipeline({
+        .compute = {
+            .module = device->createShaderModule({
+                .spirv = prefix_sum_spv_embedded,
+                .stage = ShaderStage::COMPUTE,
+                .name = "canta_prefix_sum_inclusive"
+            }),
+            .entryPoint = "inclusive"
+        }
+    });
 
     device->logger().info("Device creation complete");
 

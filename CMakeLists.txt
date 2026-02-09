@@ -78,6 +78,7 @@ compile_shaders(
         src/util/single_sort.slang
         src/util/multi_sort.slang
         src/util/multi_sort_histograms.slang
+        src/util/prefix_sum.slang
 )
 
 embed_shaders(
@@ -140,6 +141,8 @@ add_library(Canta
         src/util/sort.cpp
         include/Canta/util/sort.h
         include/Canta/util/KernelHelper.h
+        src/util/prefixSum.cpp
+        include/Canta/util/prefixSum.h
 )
 
 target_include_directories(Canta

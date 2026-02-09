@@ -18,3 +18,6 @@ target_link_libraries(matrix_multiply Canta Matrix_SHADERS)
 
 add_executable(hello_sort hello_sort.cpp)
 target_link_libraries(hello_sort Canta)
+
+add_executable(prefix_sum prefix_sum.cpp)
+target_link_libraries(prefix_sum Canta)
