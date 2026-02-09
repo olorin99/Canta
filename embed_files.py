@@ -3,8 +3,8 @@ import struct
 import sys
 
 def main():
-    for arg in sys.argv[1:]:
-        print(arg)
+    # for arg in sys.argv[1:]:
+    #     print(arg)
 
     if len(sys.argv) < 2:
         return
@@ -28,7 +28,6 @@ def main():
                 for op in shader_binary:
                     shader += str(op) + ", "
                 shader = shader[:-2]
-                print(shader)
             shaders.append([virtual_path, shader_path, shader])
 
     header_guard = output_path.replace(".", "_").replace("/", "_").replace("-", "_")

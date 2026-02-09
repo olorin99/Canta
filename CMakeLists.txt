@@ -27,7 +27,7 @@ function(compile_shaders)
     set(SHADER_OUTPUTS "")
     foreach (SHADER ${ARGV})
         set(SHADER_PATH ${CMAKE_CURRENT_SOURCE_DIR}/${SHADER})
-        message("Path: ${SHADER_PATH}")
+        message("Compiling: ${SHADER_PATH}")
         get_filename_component(file_name ${SHADER_PATH} NAME)
         get_filename_component(base_name ${SHADER_PATH} NAME_WLE)
 
