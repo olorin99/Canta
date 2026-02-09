@@ -740,6 +740,16 @@ auto canta::Device::create(canta::Device::CreateInfo info) noexcept -> std::expe
             .entryPoint = "inclusive"
         }
     });
+    device->_randomListGenerator = device->createPipeline({
+        .compute = {
+            .module = device->createShaderModule({
+                .spirv = random_list_spv_embedded,
+                .stage = ShaderStage::COMPUTE,
+                .name = "canta_generate_random_floats"
+            }),
+            .entryPoint = "main"
+        }
+    });
 
     device->logger().info("Device creation complete");
 

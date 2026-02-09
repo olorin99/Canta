@@ -290,6 +290,7 @@ namespace canta {
         auto multiSortHistogramsPipeline() -> PipelineHandle { return _multiSortHistograms; }
         auto prefixSumExclusive() -> PipelineHandle { return _prefixSumExclusive; }
         auto prefixSumInclusive() -> PipelineHandle { return _prefixSumInclusive; }
+        auto randomListGenerator() -> PipelineHandle { return _randomListGenerator; }
 
     private:
         friend CommandBuffer;
@@ -386,6 +387,7 @@ namespace canta {
         PipelineHandle _multiSortHistograms = {};
         PipelineHandle _prefixSumExclusive = {};
         PipelineHandle _prefixSumInclusive = {};
+        PipelineHandle _randomListGenerator = {};
 
     };
 

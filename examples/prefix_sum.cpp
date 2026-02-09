@@ -4,6 +4,7 @@
 #include <Ende/math/random.h>
 
 #include "Canta/util/prefixSum.h"
+#include "Canta/util/random.h"
 
 int main() {
 
@@ -32,21 +33,10 @@ int main() {
 
     constexpr auto N = 2 << 16;
 
-    auto buffer = renderGraph.addBuffer({
-        .size = N * sizeof(u32),
-        .name = "values"
-    });
-
-    std::vector<u32> data = {};
-    data.resize(N);
     std::vector<u32> outputData = {};
-    data.resize(N);
-    for (auto& d : data) {
-        d = ende::math::rand(0, N);
-    }
+    outputData.resize(N);
 
-    const auto values = TRY_MAIN(renderGraph.addUploadPass("data_upload", buffer, data).aliasBufferOutput(0));
-
+    const auto values = canta::randomList(renderGraph, 0, N, N);
 
     const auto summedValues = canta::prefixSumExclusive(renderGraph, values, N);
     // const auto summedValues = canta::prefixSumInclusive(renderGraph, values, N);
