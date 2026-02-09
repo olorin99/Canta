@@ -38,7 +38,7 @@ function(compile_shaders)
 
         add_custom_command(
                 OUTPUT ${OUTPUT_FILE}
-                DEPENDS slang
+                DEPENDS slang ${SHADER_PATH}
                 COMMAND ${SLANG_BINARY} -I${CMAKE_SOURCE_DIR}/src ${SHADER_PATH} -o ${OUTPUT_FILE}
         )
     endforeach ()
