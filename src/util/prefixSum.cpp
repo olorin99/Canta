@@ -22,8 +22,8 @@ auto canta::prefixSumExclusive(RenderGraph &graph, BufferIndex values, const u32
         .name = "sums"
     });
 
-    const auto clearedScanBump = graph.addClearPass("clear_scan_bump", scanBump, 0, 0, count).aliasBufferOutput(0);
-    const auto clearedThreadBlockReductions = graph.addClearPass("clear_thread_block_reductions", threadBlockReductions, 0, 0, count).aliasBufferOutput(0);
+    const auto clearedScanBump = graph.addClearPass("clear_scan_bump", scanBump).aliasBufferOutput(0);
+    const auto clearedThreadBlockReductions = graph.addClearPass("clear_thread_block_reductions", threadBlockReductions).aliasBufferOutput(0);
 
     const auto summed = graph.addPass({.name = "sum"})
         .addStorageBufferRead(*clearedScanBump)
@@ -57,8 +57,8 @@ auto canta::prefixSumInclusive(RenderGraph &graph, BufferIndex values, const u32
         .name = "sums"
     });
 
-    const auto clearedScanBump = graph.addClearPass("clear_scan_bump", scanBump, 0, 0, count).aliasBufferOutput(0);
-    const auto clearedThreadBlockReductions = graph.addClearPass("clear_thread_block_reductions", threadBlockReductions, 0, 0, count).aliasBufferOutput(0);
+    const auto clearedScanBump = graph.addClearPass("clear_scan_bump", scanBump).aliasBufferOutput(0);
+    const auto clearedThreadBlockReductions = graph.addClearPass("clear_thread_block_reductions", threadBlockReductions).aliasBufferOutput(0);
 
     const auto summed = graph.addPass({.name = "sum"})
         .addStorageBufferRead(*clearedScanBump)
