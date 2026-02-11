@@ -760,6 +760,24 @@ auto canta::Device::create(canta::Device::CreateInfo info) noexcept -> std::expe
             .entryPoint = "generateFloats"
         }
     });
+    device->_generateRandomNoise = device->createPipeline({
+        .compute = {
+            .module = device->createShaderModule({
+                .spirv = random_noise_spv_embedded,
+                .stage = ShaderStage::COMPUTE,
+                .name = "canta_generate_random_noise"
+            }),
+        }
+    });
+    device->_generatePerlinNoise = device->createPipeline({
+        .compute = {
+            .module = device->createShaderModule({
+                .spirv = perlin_noise_spv_embedded,
+                .stage = ShaderStage::COMPUTE,
+                .name = "canta_generate_perlin_noise"
+            }),
+        }
+    });
 
     device->logger().info("Device creation complete");
 

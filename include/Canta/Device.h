@@ -292,6 +292,8 @@ namespace canta {
         auto prefixSumInclusive() -> PipelineHandle { return _prefixSumInclusive; }
         auto randomListGenerator() -> PipelineHandle { return _randomListGenerator; }
         auto randomListGeneratorFloat() -> PipelineHandle { return _randomListGeneratorFloat; }
+        auto generateRandomNoise() -> PipelineHandle { return _generateRandomNoise; }
+        auto generatePerlinNoise() -> PipelineHandle { return _generatePerlinNoise; }
 
     private:
         friend CommandBuffer;
@@ -390,6 +392,8 @@ namespace canta {
         PipelineHandle _prefixSumInclusive = {};
         PipelineHandle _randomListGenerator = {};
         PipelineHandle _randomListGeneratorFloat = {};
+        PipelineHandle _generateRandomNoise = {};
+        PipelineHandle _generatePerlinNoise = {};
 
     };
 

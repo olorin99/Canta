@@ -21,3 +21,6 @@ target_link_libraries(hello_sort Canta)
 
 add_executable(prefix_sum prefix_sum.cpp)
 target_link_libraries(prefix_sum Canta)
+
+add_executable(hello_noise hello_noise.cpp)
+target_link_libraries(hello_noise Canta)

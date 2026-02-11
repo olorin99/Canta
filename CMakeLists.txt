@@ -80,6 +80,8 @@ compile_shaders(
         src/util/multi_sort_histograms.slang
         src/util/prefix_sum.slang
         src/util/random_list.slang
+        src/util/random_noise.slang
+        src/util/perlin_noise.slang
 )
 
 embed_shaders(
