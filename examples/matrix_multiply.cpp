@@ -74,15 +74,8 @@ int main() {
 
     auto graph = canta::V2::RenderGraph();
 
-    const auto buffer = canta::V2::BufferIndex{};
-    const auto image = canta::V2::ImageIndex{};
-
-    // auto pass = canta::V2::RenderPass();
-    // pass.write(buffer);
-    // pass.write(image);
-
-    // const auto outputBufer = TRY_MAIN(pass.output<canta::V2::BufferIndex>(0));
-    // const auto outputImage = TRY_MAIN(pass.output<canta::V2::ImageIndex>(1));
+    const auto buffer = graph.addBuffer();
+    const auto image = graph.addImage();
 
 
     auto computePass = graph.compute();
