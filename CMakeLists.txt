@@ -148,6 +148,8 @@ add_library(Canta
         include/Canta/util/prefixSum.h
         src/util/random.cpp
         include/Canta/util/random.h
+        src/RenderGraphV2.cpp
+        include/Canta/RenderGraphV2.h
 )
 
 target_include_directories(Canta

@@ -1,7 +1,8 @@
 
 #include <random>
 #include <Canta/Device.h>
-#include <Canta/RenderGraph.h>
+// #include <Canta/RenderGraph.h>
+#include <Canta/RenderGraphV2.h>
 #include <Canta/PipelineManager.h>
 
 #include "embedded_shaders_Matrix.h"
@@ -57,11 +58,11 @@ int main() {
         .rootPath = CANTA_SRC_DIR"/examples"
     });
 
-    auto renderGraph = TRY_MAIN(canta::RenderGraph::create({
-        .device = device.get(),
-        .multiQueue = false,
-        .name = "graph"
-    }));
+    // auto renderGraph = TRY_MAIN(canta::RenderGraph::create({
+    //     .device = device.get(),
+    //     .multiQueue = false,
+    //     .name = "graph"
+    // }));
 
 
     constexpr int N = 64;
@@ -71,55 +72,84 @@ int main() {
     f32 rhsData[N * N] = {};
     genMatrix(N, rhsData);
 
-    const auto lhs = renderGraph.addBuffer({
-        .size = N * N * sizeof(f32),
-        .name = "lhs_matrix"
-    });
+    auto graph = canta::V2::RenderGraph();
 
-    const auto rhs = renderGraph.addBuffer({
-        .size = N * N * sizeof(f32),
-        .name = "rhs_matrix"
-    });
+    const auto buffer = canta::V2::BufferIndex{};
+    const auto image = canta::V2::ImageIndex{};
 
-    const auto outputBuffer = device->createBuffer({
-        .size = N * N * sizeof(f32),
-        .usage = canta::BufferUsage::STORAGE,
-        .type = canta::MemoryType::READBACK,
-        .persistentlyMapped = true,
-        .name = "output"
-    });
-    const auto output = renderGraph.addBuffer({
-        .handle = outputBuffer,
-        .name = "output"
-    });
+    // auto pass = canta::V2::RenderPass();
+    // pass.write(buffer);
+    // pass.write(image);
 
-    renderGraph.addUploadPass("lhs_upload", lhs, lhsData);
-    renderGraph.addUploadPass("rhs_upload", rhs, rhsData);
-
-    const auto outputAlias = TRY_MAIN(matrix::matrix_multiply(N, N)(pipelineManager)(renderGraph, canta::Read(lhs), canta::Read(rhs), canta::Write(output), N).aliasBufferOutput(0));
+    // const auto outputBufer = TRY_MAIN(pass.output<canta::V2::BufferIndex>(0));
+    // const auto outputImage = TRY_MAIN(pass.output<canta::V2::ImageIndex>(1));
 
 
-    canta::BufferIndex lhsIndex = rhs;
-    canta::BufferIndex rhsIndex = outputAlias;
-    canta::BufferIndex outputIndex = lhs;
-    for (i32 i = 0; i < 60; i++ ) {
-        outputIndex = TRY_MAIN(matrix::matrix_multiply(N, N)(pipelineManager)(renderGraph, canta::Read(lhsIndex), canta::Read(rhsIndex), canta::Write(outputIndex), N).aliasBufferOutput(0));
-        lhsIndex = rhsIndex;
-        rhsIndex = outputIndex;
-    }
+    auto computePass = graph.compute();
+    computePass.addStorageBufferWrite(buffer);
+    computePass.addStorageImageWrite(image);
+    computePass.dispatchThreads(64, 64, 1);
 
-    f32 outputData[N * N] = {};
-    const auto backbuffer = TRY_MAIN(renderGraph.addReadbackPass("output_read", outputIndex, outputData).aliasBufferOutput(0));
+    const auto outputBuffer = TRY_MAIN(computePass.pass().output<canta::V2::BufferIndex>(0));
+    const auto outputImage = TRY_MAIN(computePass.pass().output<canta::V2::ImageIndex>(1));
 
-    renderGraph.setBackbuffer(backbuffer);
+    printf("Pass count: %d\n", graph.vertexCount());
+    printf("Edge count: %d\n", graph.edgeCount());
 
-    if (!renderGraph.compile()) return -1;
-    if (!renderGraph.execute({}, {}, {}, true)) return -3;
+    // auto basePass = computePass.clone();
 
-    printf("RenderGraph\n");
-    printf("Passes: %lu\n", renderGraph.orderedPasses().size());
 
-    printf("Validate output\n");
+
+
+    // const auto lhs = renderGraph.addBuffer({
+    //     .size = N * N * sizeof(f32),
+    //     .name = "lhs_matrix"
+    // });
+    //
+    // const auto rhs = renderGraph.addBuffer({
+    //     .size = N * N * sizeof(f32),
+    //     .name = "rhs_matrix"
+    // });
+    //
+    // const auto outputBuffer = device->createBuffer({
+    //     .size = N * N * sizeof(f32),
+    //     .usage = canta::BufferUsage::STORAGE,
+    //     .type = canta::MemoryType::READBACK,
+    //     .persistentlyMapped = true,
+    //     .name = "output"
+    // });
+    // const auto output = renderGraph.addBuffer({
+    //     .handle = outputBuffer,
+    //     .name = "output"
+    // });
+    //
+    // renderGraph.addUploadPass("lhs_upload", lhs, lhsData);
+    // renderGraph.addUploadPass("rhs_upload", rhs, rhsData);
+    //
+    // const auto outputAlias = TRY_MAIN(matrix::matrix_multiply(N, N)(pipelineManager)(renderGraph, canta::Read(lhs), canta::Read(rhs), canta::Write(output), N).aliasBufferOutput(0));
+    //
+    //
+    // canta::BufferIndex lhsIndex = rhs;
+    // canta::BufferIndex rhsIndex = outputAlias;
+    // canta::BufferIndex outputIndex = lhs;
+    // for (i32 i = 0; i < 60; i++ ) {
+    //     outputIndex = TRY_MAIN(matrix::matrix_multiply(N, N)(pipelineManager)(renderGraph, canta::Read(lhsIndex), canta::Read(rhsIndex), canta::Write(outputIndex), N).aliasBufferOutput(0));
+    //     lhsIndex = rhsIndex;
+    //     rhsIndex = outputIndex;
+    // }
+    //
+    // f32 outputData[N * N] = {};
+    // const auto backbuffer = TRY_MAIN(renderGraph.addReadbackPass("output_read", outputIndex, outputData).aliasBufferOutput(0));
+    //
+    // renderGraph.setBackbuffer(backbuffer);
+    //
+    // if (!renderGraph.compile()) return -1;
+    // if (!renderGraph.execute({}, {}, {}, true)) return -3;
+
+    // printf("RenderGraph\n");
+    // printf("Passes: %lu\n", renderGraph.orderedPasses().size());
+
+    // printf("Validate output\n");
 
     // f32 outputData2[N * N] = {};
     // multiplyMatrix(N, lhsData, rhsData, outputData2);
@@ -138,13 +168,13 @@ int main() {
     // avgErr /= (N * N);
     // printf("Average error: %f\n", avgErr);
 
-    u64 totalTime = 0;
-    for (auto timers = renderGraph.timers(); auto&[name, timer] : timers) {
-        const auto time = TRY_MAIN(timer.result());
-        printf("Pass: %s (%fms)\n", name.c_str(), time / 1e6);
-        totalTime += time;
-    }
-    printf("Total time: %fms\n", totalTime / 1e6);
+    // u64 totalTime = 0;
+    // for (auto timers = renderGraph.timers(); auto&[name, timer] : timers) {
+    //     const auto time = TRY_MAIN(timer.result());
+    //     printf("Pass: %s (%fms)\n", name.c_str(), time / 1e6);
+    //     totalTime += time;
+    // }
+    // printf("Total time: %fms\n", totalTime / 1e6);
 
 
     device->endFrameCapture();
