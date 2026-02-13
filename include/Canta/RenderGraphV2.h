@@ -135,6 +135,15 @@ namespace canta::V2 {
     class RenderGraph : public ende::graph::Graph<RenderPass> {
     public:
 
+        // resource management
+        auto addBuffer() -> BufferIndex;
+
+        auto addImage() -> ImageIndex;
+
+        auto alias(BufferIndex index) -> BufferIndex;
+        auto alias(ImageIndex index) -> ImageIndex;
+
+        // pass management
         auto compute() -> ComputePass;
 
     private:

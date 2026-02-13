@@ -83,10 +83,11 @@ auto canta::V2::PassBuilder::read(const ImageIndex index, const Access access, c
 }
 
 auto canta::V2::PassBuilder::write(const BufferIndex index, const Access access, const PipelineStage stage) -> bool {
-    pass().outputs.emplace_back(index);
+    const auto alias = _graph->alias(index);
+    pass().outputs.emplace_back(alias);
     pass()._accesses.emplace_back(ResourceAccess{
-        .id = index.id,
-        .index = index.index,
+        .id = alias.id,
+        .index = alias.index,
         .access = access,
         .stage = stage
     });
@@ -94,10 +95,11 @@ auto canta::V2::PassBuilder::write(const BufferIndex index, const Access access,
 }
 
 auto canta::V2::PassBuilder::write(const ImageIndex index, const Access access, const PipelineStage stage, const ImageLayout layout) -> bool {
-    pass().outputs.emplace_back(index);
+    const auto alias = _graph->alias(index);
+    pass().outputs.emplace_back(alias);
     pass()._accesses.emplace_back(ResourceAccess{
-        .id = index.id,
-        .index = index.index,
+        .id = alias.id,
+        .index = alias.index,
         .access = access,
         .stage = stage,
         .layout = layout,
@@ -239,6 +241,42 @@ auto canta::V2::ComputePass::dispatchThreads(u32 x, u32 y, u32 z) -> ComputePass
     });
     return *this;
 }
+
+
+
+
+
+
+auto canta::V2::RenderGraph::addBuffer() -> BufferIndex {
+    const auto edge = addEdge<BufferIndex>();
+    return std::get<BufferIndex>(edge);
+}
+
+auto canta::V2::RenderGraph::addImage() -> ImageIndex {
+    const auto edge = addEdge<ImageIndex>();
+    return std::get<ImageIndex>(edge);
+}
+
+template<class... Ts> struct overload : Ts... { using Ts::operator()...; };
+
+auto canta::V2::RenderGraph::alias(BufferIndex index) -> BufferIndex {
+    auto& edge = addEdge<BufferIndex>();
+    std::visit(overload{
+        [index] (BufferIndex& buffer){ buffer.index = index.index; },
+            [index] (ImageIndex& image) { static_assert("unreachable"); }
+    }, edge);
+    return std::get<BufferIndex>(edge);
+}
+
+auto canta::V2::RenderGraph::alias(ImageIndex index) -> ImageIndex {
+    auto edge = addEdge<ImageIndex>();
+    std::visit(overload{
+        [index] (BufferIndex& buffer){ static_assert("unreachable"); },
+            [index] (ImageIndex& image) { image.index = index.index; },
+    }, edge);
+    return std::get<ImageIndex>(edge);
+}
+
 
 auto canta::V2::RenderGraph::compute() -> ComputePass {
     auto pass = addVertex();
