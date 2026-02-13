@@ -76,7 +76,7 @@ int main() {
 
     const auto buffer = graph.addBuffer();
     const auto image = graph.addImage();
-
+    const auto swapImage = graph.addImage();
 
     auto computePass = graph.compute("pass_0")
         .addStorageBufferWrite(buffer)
@@ -93,7 +93,13 @@ int main() {
     computePass2.addStorageImageRead(outputImage);
     computePass2.addStorageImageWrite(outputImage);
 
-    const auto rootEdge = TRY_MAIN(computePass2.output<canta::V2::ImageIndex>());
+    auto graphicsPass = graph.graphics("pass_2")
+        .addSampledRead(outputImage)
+        .addColourWrite(swapImage)
+        .pushConstants(outputImage)
+        .draw(10);
+
+    const auto rootEdge = TRY_MAIN(graphicsPass.output<canta::V2::ImageIndex>());
 
     printf("Pass count: %d\n", graph.vertexCount());
     printf("Edge count: %d\n", graph.edgeCount());
