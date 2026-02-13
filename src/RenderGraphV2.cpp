@@ -48,14 +48,76 @@ auto canta::V2::RenderPass::clone() -> RenderPass {
     return *this;
 }
 
-auto canta::V2::RenderPass::setCallback(const std::function<void(CommandBuffer &, RenderGraph &)> &callback) -> RenderPass & {
+void canta::V2::RenderPass::unpack(PushData &dst, i32 &i, const BufferIndex &index) {
+    _deferredPushConstants.push_back(DeferredPushConstant{
+        .type = 0,
+        .value = index,
+        .offset = i
+    });
+    i += sizeof(u64);
+    dst.size += sizeof(u64);
+    assert(i <= 128);
+}
+
+void canta::V2::RenderPass::unpack(PushData &dst, i32 &i, const ImageIndex &index) {
+    _deferredPushConstants.emplace_back(DeferredPushConstant{
+        .type = 1,
+        .value = index,
+        .offset = i,
+    });
+    i += sizeof(u32);
+    dst.size += sizeof(u32);
+    assert(i <= 128);
+}
+
+void canta::V2::RenderPass::unpack(PushData &dst, i32 &i, const BufferHandle &handle) {
+    const auto addr = handle->address();
+    unpack(dst, i, addr);
+}
+
+void canta::V2::RenderPass::unpack(PushData &dst, i32 &i, const ImageHandle &handle) {
+    const auto id = handle->defaultView().index();
+    unpack(dst, i, id);
+}
+
+void unpack(canta::V2::RenderPass::PushData &dst, i32 &i, const canta::BufferHandle &handle) {
+    const auto addr = handle->address();
+    auto* data = reinterpret_cast<const u8*>(&addr);
+    for (auto j = 0; j < sizeof(addr); j++) {
+        dst.data[i + j] = data[j];
+    }
+    i += sizeof(addr);
+    dst.size += sizeof(addr);
+}
+
+void unpack(canta::V2::RenderPass::PushData &dst, i32 &i, const canta::ImageHandle &handle) {
+    const auto id = handle->defaultView().index();
+    auto* data = reinterpret_cast<const u8*>(&id);
+    for (auto j = 0; j < sizeof(id); j++) {
+        dst.data[i + j] = data[j];
+    }
+    i += sizeof(id);
+    dst.size += sizeof(id);
+}
+
+auto canta::V2::RenderPass::setCallback(const std::function<void(CommandBuffer&, RenderGraph&, const PushData&)> &callback) -> RenderPass & {
     _callback = callback;
     return *this;
 }
 
+auto canta::V2::RenderPass::resolvePushConstants(canta::V2::RenderGraph& graph, PushData data, const std::span<DeferredPushConstant> deferredConstants) -> PushData {
+    for (auto& deferredConstant : deferredConstants) {
+        if (deferredConstant.type == 0)
+            ::unpack(data, deferredConstant.offset, graph.getBuffer(std::get<BufferIndex>(deferredConstant.value)));
+        else
+            ::unpack(data, deferredConstant.offset, graph.getImage(std::get<ImageIndex>(deferredConstant.value)));
+    }
+    return data;
+}
+
 canta::V2::PassBuilder::PassBuilder(RenderGraph *graph, const u32 index) : _graph(graph), _vertexIndex(index) {}
 
-auto canta::V2::PassBuilder::pass() -> RenderPass & {
+auto canta::V2::PassBuilder::pass() -> RenderPass& {
     return _graph->getVertices()[_vertexIndex];
 }
 
@@ -231,12 +293,8 @@ auto canta::V2::ComputePass::addStorageBufferWrite(const BufferIndex index) -> C
 }
 
 auto canta::V2::ComputePass::dispatchThreads(u32 x, u32 y, u32 z) -> ComputePass & {
-    auto pushData = pass()._pushData;
-    pass().setCallback([x, y, z, pushData] (auto& cmd, auto& graph) {
-
-        auto push = pushData;
-
-        cmd.pushConstants(ShaderStage::COMPUTE, { push.data(), push.size() }, 0);
+    pass().setCallback([x, y, z] (auto& cmd, auto& graph, const RenderPass::PushData& push) {
+        cmd.pushConstants(ShaderStage::COMPUTE, { push.data.data(), push.size }, 0);
         cmd.dispatchThreads(x, y, z);
     });
     return *this;
@@ -275,6 +333,14 @@ auto canta::V2::RenderGraph::alias(ImageIndex index) -> ImageIndex {
             [index] (ImageIndex& image) { image.index = index.index; },
     }, edge);
     return std::get<ImageIndex>(edge);
+}
+
+auto canta::V2::RenderGraph::getBuffer(BufferIndex index) -> BufferHandle {
+    return {}; //TODO: actually get buffer not just stub
+}
+
+auto canta::V2::RenderGraph::getImage(ImageIndex index) -> ImageHandle {
+    return {}; //TODO: actually get image not just stub
 }
 
 
