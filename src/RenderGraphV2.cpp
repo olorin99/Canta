@@ -292,6 +292,11 @@ auto canta::V2::ComputePass::addStorageBufferWrite(const BufferIndex index) -> C
     return *this;
 }
 
+auto canta::V2::ComputePass::addSampledRead(const ImageIndex index) -> ComputePass& {
+    PassBuilder::addSampledRead(index, PipelineStage::COMPUTE_SHADER);
+    return *this;
+}
+
 auto canta::V2::ComputePass::dispatchThreads(u32 x, u32 y, u32 z) -> ComputePass & {
     pass().setCallback([x, y, z] (auto& cmd, auto& graph, const RenderPass::PushData& push) {
         cmd.pushConstants(ShaderStage::COMPUTE, { push.data.data(), push.size }, 0);
@@ -300,9 +305,125 @@ auto canta::V2::ComputePass::dispatchThreads(u32 x, u32 y, u32 z) -> ComputePass
     return *this;
 }
 
+auto canta::V2::ComputePass::dispatchWorkgroups(u32 x, u32 y, u32 z) -> ComputePass & {
+    pass().setCallback([x, y, z] (auto& cmd, auto& graph, const RenderPass::PushData& push) {
+        cmd.pushConstants(ShaderStage::COMPUTE, { push.data.data(), push.size }, 0);
+        cmd.dispatchWorkgroups(x, y, z);
+    });
+    return *this;
+}
+
+auto canta::V2::ComputePass::dispatchIndirect(BufferHandle commandBuffer, u32 offset) -> ComputePass & {
+    pass().setCallback([commandBuffer, offset] (auto& cmd, auto& graph, const RenderPass::PushData& push) {
+        cmd.pushConstants(ShaderStage::COMPUTE, { push.data.data(), push.size }, 0);
+        cmd.dispatchIndirect(commandBuffer, offset);
+    });
+    return *this;
+}
 
 
+canta::V2::GraphicsPass::GraphicsPass(RenderGraph *graph, const u32 index) : PassBuilder(graph, index) {}
 
+auto canta::V2::GraphicsPass::addColourRead(const ImageIndex index) -> GraphicsPass& {
+    PassBuilder::addColourRead(index);
+    return *this;
+}
+
+auto canta::V2::GraphicsPass::addColourWrite(const ImageIndex index, const ClearValue& clearColour) -> GraphicsPass& {
+    PassBuilder::addColourWrite(index, clearColour);
+    return *this;
+}
+
+auto canta::V2::GraphicsPass::addDepthRead(const ImageIndex index) -> GraphicsPass& {
+    PassBuilder::addDepthRead(index);
+    return *this;
+}
+
+auto canta::V2::GraphicsPass::addDepthWrite(const ImageIndex index, const ClearValue& clearColour) -> GraphicsPass& {
+    PassBuilder::addDepthWrite(index, clearColour);
+    return *this;
+}
+
+auto canta::V2::GraphicsPass::addStorageImageRead(const ImageIndex index, const PipelineStage stage) -> GraphicsPass & {
+    PassBuilder::addStorageImageRead(index, stage);
+    return *this;
+}
+
+auto canta::V2::GraphicsPass::addStorageImageWrite(const ImageIndex index, const PipelineStage stage) -> GraphicsPass & {
+    PassBuilder::addStorageImageWrite(index, stage);
+    return *this;
+}
+
+auto canta::V2::GraphicsPass::addStorageBufferRead(const BufferIndex index, const PipelineStage stage) -> GraphicsPass & {
+    PassBuilder::addStorageBufferRead(index, stage);
+    return *this;
+}
+
+auto canta::V2::GraphicsPass::addStorageBufferWrite(const BufferIndex index, const PipelineStage stage) -> GraphicsPass & {
+    PassBuilder::addStorageBufferWrite(index, stage);
+    return *this;
+}
+
+auto canta::V2::GraphicsPass::addSampledRead(const ImageIndex index, const PipelineStage stage) -> GraphicsPass& {
+    PassBuilder::addSampledRead(index, stage);
+    return *this;
+}
+
+auto canta::V2::GraphicsPass::draw(u32 count, u32 instanceCount, u32 firstVertex, u32 firstIndex, u32 firstInstance, bool indexed) -> GraphicsPass & {
+    pass().setCallback([count, instanceCount, firstVertex, firstIndex, firstInstance, indexed] (auto& cmd, auto& graph, const RenderPass::PushData& push) {
+        cmd.pushConstants(ShaderStage::VERTEX | ShaderStage::FRAGMENT, { push.data.data(), push.size }, 0);
+        cmd.draw(count, instanceCount, firstVertex, firstIndex, firstInstance, indexed);
+    });
+    return *this;
+}
+
+auto canta::V2::GraphicsPass::drawIndirect(BufferHandle commands, u32 offset, u32 drawCount, bool indexed, u32 stride) -> GraphicsPass & {
+    pass().setCallback([commands, offset, drawCount, indexed, stride] (auto& cmd, auto& graph, const RenderPass::PushData& push) {
+        cmd.pushConstants(ShaderStage::VERTEX | ShaderStage::FRAGMENT, { push.data.data(), push.size }, 0);
+        cmd.drawIndirect(commands, offset, drawCount, indexed, stride);
+    });
+    return *this;
+}
+
+auto canta::V2::GraphicsPass::drawIndirectCount(BufferHandle commands, u32 offset, BufferHandle countBuffer, u32 countOffset, bool indexed, u32 stride) -> GraphicsPass & {
+    pass().setCallback([commands, offset, countBuffer, countOffset, indexed, stride] (auto& cmd, auto& graph, const RenderPass::PushData& push) {
+        cmd.pushConstants(ShaderStage::VERTEX | ShaderStage::FRAGMENT, { push.data.data(), push.size }, 0);
+        cmd.drawIndirectCount(commands, offset, countBuffer, countOffset, indexed, stride);
+    });
+    return *this;
+}
+
+auto canta::V2::GraphicsPass::drawMeshTasksThreads(u32 x, u32 y, u32 z) -> GraphicsPass & {
+    pass().setCallback([x, y, z] (auto& cmd, auto& graph, const RenderPass::PushData& push) {
+        cmd.pushConstants(ShaderStage::MESH | ShaderStage::FRAGMENT, { push.data.data(), push.size }, 0);
+        cmd.drawMeshTasksThreads(x, y, z);
+    });
+    return *this;
+}
+
+auto canta::V2::GraphicsPass::drawMeshTasksWorkgroups(u32 x, u32 y, u32 z) -> GraphicsPass & {
+    pass().setCallback([x, y, z] (auto& cmd, auto& graph, const RenderPass::PushData& push) {
+        cmd.pushConstants(ShaderStage::MESH | ShaderStage::FRAGMENT, { push.data.data(), push.size }, 0);
+        cmd.drawMeshTasksWorkgroups(x, y, z);
+    });
+    return *this;
+}
+
+auto canta::V2::GraphicsPass::drawMeshTasksIndirect(BufferHandle commands, u32 offset, u32 drawCount, u32 stride) -> GraphicsPass & {
+    pass().setCallback([commands, offset, drawCount, stride] (auto& cmd, auto& graph, const RenderPass::PushData& push) {
+        cmd.pushConstants(ShaderStage::MESH | ShaderStage::FRAGMENT, { push.data.data(), push.size }, 0);
+        cmd.drawMeshTasksIndirect(commands, offset, drawCount, stride);
+    });
+    return *this;
+}
+
+auto canta::V2::GraphicsPass::drawMeshTasksIndirectCount(BufferHandle commands, u32 offset, BufferHandle countBuffer, u32 countOffset, u32 stride) -> GraphicsPass & {
+    pass().setCallback([commands, offset, countBuffer, countOffset, stride] (auto& cmd, auto& graph, const RenderPass::PushData& push) {
+        cmd.pushConstants(ShaderStage::MESH | ShaderStage::FRAGMENT, { push.data.data(), push.size }, 0);
+        cmd.drawMeshTasksIndirectCount(commands, offset, countBuffer, countOffset, stride);
+    });
+    return *this;
+}
 
 
 auto canta::V2::RenderGraph::addBuffer() -> BufferIndex {
@@ -352,6 +473,13 @@ auto canta::V2::RenderGraph::compute(const std::string_view name) -> ComputePass
     return builder;
 }
 
+auto canta::V2::RenderGraph::graphics(const std::string_view name) -> GraphicsPass {
+    auto& pass = addVertex();
+    pass._type = RenderPass::Type::GRAPHICS;
+    pass._name = name;
+    const auto builder = GraphicsPass(this, vertexCount() - 1);
+    return builder;
+}
 
 void canta::V2::RenderGraph::setRoot(const BufferIndex index) {
     _rootEdge = index.id;

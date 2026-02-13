@@ -186,6 +186,8 @@ namespace canta::V2 {
         auto addStorageBufferRead(BufferIndex index) -> ComputePass&;
         auto addStorageBufferWrite(BufferIndex index) -> ComputePass&;
 
+        auto addSampledRead(ImageIndex index) -> ComputePass&;
+
         template <typename... Args>
         auto pushConstants(Args&&... args) -> ComputePass& {
             pass().pushConstants(std::forward<Args>(args)...);
@@ -193,7 +195,44 @@ namespace canta::V2 {
         }
 
         auto dispatchThreads(u32 x = 1, u32 y = 1, u32 z = 1) -> ComputePass&;
+        auto dispatchWorkgroups(u32 x = 1, u32 y = 1, u32 z = 1) -> ComputePass&;
+        auto dispatchIndirect(BufferHandle commandBuffer, u32 offset) -> ComputePass&;
 
+    };
+
+    class GraphicsPass : public PassBuilder {
+    public:
+
+        GraphicsPass(RenderGraph* graph, u32 index);
+
+        auto addColourRead(ImageIndex index) -> GraphicsPass&;
+        auto addColourWrite(ImageIndex index, const ClearValue& clearColor = std::to_array({ 0.f, 0.f, 0.f, 1.f })) -> GraphicsPass&;
+
+        auto addDepthRead(ImageIndex index) -> GraphicsPass&;
+        auto addDepthWrite(ImageIndex index, const ClearValue& clearColor = DepthClearValue{ .depth = 1.f, .stencil = 0 }) -> GraphicsPass&;
+
+        auto addStorageImageRead(ImageIndex index, PipelineStage stage) -> GraphicsPass&;
+        auto addStorageImageWrite(ImageIndex index, PipelineStage stage) -> GraphicsPass&;
+
+        auto addStorageBufferRead(BufferIndex index, PipelineStage stage) -> GraphicsPass&;
+        auto addStorageBufferWrite(BufferIndex index, PipelineStage stage) -> GraphicsPass&;
+
+        auto addSampledRead(ImageIndex index, PipelineStage stage = PipelineStage::NONE) -> GraphicsPass&;
+
+        template <typename... Args>
+        auto pushConstants(Args&&... args) -> GraphicsPass& {
+            pass().pushConstants(std::forward<Args>(args)...);
+            return *this;
+        }
+
+        auto draw(u32 count, u32 instanceCount = 1, u32 firstVertex = 0, u32 firstIndex = 0, u32 firstInstance = 0, bool indexed = false) -> GraphicsPass&;
+        auto drawIndirect(BufferHandle commands, u32 offset, u32 drawCount, bool indexed = false, u32 stride = 0) -> GraphicsPass&;
+        auto drawIndirectCount(BufferHandle commands, u32 offset, BufferHandle countBuffer, u32 countOffset, bool indexed = false, u32 stride = 0) -> GraphicsPass&;
+
+        auto drawMeshTasksThreads(u32 x = 1, u32 y = 1, u32 z = 1) -> GraphicsPass&;
+        auto drawMeshTasksWorkgroups(u32 x = 1, u32 y = 1, u32 z = 1) -> GraphicsPass&;
+        auto drawMeshTasksIndirect(BufferHandle commands, u32 offset, u32 drawCount, u32 stride = sizeof(VkDrawMeshTasksIndirectCommandEXT)) -> GraphicsPass&;
+        auto drawMeshTasksIndirectCount(BufferHandle commands, u32 offset, BufferHandle countBuffer, u32 countOffset, u32 stride = sizeof(VkDrawMeshTasksIndirectCommandEXT)) -> GraphicsPass&;
 
     };
 
@@ -217,7 +256,7 @@ namespace canta::V2 {
         // pass management
         auto compute(std::string_view name) -> ComputePass;
 
-
+        auto graphics(std::string_view name) -> GraphicsPass;
 
 
         void setRoot(BufferIndex index);
