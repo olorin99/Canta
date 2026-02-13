@@ -236,6 +236,21 @@ namespace canta::V2 {
 
     };
 
+    class HostPass : public PassBuilder {
+    public:
+
+        HostPass(RenderGraph* graph, u32 index);
+
+        auto read(BufferIndex index) -> HostPass&;
+        auto read(ImageIndex index) -> HostPass&;
+
+        auto write(BufferIndex index) -> HostPass&;
+        auto write(ImageIndex index) -> HostPass&;
+
+        auto setCallback(const std::function<void(RenderGraph&)>& callback) -> HostPass&;
+
+    };
+
 
 
     class RenderGraph : public ende::graph::Graph<RenderPass> {
@@ -257,6 +272,8 @@ namespace canta::V2 {
         auto compute(std::string_view name) -> ComputePass;
 
         auto graphics(std::string_view name) -> GraphicsPass;
+
+        auto host(std::string_view name) -> HostPass;
 
 
         void setRoot(BufferIndex index);

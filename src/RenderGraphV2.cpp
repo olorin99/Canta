@@ -425,6 +425,35 @@ auto canta::V2::GraphicsPass::drawMeshTasksIndirectCount(BufferHandle commands, 
     return *this;
 }
 
+canta::V2::HostPass::HostPass(RenderGraph *graph, const u32 index) : PassBuilder(graph, index) {}
+
+auto canta::V2::HostPass::read(const BufferIndex index) -> HostPass & {
+    PassBuilder::read(index, Access::HOST_READ, PipelineStage::HOST);
+    return *this;
+}
+
+auto canta::V2::HostPass::read(const ImageIndex index) -> HostPass & {
+    PassBuilder::read(index, Access::HOST_READ, PipelineStage::HOST, ImageLayout::GENERAL);
+    return *this;
+}
+
+auto canta::V2::HostPass::write(const BufferIndex index) -> HostPass & {
+    PassBuilder::write(index, Access::HOST_READ, PipelineStage::HOST);
+    return *this;
+}
+
+auto canta::V2::HostPass::write(const ImageIndex index) -> HostPass & {
+    PassBuilder::write(index, Access::HOST_READ, PipelineStage::HOST, ImageLayout::GENERAL);
+    return *this;
+}
+
+auto canta::V2::HostPass::setCallback(const std::function<void(RenderGraph &)> &callback) -> HostPass & {
+    pass().setCallback([callback] (auto& cmd, auto& graph, const RenderPass::PushData& push) {
+        callback(graph);
+    });
+    return *this;
+}
+
 
 auto canta::V2::RenderGraph::addBuffer() -> BufferIndex {
     const auto edge = addEdge<BufferIndex>();
@@ -478,6 +507,14 @@ auto canta::V2::RenderGraph::graphics(const std::string_view name) -> GraphicsPa
     pass._type = RenderPass::Type::GRAPHICS;
     pass._name = name;
     const auto builder = GraphicsPass(this, vertexCount() - 1);
+    return builder;
+}
+
+auto canta::V2::RenderGraph::host(const std::string_view name) -> HostPass {
+    auto& pass = addVertex();
+    pass._type = RenderPass::Type::HOST;
+    pass._name = name;
+    const auto builder = HostPass(this, vertexCount() - 1);
     return builder;
 }
 
