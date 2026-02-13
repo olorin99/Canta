@@ -5,8 +5,7 @@
 #include <Ende/graph/graph.h>
 #include <expected>
 #include <Canta/Device.h>
-
-#include "RenderGraphV2.h"
+#include <Canta/RenderGraphV2.h>
 
 namespace canta::V2 {
 
@@ -236,6 +235,37 @@ namespace canta::V2 {
 
     };
 
+    class TransferPass : public PassBuilder {
+    public:
+
+        TransferPass(RenderGraph* graph, u32 index);
+
+        auto addTransferRead(BufferIndex index) -> TransferPass&;
+        auto addTransferWrite(BufferIndex index) -> TransferPass&;
+        auto addTransferRead(ImageIndex index) -> TransferPass&;
+        auto addTransferWrite(ImageIndex index) -> TransferPass&;
+
+        auto blit(ImageIndex src, ImageIndex dst, Filter filter = Filter::LINEAR) -> TransferPass&;
+
+        auto copy(BufferIndex src, BufferIndex dst, u32 srcOffset = 0, u32 dstOffset = 0, u32 size = 0) -> TransferPass&;
+        struct ImageCopy {
+            ImageLayout layout = ImageLayout::TRANSFER_DST;
+            ende::math::Vec<3, u32> dimensions = { 0, 0, 0 };
+            ende::math::Vec<3, u32> offsets = { 0, 0, 0 };
+            u32 mipLevel = 0;
+            u32 layer = 0;
+            u32 layerCount = 1;
+            u32 size = 0;
+            u32 offset;
+        };
+        auto copy(BufferIndex src, ImageIndex dst, ImageCopy info) -> TransferPass&;
+        auto copy(ImageIndex src, BufferIndex dst, ImageCopy info) -> TransferPass&;
+
+        auto clear(ImageIndex index, const ClearValue& value = std::to_array({0.f, 0.f, 0.f, 1.f})) -> TransferPass&;
+        auto clear(BufferIndex index, u32 value = 0, u32 offset = 0, u32 size = 0) -> TransferPass&;
+
+    };
+
     class HostPass : public PassBuilder {
     public:
 
@@ -273,8 +303,12 @@ namespace canta::V2 {
 
         auto graphics(std::string_view name) -> GraphicsPass;
 
+        auto transfer(std::string_view name) -> TransferPass;
+
         auto host(std::string_view name) -> HostPass;
 
+
+        // finalisation
 
         void setRoot(BufferIndex index);
         void setRoot(ImageIndex index);

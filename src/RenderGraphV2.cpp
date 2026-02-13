@@ -425,6 +425,114 @@ auto canta::V2::GraphicsPass::drawMeshTasksIndirectCount(BufferHandle commands, 
     return *this;
 }
 
+canta::V2::TransferPass::TransferPass(RenderGraph *graph, const u32 index) : PassBuilder(graph, index) {}
+
+auto canta::V2::TransferPass::addTransferRead(const BufferIndex index) -> TransferPass& {
+    PassBuilder::addTransferRead(index);
+    return *this;
+}
+
+auto canta::V2::TransferPass::addTransferWrite(const BufferIndex index) -> TransferPass& {
+    PassBuilder::addTransferWrite(index);
+    return *this;
+}
+
+auto canta::V2::TransferPass::addTransferRead(const ImageIndex index) -> TransferPass& {
+    PassBuilder::addTransferRead(index);
+    return *this;
+}
+
+auto canta::V2::TransferPass::addTransferWrite(const ImageIndex index) -> TransferPass& {
+    PassBuilder::addTransferWrite(index);
+    return *this;
+}
+
+auto canta::V2::TransferPass::blit(const ImageIndex src, const ImageIndex dst, const Filter filter) -> TransferPass& {
+    addTransferRead(src);
+    addTransferWrite(dst);
+    pass().setCallback([src, dst, filter] (auto& cmd, auto& graph, const auto& push) {
+        cmd.blit({
+            .src = graph.getImage(src),
+            .dst = graph.getImage(dst),
+            .srcLayout = ImageLayout::TRANSFER_SRC,
+            .dstLayout = ImageLayout::TRANSFER_DST,
+            .filter = filter,
+        });
+    });
+    return *this;
+}
+
+auto canta::V2::TransferPass::copy(BufferIndex src, BufferIndex dst, u32 srcOffset, u32 dstOffset, u32 size) -> TransferPass& {
+    addTransferRead(src);
+    addTransferWrite(dst);
+    pass().setCallback([src, dst, srcOffset, dstOffset, size] (auto& cmd, auto& graph, const auto& push) {
+        cmd.copyBuffer({
+            .src = graph.getBuffer(src),
+            .dst = graph.getBuffer(dst),
+            .srcOffset = srcOffset,
+            .dstOffset = dstOffset,
+            .size = size,
+        });
+    });
+    return *this;
+}
+
+auto canta::V2::TransferPass::copy(BufferIndex src, ImageIndex dst, ImageCopy info) -> TransferPass& {
+    addTransferRead(src);
+    addTransferWrite(dst);
+    pass().setCallback([src, dst, info] (auto& cmd, auto& graph, const auto& push) {
+        cmd.copyBufferToImage({
+            .buffer = graph.getBuffer(src),
+            .image = graph.getImage(dst),
+            .dstLayout = info.layout,
+            .dstDimensions = info.dimensions,
+            .dstOffsets = info.offsets,
+            .dstMipLevel = info.mipLevel,
+            .dstLayer = info.layer,
+            .dstLayerCount = info.layerCount,
+            .size = info.size,
+            .srcOffset = info.offset,
+        });
+    });
+    return *this;
+}
+
+auto canta::V2::TransferPass::copy(ImageIndex src, BufferIndex dst, ImageCopy info) -> TransferPass& {
+    addTransferRead(src);
+    addTransferWrite(dst);
+    pass().setCallback([src, dst, info] (auto& cmd, auto& graph, const auto& push) {
+        cmd.copyImageToBuffer({
+            .buffer = graph.getBuffer(dst),
+            .image = graph.getImage(src),
+            .dstLayout = info.layout,
+            .dstDimensions = info.dimensions,
+            .dstOffsets = info.offsets,
+            .dstMipLevel = info.mipLevel,
+            .dstLayer = info.layer,
+            .dstLayerCount = info.layerCount,
+            .size = info.size,
+            .srcOffset = info.offset,
+        });
+    });
+    return *this;
+}
+
+auto canta::V2::TransferPass::clear(const ImageIndex index, const ClearValue &value) -> TransferPass& {
+    addTransferWrite(index);
+    pass().setCallback([value, index] (auto& cmd, auto& graph, const auto& push) {
+        cmd.clearImage(graph.getImage(index), ImageLayout::TRANSFER_DST, value);
+    });
+    return *this;
+}
+
+auto canta::V2::TransferPass::clear(BufferIndex index, u32 value, u32 offset, u32 size) -> TransferPass& {
+    addTransferWrite(index);
+    pass().setCallback([index, value, offset, size] (auto& cmd, auto& graph, const auto& push) {
+        cmd.clearBuffer(graph.getBuffer(index), value, offset, size);
+    });
+    return *this;
+}
+
 canta::V2::HostPass::HostPass(RenderGraph *graph, const u32 index) : PassBuilder(graph, index) {}
 
 auto canta::V2::HostPass::read(const BufferIndex index) -> HostPass & {
@@ -507,6 +615,14 @@ auto canta::V2::RenderGraph::graphics(const std::string_view name) -> GraphicsPa
     pass._type = RenderPass::Type::GRAPHICS;
     pass._name = name;
     const auto builder = GraphicsPass(this, vertexCount() - 1);
+    return builder;
+}
+
+auto canta::V2::RenderGraph::transfer(const std::string_view name) -> TransferPass {
+    auto& pass = addVertex();
+    pass._type = RenderPass::Type::TRANSFER;
+    pass._name = name;
+    const auto builder = TransferPass(this, vertexCount() - 1);
     return builder;
 }
 
