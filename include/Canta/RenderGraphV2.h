@@ -11,7 +11,9 @@
 namespace canta::V2 {
 
     enum class RenderGraphError {
-
+        NONE,
+        IS_CYCLICAL,
+        NO_ROOT,
     };
 
     struct ImageIndex : ende::graph::Edge {
@@ -58,6 +60,8 @@ namespace canta::V2 {
         std::array<u8, 192> _pushData = {};
         std::function<void(CommandBuffer&, RenderGraph&)> _callback = {};
         std::vector<ResourceAccess> _accesses = {};
+
+        std::string _name = {};
 
     };
 
@@ -144,9 +148,20 @@ namespace canta::V2 {
         auto alias(ImageIndex index) -> ImageIndex;
 
         // pass management
-        auto compute() -> ComputePass;
+        auto compute(std::string_view name) -> ComputePass;
+
+
+
+
+        void setRoot(BufferIndex index);
+        void setRoot(ImageIndex index);
+
+        auto compile() -> std::expected<bool, RenderGraphError>;
 
     private:
+
+        i32 _rootEdge = -1;
+        i32 _rootPass = -1;
 
     };
 

@@ -278,8 +278,34 @@ auto canta::V2::RenderGraph::alias(ImageIndex index) -> ImageIndex {
 }
 
 
-auto canta::V2::RenderGraph::compute() -> ComputePass {
-    auto pass = addVertex();
+auto canta::V2::RenderGraph::compute(const std::string_view name) -> ComputePass {
+    auto& pass = addVertex();
+    pass._type = RenderPass::Type::COMPUTE;
+    pass._name = name;
     const auto builder = ComputePass(this, vertexCount() - 1);
     return builder;
+}
+
+
+void canta::V2::RenderGraph::setRoot(const BufferIndex index) {
+    _rootEdge = index.id;
+}
+
+void canta::V2::RenderGraph::setRoot(const ImageIndex index) {
+    _rootEdge = index.id;
+}
+
+auto canta::V2::RenderGraph::compile() -> std::expected<bool, RenderGraphError> {
+    if (_rootEdge < 0) return std::unexpected(RenderGraphError::NO_ROOT);
+
+    const auto sorted = TRY(sort(getEdges()[_rootEdge]).transform_error([] (auto e) {
+        switch (e) {
+            case ende::graph::Error::IS_CYCLICAL:
+                return RenderGraphError::IS_CYCLICAL;
+            default:
+                return RenderGraphError::IS_CYCLICAL;
+        }
+    }));
+
+    return true;
 }
