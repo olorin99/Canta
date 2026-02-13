@@ -75,6 +75,7 @@ int main() {
     auto graph = canta::V2::RenderGraph();
 
     const auto buffer = graph.addBuffer();
+    const auto hostBuffer = graph.addBuffer();
     const auto image = graph.addImage();
     const auto swapImage = graph.addImage();
 
@@ -99,7 +100,14 @@ int main() {
         .pushConstants(outputImage)
         .draw(10);
 
-    const auto rootEdge = TRY_MAIN(graphicsPass.output<canta::V2::ImageIndex>());
+    auto hostPass = graph.host("pass_3")
+        .read(TRY_MAIN(graphicsPass.output<canta::V2::ImageIndex>()))
+        .write(hostBuffer)
+        .setCallback([] (canta::V2::RenderGraph&) {
+            printf("Host pass\n");
+        });
+
+    const auto rootEdge = TRY_MAIN(hostPass.output<canta::V2::BufferIndex>());
 
     printf("Pass count: %d\n", graph.vertexCount());
     printf("Edge count: %d\n", graph.edgeCount());
