@@ -562,6 +562,19 @@ auto canta::V2::HostPass::setCallback(const std::function<void(RenderGraph &)> &
     return *this;
 }
 
+canta::V2::PresentPass::PresentPass(RenderGraph *graph, const u32 index) : PassBuilder(graph, index) {}
+
+//TODO: will need to handle special. chain timeline semaphore with acquire/present semaphores
+auto canta::V2::PresentPass::present(Swapchain* swapchain, const ImageIndex index) -> PresentPass& {
+    read(index, Access::MEMORY_READ, PipelineStage::BOTTOM, ImageLayout::PRESENT);
+    write(index, Access::MEMORY_READ | Access::MEMORY_WRITE, PipelineStage::BOTTOM, ImageLayout::PRESENT);
+    pass().setCallback([swapchain] (auto& cmd, auto& graph, const auto& push) {
+        swapchain->present();
+    });
+    return *this;
+}
+
+
 
 auto canta::V2::RenderGraph::addBuffer() -> BufferIndex {
     const auto edge = addEdge<BufferIndex>();
@@ -631,6 +644,15 @@ auto canta::V2::RenderGraph::host(const std::string_view name) -> HostPass {
     pass._type = RenderPass::Type::HOST;
     pass._name = name;
     const auto builder = HostPass(this, vertexCount() - 1);
+    return builder;
+}
+
+auto canta::V2::RenderGraph::present(Swapchain *swapchain, const ImageIndex index) -> PresentPass {
+    auto& pass = addVertex();
+    pass._type = RenderPass::Type::PRESENT;
+    pass._name = "present_pass";
+    auto builder = PresentPass(this, vertexCount() - 1);
+    builder.present(swapchain, index);
     return builder;
 }
 

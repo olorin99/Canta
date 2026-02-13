@@ -281,6 +281,15 @@ namespace canta::V2 {
 
     };
 
+    class PresentPass : public PassBuilder {
+    public:
+
+        PresentPass(RenderGraph* graph, u32 index);
+
+        auto present(Swapchain* swapchain, ImageIndex index) -> PresentPass&;
+
+    };
+
 
 
     class RenderGraph : public ende::graph::Graph<RenderPass> {
@@ -306,6 +315,8 @@ namespace canta::V2 {
         auto transfer(std::string_view name) -> TransferPass;
 
         auto host(std::string_view name) -> HostPass;
+
+        auto present(Swapchain* swapchain, ImageIndex index) -> PresentPass;
 
 
         // finalisation
