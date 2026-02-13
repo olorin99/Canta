@@ -47,9 +47,46 @@ namespace canta::V2 {
             HOST,
         };
 
+
+        struct PushData {
+            std::array<u8, 128> data = {};
+            u32 size = 0;
+        };
+
         auto clone() -> RenderPass;
 
-        auto setCallback(const std::function<void(CommandBuffer&, RenderGraph&)>& callback) -> RenderPass&;
+        template <typename T, typename U, typename... Args>
+        void unpack(PushData& dst, i32& i, const T& t, const U& u, const Args&... args) {
+            unpack(dst, i, t);
+            unpack(dst, i, u, args...);
+        }
+
+        template <typename T>
+        void unpack(PushData& dst, i32& i, const T& t) {
+            auto* data = reinterpret_cast<const u8*>(&t);
+            for (auto j = 0; j < sizeof(T); j++) {
+                dst.data[i + j] = data[j];
+            }
+            i += sizeof(T);
+            dst.size += sizeof(T);
+        }
+
+        void unpack(PushData& dst, i32& i, const BufferIndex& index);
+
+        void unpack(PushData& dst, i32& i, const ImageIndex& index);
+
+        void unpack(PushData& dst, i32& i, const BufferHandle& handle);
+
+        void unpack(PushData& dst, i32& i, const ImageHandle& handle);
+
+        template <typename... Args>
+        auto pushConstants(const Args&... args) -> RenderPass& {
+            i32 i = 0;
+            unpack(_pushData, i, args...);
+            return *this;
+        }
+
+        auto setCallback(const std::function<void(CommandBuffer&, RenderGraph&, const PushData&)>& callback) -> RenderPass&;
 
     protected:
         friend RenderGraph;
@@ -57,8 +94,18 @@ namespace canta::V2 {
         friend ComputePass;
 
         Type _type = Type::NONE;
-        std::array<u8, 192> _pushData = {};
-        std::function<void(CommandBuffer&, RenderGraph&)> _callback = {};
+
+        struct DeferredPushConstant {
+            i32 type = 0;
+            Edge value;
+            i32 offset = 0;
+        };
+        static auto resolvePushConstants(RenderGraph& graph, PushData data, std::span<DeferredPushConstant> deferredConstants) -> PushData;
+
+        std::vector<DeferredPushConstant> _deferredPushConstants;
+        PushData _pushData = {};
+        u32 _pushSize = 0;
+        std::function<void(CommandBuffer&, RenderGraph&, const PushData&)> _callback = {};
         std::vector<ResourceAccess> _accesses = {};
 
         std::string _name = {};
@@ -77,6 +124,17 @@ namespace canta::V2 {
 
         auto write(BufferIndex index, Access access, PipelineStage stage) -> bool;
         auto write(ImageIndex index, Access access, PipelineStage stage, ImageLayout layout) -> bool;
+
+        template <typename... Args>
+        auto pushConstants(Args&&... args) -> PassBuilder& {
+            pass().pushConstants(std::forward<Args>(args)...);
+            return *this;
+        }
+
+        template <typename T>
+        auto output(const u32 index = 0) -> std::expected<T, ende::graph::Error> {
+            return pass().output<T>(index);
+        }
 
     protected:
 
@@ -128,6 +186,11 @@ namespace canta::V2 {
         auto addStorageBufferRead(BufferIndex index) -> ComputePass&;
         auto addStorageBufferWrite(BufferIndex index) -> ComputePass&;
 
+        template <typename... Args>
+        auto pushConstants(Args&&... args) -> ComputePass& {
+            pass().pushConstants(std::forward<Args>(args)...);
+            return *this;
+        }
 
         auto dispatchThreads(u32 x = 1, u32 y = 1, u32 z = 1) -> ComputePass&;
 
@@ -146,6 +209,10 @@ namespace canta::V2 {
 
         auto alias(BufferIndex index) -> BufferIndex;
         auto alias(ImageIndex index) -> ImageIndex;
+
+        auto getBuffer(BufferIndex index) -> BufferHandle;
+
+        auto getImage(ImageIndex index) -> ImageHandle;
 
         // pass management
         auto compute(std::string_view name) -> ComputePass;
