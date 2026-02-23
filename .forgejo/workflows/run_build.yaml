@@ -1,0 +1,13 @@
+on: [push]
+jobs:
+  build-all:
+    runs-on: melamar
+    steps:
+      - name: checkout code
+        uses: actions/checkout@v4
+      - name: build
+        run: |
+          mkdir build
+          cd build
+          cmake ..
+          make
