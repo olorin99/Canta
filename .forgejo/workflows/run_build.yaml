@@ -1,6 +1,6 @@
 on: [push]
 jobs:
-  build-all:
+  build-canta:
     runs-on: debian-latest
     steps:
       - name: Install dependencies
@@ -14,4 +14,4 @@ jobs:
           mkdir build
           cd build
           cmake -G Ninja -DCMAKE_BUILD_TYPE=Release -DCANTA_ENABLE_RENDERDOC=OFF ..
-          cmake --build . -j8
+          cmake --build . --target Canta -j8

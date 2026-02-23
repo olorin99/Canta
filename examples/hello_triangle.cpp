@@ -23,53 +23,47 @@ int main() {
             .queueType = canta::QueueType::GRAPHICS
         }).value();
 
-    std::string vertexGLSL = R"(
-#version 460
-
-#extension GL_EXT_nonuniform_qualifier : enable
-#extension GL_GOOGLE_include_directive : enable
-#extension GL_EXT_buffer_reference : enable
-#extension GL_EXT_buffer_reference2 : enable
-#extension GL_EXT_scalar_block_layout : enable
-#extension GL_EXT_shader_explicit_arithmetic_types : enable
-
-layout (location = 0) out vec3 colour;
-
-layout (scalar, buffer_reference, buffer_reference_align = 8) readonly buffer SomeBuffer {
-    int data[];
+    std::string vertexSlang = R"(
+struct VSOutput {
+    float4 position : SV_Position;
+    float3 colour : COLOUR;
 };
 
-layout (push_constant) uniform Push {
-    SomeBuffer bufferAddress;
-};
-
-vec2 trianglePositions[3] = vec2[](
-    vec2(0.5, -0.5),
-    vec2(0.5, 0.5),
-    vec2(-0.5, 0.5)
+static const float2 trianglePositions[3] = float2[](
+    float2(0.5, -0.5),
+    float2(0.5, 0.5),
+    float2(-0.5, 0.5)
 );
 
-vec3 triangleColours[3] = vec3[](
-    vec3(1.0, 0.0, 0.0),
-    vec3(0.0, 1.0, 0.0),
-    vec3(0.0, 0.0, 1.0)
+static const float3 triangleColours[3] = float3[](
+    float3(1.0, 0.0, 0.0),
+    float3(0.0, 1.0, 0.0),
+    float3(0.0, 0.0, 1.0)
 );
 
-void main() {
-    gl_Position = vec4(trianglePositions[gl_VertexIndex], 0.5, 1.0);
-//    colour = triangleColours[gl_VertexIndex];
-    colour = triangleColours[bufferAddress.data[gl_VertexIndex]];
+[shader("vertex")]
+VSOutput main(
+    int vertexIndex : SV_VertexID,
+    uniform int* colour
+) {
+    VSOutput out;
+    out.position = float4(trianglePositions[vertexIndex], 0, 1.0);
+    out.colour = triangleColours[colour[vertexIndex]];
+    return out;
 }
 )";
 
-    std::string fragmentGLSL = R"(
-#version 460
+    std::string fragmentSlang = R"(
+struct VSOutput {
+    float4 position : SV_Position;
+    float3 colour : COLOUR;
+};
 
-layout (location = 0) in vec3 inColour;
-layout (location = 0) out vec4 outColour;
-
-void main() {
-    outColour = vec4(inColour, 1.0);
+[shader("fragment")]
+float4 main(
+    in VSOutput in,
+) {
+    return float4(in.colour, 1.0);
 }
 )";
 
@@ -82,16 +76,16 @@ void main() {
     auto pipeline = pipelineManager.getPipeline({
         .vertex = {
             .module = pipelineManager.getShader({
-                .glsl = vertexGLSL,
+                .slang = vertexSlang,
                 .stage = canta::ShaderStage::VERTEX,
                 .name = "vertex_shader"
             }).value()
         },
         .fragment = {
             .module = pipelineManager.getShader({
-                .glsl = fragmentGLSL,
+                .slang = fragmentSlang,
                 .stage = canta::ShaderStage::FRAGMENT,
-                .name = "vertex_shader"
+                .name = "fragment_shader"
             }).value()
         },
         .colourFormats = std::vector{ colourFormat }
