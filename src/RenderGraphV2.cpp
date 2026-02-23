@@ -1,3 +1,4 @@
+#include <ranges>
 #include <Canta/RenderGraphV2.h>
 
 constexpr auto defaultPassStage(const canta::V2::RenderPass::Type type) -> canta::PipelineStage {
@@ -103,6 +104,24 @@ void unpack(canta::V2::RenderPass::PushData &dst, i32 &i, const canta::ImageHand
 auto canta::V2::RenderPass::setCallback(const std::function<void(CommandBuffer&, RenderGraph&, const PushData&)> &callback) -> RenderPass & {
     _callback = callback;
     return *this;
+}
+
+auto canta::V2::RenderPass::inputResourceIndex(const u32 i) const -> u32 {
+    const auto input = inputs[i];
+    if (std::holds_alternative<BufferIndex>(input)) {
+        return std::get<BufferIndex>(input).index;
+    } else {
+        return std::get<ImageIndex>(input).index;
+    }
+}
+
+auto canta::V2::RenderPass::outputResourceIndex(u32 i) const -> u32 {
+    const auto output = outputs[i];
+    if (std::holds_alternative<ImageIndex>(output)) {
+        return std::get<ImageIndex>(output).index;
+    } else {
+        return std::get<BufferIndex>(output).index;
+    }
 }
 
 auto canta::V2::RenderPass::resolvePushConstants(canta::V2::RenderGraph& graph, PushData data, const std::span<DeferredPushConstant> deferredConstants) -> PushData {
@@ -575,14 +594,23 @@ auto canta::V2::PresentPass::present(Swapchain* swapchain, const ImageIndex inde
 }
 
 
+auto canta::V2::RenderGraph::create(CreateInfo info) -> RenderGraph {
+    auto graph = RenderGraph();
+    graph._device = info.device;
+    return graph;
+}
 
-auto canta::V2::RenderGraph::addBuffer() -> BufferIndex {
-    const auto edge = addEdge<BufferIndex>();
+auto canta::V2::RenderGraph::addBuffer(BufferInfo info) -> BufferIndex {
+    _resources.emplace_back(info);
+    auto& edge = addEdge<BufferIndex>();
+    std::get<BufferIndex>(edge).index = _resources.size() - 1;
     return std::get<BufferIndex>(edge);
 }
 
-auto canta::V2::RenderGraph::addImage() -> ImageIndex {
-    const auto edge = addEdge<ImageIndex>();
+auto canta::V2::RenderGraph::addImage(ImageInfo info) -> ImageIndex {
+    _resources.emplace_back(info);
+    auto& edge = addEdge<ImageIndex>();
+    std::get<ImageIndex>(edge).index = _resources.size() - 1;
     return std::get<ImageIndex>(edge);
 }
 
@@ -598,7 +626,7 @@ auto canta::V2::RenderGraph::alias(BufferIndex index) -> BufferIndex {
 }
 
 auto canta::V2::RenderGraph::alias(ImageIndex index) -> ImageIndex {
-    auto edge = addEdge<ImageIndex>();
+    auto& edge = addEdge<ImageIndex>();
     std::visit(overload{
         [index] (BufferIndex& buffer){ static_assert("unreachable"); },
             [index] (ImageIndex& image) { image.index = index.index; },
@@ -676,5 +704,108 @@ auto canta::V2::RenderGraph::compile() -> std::expected<bool, RenderGraphError> 
         }
     }));
 
+    std::vector<std::pair<u32, u32>> indices = getResourceIndices(sorted);
+
+
+    buildResources();
+
     return true;
+}
+
+auto canta::V2::RenderGraph::getResourceIndices(const std::span<const RenderPass> passes) const -> std::vector<std::pair<u32, u32> > {
+    std::vector<std::pair<u32, u32>> indices = {};
+    for (u32 i = 0; i < _resources.size(); i++) {
+        indices.emplace_back(passes.size(), 0);
+    }
+    for (u32 passIndex = 0; passIndex < _resources.size(); ++passIndex) {
+        auto& pass = passes[passIndex];
+        for (u32 i = 0; i < pass.inputs.size(); i++) {
+            const auto index = pass.inputResourceIndex(i);
+            indices[index].first = std::min(passIndex, indices[index].first);
+            indices[index].second = std::max(passIndex, indices[index].second);
+        }
+        for (u32 i = 0; i < pass.outputs.size(); i++) {
+            const auto index = pass.outputResourceIndex(i);
+            indices[index].first = std::min(passIndex, indices[index].first);
+            indices[index].second = std::max(passIndex, indices[index].second);
+        }
+    }
+
+    return indices;
+}
+
+auto compareBuffer(const canta::V2::BufferInfo& info, canta::BufferHandle handle) -> bool {
+    return info.size == handle->size() &&
+        info.type == handle->type() &&
+        (info.usage & handle->usage()) == handle->usage();
+}
+
+auto compareImage(const canta::V2::ImageInfo& info, canta::ImageHandle handle) -> bool {
+    return info.width == handle->width() &&
+        info.height == handle->height() &&
+        info.depth == handle->depth() &&
+        info.mips == handle->mips() &&
+        info.format == handle->format() &&
+        (info.usage & handle->usage()) == handle->usage();
+
+}
+
+void canta::V2::RenderGraph::buildResources() {
+    //TODO: allocate and alias in memory pool
+
+    // const auto sizes = std::views::transform(_resources, [](auto& resource) {
+    //     if (std::holds_alternative<BufferInfo>(resource)) {
+    //         return std::get<BufferInfo>(resource).size;
+    //     } else {
+    //         auto& info = std::get<ImageInfo>(resource);
+    //         return info.width * info.height * info.depth * formatSize(info.format);
+    //     }
+    // });
+    //
+    // const auto size = std::accumulate(sizes.begin(), sizes.end(), 0);
+    // if (size > _poolSize) {
+    //
+    //     VmaPoolCreateInfo createInfo = {};
+    //     createInfo.blockSize = size;
+    //     createInfo.maxBlockCount = 2;
+    //
+    //
+    //
+    //     _poolSize = size;
+    // }
+
+
+    for (auto& resource : _resources) {
+        if (std::holds_alternative<BufferInfo>(resource)) {
+            auto& bufferInfo = std::get<BufferInfo>(resource);
+            if (bufferInfo.buffer && compareBuffer(bufferInfo, bufferInfo.buffer))
+                continue;
+
+            const auto buffer = _device->createBuffer({
+                .size = bufferInfo.size,
+                .usage = bufferInfo.usage,
+                .type = bufferInfo.type,
+                .name = bufferInfo.name,
+            });
+
+            bufferInfo.buffer = buffer;
+
+        } else {
+            auto& imageInfo = std::get<ImageInfo>(resource);
+            if (imageInfo.image && compareImage(imageInfo, imageInfo.image))
+                continue;
+
+            const auto image = _device->createImage({
+                .width = imageInfo.width,
+                .height = imageInfo.height,
+                .depth = imageInfo.depth,
+                .format = imageInfo.format,
+                .mipLevels = imageInfo.mips,
+                .usage = imageInfo.usage,
+                .name = imageInfo.name,
+            });
+
+            imageInfo.image = image;
+        }
+    }
 }

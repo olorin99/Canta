@@ -72,12 +72,14 @@ int main() {
     f32 rhsData[N * N] = {};
     genMatrix(N, rhsData);
 
-    auto graph = canta::V2::RenderGraph();
+    auto graph = canta::V2::RenderGraph::create({
+        .device = device.get(),
+    });
 
-    const auto buffer = graph.addBuffer();
-    const auto hostBuffer = graph.addBuffer();
-    const auto image = graph.addImage();
-    const auto swapImage = graph.addImage();
+    const auto buffer = graph.addBuffer({ .size = 1000, .name = "buffer_0" });
+    const auto hostBuffer = graph.addBuffer({ .size = 1000, .name = "buffer_1" });
+    const auto image = graph.addImage({ .width = 512, .height = 512, .name = "image_0" });
+    const auto swapImage = graph.addImage({ .width = 512, .height = 512, .name = "swap_image" });
 
     auto computePass = graph.compute("pass_0")
         .addStorageBufferWrite(buffer)
@@ -117,6 +119,7 @@ int main() {
 
     graph.setRoot(rootEdge);
     TRY_MAIN(graph.compile());
+    // TRY_MAIN(graph.compile());
 
     // auto basePass = computePass.clone();
 

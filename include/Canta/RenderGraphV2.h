@@ -94,6 +94,9 @@ namespace canta::V2 {
 
         Type _type = Type::NONE;
 
+        auto inputResourceIndex(u32 i) const -> u32;
+        auto outputResourceIndex(u32 i) const -> u32;
+
         struct DeferredPushConstant {
             i32 type = 0;
             Edge value;
@@ -291,14 +294,45 @@ namespace canta::V2 {
     };
 
 
+    struct Resource {
+
+    };
+
+    struct BufferInfo {
+        u32 size = 0;
+        BufferUsage usage = BufferUsage::STORAGE; //TODO: can probably derive from usage in graph
+        MemoryType type = MemoryType::DEVICE; //TODO: can probably derive from usage in graph
+        bool external = false;
+        BufferHandle buffer = {};
+        std::string name = {};
+    };
+
+    struct ImageInfo {
+        u32 width = 1;
+        u32 height = 1;
+        u32 depth = 1;
+        u32 mips = 1;
+        Format format = Format::RGBA8_UNORM;
+        ImageUsage usage = ImageUsage::STORAGE;
+        bool external = false;
+        ImageHandle image = {};
+        std::string name = {};
+    };
+
 
     class RenderGraph : public ende::graph::Graph<RenderPass> {
     public:
 
-        // resource management
-        auto addBuffer() -> BufferIndex;
+        struct CreateInfo {
+            Device* device;
+        };
 
-        auto addImage() -> ImageIndex;
+        static auto create(CreateInfo info) -> RenderGraph;
+
+        // resource management
+        auto addBuffer(BufferInfo info) -> BufferIndex;
+
+        auto addImage(ImageInfo info) -> ImageIndex;
 
         auto alias(BufferIndex index) -> BufferIndex;
         auto alias(ImageIndex index) -> ImageIndex;
@@ -326,10 +360,24 @@ namespace canta::V2 {
 
         auto compile() -> std::expected<bool, RenderGraphError>;
 
+        void reset();
+
     private:
+
+        RenderGraph() = default;
+
+        [[nodiscard]] auto getResourceIndices(std::span<const RenderPass> passes) const -> std::vector<std::pair<u32, u32>>;
+
+        void buildResources();
+
+        Device* _device = nullptr;
 
         i32 _rootEdge = -1;
         i32 _rootPass = -1;
+
+        // VmaPool _resourcePool = {};
+        // u32 _poolSize = 0;
+        std::vector<std::variant<BufferInfo, ImageInfo>> _resources = {};
 
     };
 
