@@ -6,7 +6,7 @@ jobs:
       - name: Install dependencies
         run: |
           apt-get update
-          apt-get install -y python3 cmake ninja-build libsdl2-dev libspdlog-dev
+          apt-get install -y python3 cmake ninja-build libsdl2-dev libspdlog-dev libvulkan-dev
       - name: checkout code
         uses: actions/checkout@v4
       - name: build
