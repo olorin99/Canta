@@ -6,12 +6,12 @@ jobs:
       - name: Install dependencies
         run: |
           apt-get update
-          apt-get install -y cmake libsdl2-dev libspdlog-dev
+          apt-get install -y python3 cmake ninja-build libsdl2-dev libspdlog-dev
       - name: checkout code
         uses: actions/checkout@v4
       - name: build
         run: |
           mkdir build
           cd build
-          cmake ..
-          make
+          cmake -G Ninja -DCMAKE_BUILD_TYPE=Release ..
+          cmake --build -j8 .

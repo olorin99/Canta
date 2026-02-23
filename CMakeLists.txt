@@ -59,7 +59,7 @@ function(embed_shaders)
     add_custom_command(
             OUTPUT
             ${OUTPUT_HEADER}
-            COMMAND python ${CMAKE_CURRENT_FUNCTION_LIST_DIR}/embed_files.py ${PARSED_ARGS_NAME} ${OUTPUT_HEADER} ${PARSED_ARGS_SHADERS}
+            COMMAND python3 ${CMAKE_CURRENT_FUNCTION_LIST_DIR}/embed_files.py ${PARSED_ARGS_NAME} ${OUTPUT_HEADER} ${PARSED_ARGS_SHADERS}
             DEPENDS
                 ${CMAKE_CURRENT_FUNCTION_LIST_DIR}/embed_files.py ${PARSED_ARGS_SHADERS}
             WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/include"
