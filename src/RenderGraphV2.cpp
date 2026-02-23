@@ -712,6 +712,11 @@ auto canta::V2::RenderGraph::compile() -> std::expected<bool, RenderGraphError> 
     return true;
 }
 
+void canta::V2::RenderGraph::reset() {
+    _resources.clear();
+    Graph::reset();
+}
+
 auto canta::V2::RenderGraph::getResourceIndices(const std::span<const RenderPass> passes) const -> std::vector<std::pair<u32, u32> > {
     std::vector<std::pair<u32, u32>> indices = {};
     for (u32 i = 0; i < _resources.size(); i++) {
