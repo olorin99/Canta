@@ -13,5 +13,5 @@ jobs:
         run: |
           mkdir build
           cd build
-          cmake -G Ninja -DCMAKE_BUILD_TYPE=Release ..
+          cmake -G Ninja -DCMAKE_BUILD_TYPE=Release -DCANTA_ENABLE_RENDERDOC=OFF ..
           cmake --build . -j8
