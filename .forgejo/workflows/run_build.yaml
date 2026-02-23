@@ -1,7 +1,7 @@
 on: [push]
 jobs:
   build-all:
-    runs-on: melamar
+    runs-on: docker
     steps:
       - name: checkout code
         uses: actions/checkout@v4
