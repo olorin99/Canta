@@ -22,7 +22,7 @@ namespace canta::util {
 
         auto pipeline(PipelineManager& manager) -> kernel_helper& {
             auto source = std::vector<u32>{};
-            source.assign_range(_source);
+            source.assign(_source.begin(), _source.end());
 
             _pipeline = manager.getPipeline({
                 .compute = {
@@ -38,7 +38,7 @@ namespace canta::util {
 
         auto pipeline(Device* device) -> kernel_helper& {
             auto source = std::vector<u32>{};
-            source.assign_range(_source);
+            source.assign(_source.begin(), _source.end());
 
             _pipeline = device->createPipeline({
                 .compute = {
