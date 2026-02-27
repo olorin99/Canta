@@ -91,13 +91,39 @@ int main() {
     const auto outputImage = TRY_MAIN(computePass.output<canta::V2::ImageIndex>(1));
 
 
+    auto geometryPass = [&] (canta::V2::RenderGraph& g, int index) -> std::expected<canta::V2::BufferIndex, ende::graph::Error> {
+        auto p1 = g.compute(std::format("compute_pass_1_{}", index))
+            .addStorageBufferRead(outputBuffer)
+            .addStorageBufferWrite(outputBuffer)
+            .pushConstants(outputBuffer)
+            .dispatchThreads(64, 64, 1);
+
+        auto p2 = g.compute(std::format("compute_pass_2_{}", index))
+            .addStorageBufferRead(TRY(p1.output<canta::V2::BufferIndex>()))
+            .addStorageBufferWrite(outputBuffer)
+            .pushConstants(outputBuffer)
+            .dispatchThreads(64, 64, 1);
+
+        auto p3 = g.compute(std::format("compute_pass_3_{}", index))
+            .addStorageBufferRead(TRY(p2.output<canta::V2::BufferIndex>()))
+            .addStorageBufferWrite(outputBuffer)
+            .pushConstants(outputBuffer)
+            .dispatchThreads(64, 64, 1);
+
+        return p3.output<canta::V2::BufferIndex>();
+    };
+
+    const auto b = TRY_MAIN(geometryPass(graph, 0));
+    const auto c = TRY_MAIN(geometryPass(graph, 1));
+
     auto computePass2 = graph.compute("pass_1");
-    computePass2.addStorageBufferRead(outputBuffer);
+    computePass2.addStorageBufferRead(b);
+    computePass2.addStorageBufferRead(c);
     computePass2.addStorageImageRead(outputImage);
     computePass2.addStorageImageWrite(outputImage);
 
     auto graphicsPass = graph.graphics("pass_2")
-        .addSampledRead(outputImage)
+        .addSampledRead(TRY_MAIN(computePass2.output<canta::V2::ImageIndex>()), canta::PipelineStage::FRAGMENT_SHADER)
         .addColourWrite(swapImage)
         .pushConstants(outputImage)
         .draw(10);
