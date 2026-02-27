@@ -13,6 +13,8 @@ namespace canta::V2 {
         NONE,
         IS_CYCLICAL,
         NO_ROOT,
+        INVALID_PASS,
+        INVALID_PASS_COUNT,
     };
 
     struct ImageIndex : ende::graph::Edge {
@@ -34,6 +36,7 @@ namespace canta::V2 {
     class RenderGraph;
     class PassBuilder;
     class ComputePass;
+
     class RenderPass : public ende::graph::Vertex<BufferIndex, ImageIndex> {
     public:
 
@@ -93,6 +96,7 @@ namespace canta::V2 {
         friend ComputePass;
 
         Type _type = Type::NONE;
+        QueueType _queueType = QueueType::NONE;
 
         auto inputResourceIndex(u32 i) const -> u32;
         auto outputResourceIndex(u32 i) const -> u32;
@@ -104,11 +108,27 @@ namespace canta::V2 {
         };
         static auto resolvePushConstants(RenderGraph& graph, PushData data, std::span<DeferredPushConstant> deferredConstants) -> PushData;
 
+        void mergeAccesses();
+
         std::vector<DeferredPushConstant> _deferredPushConstants;
         PushData _pushData = {};
         u32 _pushSize = 0;
         std::function<void(CommandBuffer&, RenderGraph&, const PushData&)> _callback = {};
         std::vector<ResourceAccess> _accesses = {};
+
+        struct Barrier {
+            i32 index = 0;
+            i32 passIndex = 0;
+            PipelineStage srcStage = PipelineStage::TOP;
+            PipelineStage dstStage = PipelineStage::BOTTOM;
+            Access srcAccess = Access::NONE;
+            Access dstAccess = Access::NONE;
+            ImageLayout srcLayout = ImageLayout::UNDEFINED;
+            ImageLayout dstLayout = ImageLayout::UNDEFINED;
+            QueueType srcQueue = QueueType::NONE;
+            QueueType dstQueue = QueueType::NONE;
+        };
+        std::vector<Barrier> _barriers = {};
 
         std::string _name = {};
 
@@ -219,7 +239,7 @@ namespace canta::V2 {
         auto addStorageBufferRead(BufferIndex index, PipelineStage stage) -> GraphicsPass&;
         auto addStorageBufferWrite(BufferIndex index, PipelineStage stage) -> GraphicsPass&;
 
-        auto addSampledRead(ImageIndex index, PipelineStage stage = PipelineStage::NONE) -> GraphicsPass&;
+        auto addSampledRead(ImageIndex index, PipelineStage stage) -> GraphicsPass&;
 
         template <typename... Args>
         auto pushConstants(Args&&... args) -> GraphicsPass& {
@@ -368,6 +388,18 @@ namespace canta::V2 {
 
         [[nodiscard]] auto getResourceIndices(std::span<const RenderPass> passes) const -> std::vector<std::pair<u32, u32>>;
 
+        struct Access {
+            i32 passIndex = -1;
+            ResourceAccess access;
+        };
+        [[nodiscard]] static auto getNextAccess(std::span<const RenderPass> passes, i32 startIndex, i32 resource) -> Access;
+        [[nodiscard]] static auto getCurrAccess(std::span<const RenderPass> passes, i32 startIndex, i32 resource) -> Access;
+        [[nodiscard]] static auto getPrevAccess(std::span<const RenderPass> passes, i32 startIndex, i32 resource) -> Access;
+
+
+        [[nodiscard]] auto buildDependencyLevels(std::span<const RenderPass> passes) const -> std::expected<std::vector<std::vector<u32>>, RenderGraphError>;
+
+        void buildBarriers(std::span<RenderPass> passes);
         void buildResources();
 
         Device* _device = nullptr;

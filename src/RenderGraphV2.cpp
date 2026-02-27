@@ -134,6 +134,25 @@ auto canta::V2::RenderPass::resolvePushConstants(canta::V2::RenderGraph& graph, 
     return data;
 }
 
+void canta::V2::RenderPass::mergeAccesses() {
+    for (i32 accessIndex = 0; accessIndex < _accesses.size(); accessIndex++) {
+        auto& access = _accesses[accessIndex];
+
+        for (i32 nextIndex = accessIndex + 1; nextIndex < _accesses.size(); nextIndex++) {
+            auto& nextAccess = _accesses[nextIndex];
+
+            if (access.index == nextAccess.index) {
+
+                access.access = access.access | nextAccess.access;
+                access.stage = std::min(access.stage, nextAccess.stage);
+
+                _accesses.erase(_accesses.begin() + nextIndex--);
+            }
+        }
+
+    }
+}
+
 canta::V2::PassBuilder::PassBuilder(RenderGraph *graph, const u32 index) : _graph(graph), _vertexIndex(index) {}
 
 auto canta::V2::PassBuilder::pass() -> RenderPass& {
@@ -692,21 +711,53 @@ void canta::V2::RenderGraph::setRoot(const ImageIndex index) {
     _rootEdge = index.id;
 }
 
+auto mapGraphErrorToRenderGraphError(const ende::graph::Error error) -> canta::V2::RenderGraphError {
+    switch (error) {
+        case ende::graph::Error::IS_CYCLICAL:
+            return canta::V2::RenderGraphError::IS_CYCLICAL;
+        default:
+            return canta::V2::RenderGraphError::IS_CYCLICAL;
+    }
+}
+
 auto canta::V2::RenderGraph::compile() -> std::expected<bool, RenderGraphError> {
     if (_rootEdge < 0) return std::unexpected(RenderGraphError::NO_ROOT);
 
-    const auto sorted = TRY(sort(getEdges()[_rootEdge]).transform_error([] (auto e) {
-        switch (e) {
-            case ende::graph::Error::IS_CYCLICAL:
-                return RenderGraphError::IS_CYCLICAL;
-            default:
-                return RenderGraphError::IS_CYCLICAL;
-        }
-    }));
+    auto sorted = TRY(sort(getEdges()[_rootEdge]).transform_error(mapGraphErrorToRenderGraphError));
 
     std::vector<std::pair<u32, u32>> indices = getResourceIndices(sorted);
 
+    const auto sortedSpan = std::span(sorted.data(), sorted.size());
+    const auto dependencyLevels = TRY(buildDependencyLevels(sortedSpan));
 
+    for (auto& level : dependencyLevels) {
+        for (auto& passIndex : level) {
+            auto& pass = sorted[passIndex];
+
+            switch (pass._type) {
+                case RenderPass::Type::COMPUTE:
+                    pass._queueType = level.size() > 1 && passIndex == level.back() ? QueueType::COMPUTE : QueueType::GRAPHICS;
+                    break;
+                case RenderPass::Type::GRAPHICS:
+                    pass._queueType = QueueType::GRAPHICS;
+                    break;
+                case RenderPass::Type::TRANSFER:
+                    pass._queueType = QueueType::TRANSFER;
+                    break;
+                case RenderPass::Type::HOST:
+                    pass._queueType = QueueType::NONE;
+                    break;
+                case RenderPass::Type::NONE:
+                    return std::unexpected(RenderGraphError::INVALID_PASS);
+                case RenderPass::Type::PRESENT:
+                    pass._queueType = QueueType::GRAPHICS;
+                    break;
+            }
+        }
+    }
+
+
+    buildBarriers(sorted);
     buildResources();
 
     return true;
@@ -739,6 +790,22 @@ auto canta::V2::RenderGraph::getResourceIndices(const std::span<const RenderPass
     return indices;
 }
 
+auto canta::V2::RenderGraph::buildDependencyLevels(std::span<const RenderPass> passes) const -> std::expected<std::vector<std::vector<u32>>, RenderGraphError> {
+    const auto distances = TRY(ende::graph::longestPath(passes, edgeCount()).transform_error(mapGraphErrorToRenderGraphError));
+    if (distances.empty()) return std::unexpected(RenderGraphError::INVALID_PASS_COUNT);
+
+    const auto maxDistance = std::max_element(distances.begin(), distances.end());
+
+    std::vector<std::vector<u32>> levels = {};
+    levels.resize(*maxDistance + 1);
+    for (u32 passIndex = 0; passIndex < passes.size(); passIndex++) {
+        auto& distance = distances[passIndex];
+        levels[distance].emplace_back(passIndex);
+    }
+
+    return levels;
+}
+
 auto compareBuffer(const canta::V2::BufferInfo& info, canta::BufferHandle handle) -> bool {
     return info.size == handle->size() &&
         info.type == handle->type() &&
@@ -753,6 +820,85 @@ auto compareImage(const canta::V2::ImageInfo& info, canta::ImageHandle handle) -
         info.format == handle->format() &&
         (info.usage & handle->usage()) == handle->usage();
 
+}
+
+auto canta::V2::RenderGraph::getNextAccess(const std::span<const RenderPass> passes, const i32 startIndex, const i32 resource) -> Access {
+    for (i32 passIndex = startIndex + 1; passIndex < passes.size(); passIndex++) {
+        const auto& pass = passes[passIndex];
+
+        for (auto& access : pass._accesses) {
+            if (access.index == resource)
+                return { passIndex, access };
+        }
+    }
+    return { -1, {} };
+}
+
+auto canta::V2::RenderGraph::getCurrAccess(const std::span<const RenderPass> passes, const i32 startIndex, const i32 resource) -> Access {
+    const auto& pass = passes[startIndex];
+
+    for (auto& access : pass._accesses) {
+        if (access.index == resource)
+            return { startIndex, access };
+    }
+    return { -1, {} };
+}
+
+auto canta::V2::RenderGraph::getPrevAccess(const std::span<const RenderPass> passes, const i32 startIndex, const i32 resource) -> Access {
+    for (i32 passIndex = startIndex - 1; passIndex > 0; passIndex--) {
+        const auto& pass = passes[passIndex];
+
+        for (auto& access : pass._accesses) {
+            if (access.index == resource)
+                return { passIndex, access };
+        }
+    }
+    return { -1, {
+        .index = resource,
+        .access = canta::Access::MEMORY_READ | canta::Access::MEMORY_WRITE,
+        .stage = PipelineStage::TOP,
+        .layout = ImageLayout::UNDEFINED,
+    }};
+}
+
+void canta::V2::RenderGraph::buildBarriers(std::span<RenderPass> passes) {
+    for (auto& pass : passes)
+        pass.mergeAccesses();
+
+    for (i32 passIndex = passes.size() - 1; passIndex > 0; passIndex--) {
+        auto& pass = passes[passIndex];
+
+        for (auto& access : pass._accesses) {
+            i32 resource = access.index;
+            // if (std::holds_alternative<BufferIndex>(input)) {
+                // resource = std::get<BufferIndex>(input).index;
+            // } else {
+                // resource = std::get<ImageIndex>(input).index;
+            // }
+
+            const auto currAccess = getCurrAccess(passes, passIndex, resource);
+            const auto prevAccess = getPrevAccess(passes, passIndex, resource);
+
+            // if (std::holds_alternative<BufferIndex>(input)) {
+            // if (access.layout == ImageLayout::UNDEFINED) {
+                auto barrier = RenderPass::Barrier {
+                    .index = resource,
+                    .passIndex = passIndex,
+                    .srcStage = prevAccess.access.stage,
+                    .dstStage = currAccess.access.stage,
+                    .srcAccess = prevAccess.access.access,
+                    .dstAccess = currAccess.access.access,
+                    .srcLayout = prevAccess.access.layout,
+                    .dstLayout = currAccess.access.layout,
+                };
+                pass._barriers.emplace_back(barrier);
+            // }
+
+
+        }
+
+
+    }
 }
 
 void canta::V2::RenderGraph::buildResources() {
