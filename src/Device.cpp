@@ -1488,7 +1488,7 @@ auto canta::Device::createImage(Image::CreateInfo info, ImageHandle oldHandle) -
     createInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
     createInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
     createInfo.usage = static_cast<VkImageUsageFlagBits>(info.usage);
-    createInfo.sharingMode = VK_SHARING_MODE_CONCURRENT;
+    createInfo.sharingMode = _enabledQueueFamilies.size() == 1 ? VK_SHARING_MODE_EXCLUSIVE : VK_SHARING_MODE_CONCURRENT;
     createInfo.queueFamilyIndexCount = _enabledQueueFamilies.size();
     createInfo.pQueueFamilyIndices = _enabledQueueFamilies.data();
     createInfo.samples = VK_SAMPLE_COUNT_1_BIT;
@@ -1677,7 +1677,7 @@ auto canta::Device::createBuffer(Buffer::CreateInfo info, BufferHandle oldHandle
 
     createInfo.size = info.size;
     createInfo.usage = static_cast<VkBufferUsageFlagBits>(info.usage);
-    createInfo.sharingMode = VK_SHARING_MODE_CONCURRENT;
+    createInfo.sharingMode = _enabledQueueFamilies.size() == 1 ? VK_SHARING_MODE_EXCLUSIVE : VK_SHARING_MODE_CONCURRENT;
     createInfo.queueFamilyIndexCount = _enabledQueueFamilies.size();
     createInfo.pQueueFamilyIndices = _enabledQueueFamilies.data();
 
