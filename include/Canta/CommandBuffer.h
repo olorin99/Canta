@@ -35,7 +35,7 @@ namespace canta {
     struct RenderingInfo {
         ende::math::Vec<2, u32> size = { 0, 0 };
         ende::math::Vec<2, i32> offset = { 0, 0 };
-        std::span<Attachment> colourAttachments = {};
+        std::span<const Attachment> colourAttachments = {};
         Attachment depthAttachment = {};
     };
 
@@ -182,7 +182,9 @@ namespace canta {
     private:
         friend CommandPool;
 
+    public:
         CommandBuffer() = default;
+    private:
 
         Device* _device = nullptr;
         VkCommandBuffer _buffer = VK_NULL_HANDLE;

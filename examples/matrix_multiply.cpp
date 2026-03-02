@@ -72,6 +72,86 @@ int main() {
     f32 rhsData[N * N] = {};
     genMatrix(N, rhsData);
 
+    const auto computePipeline = pipelineManager.getPipeline({
+        .compute = {
+            .module = pipelineManager.getShader({
+                .slang = R"(
+import canta;
+
+[shader("compute")]
+[numthreads(1, 1, 1)]
+void main(
+    uint3 threadId: SV_DispatchThreadID,
+    uniform uint* buffer,
+    uniform canta.Image2D<float4> image,
+) {
+    buffer[0] = 0;
+}
+)",
+                .stage = canta::ShaderStage::COMPUTE,
+                .name = "compute_0",
+            }).value()
+        }
+    }).value();
+
+    const auto computePipeline1 = pipelineManager.getPipeline({
+    .compute = {
+        .module = pipelineManager.getShader({
+            .slang = R"(
+import canta;
+
+[shader("compute")]
+[numthreads(1, 1, 1)]
+void main(
+    uint3 threadId: SV_DispatchThreadID,
+    uniform uint* buffer,
+) {
+    buffer[0] = 0;
+}
+)",
+            .stage = canta::ShaderStage::COMPUTE,
+            .name = "compute_0",
+        }).value()
+    }
+}).value();
+
+    const auto graphicsPipeline = pipelineManager.getPipeline({
+.vertex = {
+    .module = pipelineManager.getShader({
+        .slang = R"(
+import canta;
+
+[shader("vertex")]
+void main(
+    uint3 threadId: SV_DispatchThreadID,
+    uniform canta.Image2D<float4> image,
+) {
+    float4 value = image[uint2(0, 1)];
+}
+)",
+        .stage = canta::ShaderStage::VERTEX,
+        .name = "vertex_0",
+    }).value()
+},
+        .fragment = {
+            .module = pipelineManager.getShader({
+        .slang = R"(
+import canta;
+
+[shader("fragment")]
+float4 main(
+    uint3 threadId: SV_DispatchThreadID,
+    uniform canta.Image2D<float4> image,
+) {
+    return float4(1, 1, 1, 1);
+}
+)",
+        .stage = canta::ShaderStage::FRAGMENT,
+        .name = "fragment_0",
+    }).value()
+        }
+}).value();
+
     auto graph = canta::V2::RenderGraph::create({
         .device = device.get(),
     });
@@ -81,34 +161,34 @@ int main() {
     const auto image = graph.addImage({ .width = 512, .height = 512, .name = "image_0" });
     const auto swapImage = graph.addImage({ .width = 512, .height = 512, .name = "swap_image" });
 
-    auto computePass = graph.compute("pass_0")
+    auto computePass = graph.compute("pass_0", computePipeline)
         .addStorageBufferWrite(buffer)
         .addStorageImageWrite(image)
         .pushConstants(buffer, image)
-        .dispatchThreads(64, 64, 1);
+        .dispatchThreads(1, 1, 1);
 
     const auto outputBuffer = TRY_MAIN(computePass.output<canta::V2::BufferIndex>());
     const auto outputImage = TRY_MAIN(computePass.output<canta::V2::ImageIndex>(1));
 
 
     auto geometryPass = [&] (canta::V2::RenderGraph& g, int index) -> std::expected<canta::V2::BufferIndex, ende::graph::Error> {
-        auto p1 = g.compute(std::format("compute_pass_1_{}", index))
+        auto p1 = g.compute(std::format("compute_pass_1_{}", index), computePipeline1)
             .addStorageBufferRead(outputBuffer)
             .addStorageBufferWrite(outputBuffer)
             .pushConstants(outputBuffer)
-            .dispatchThreads(64, 64, 1);
+            .dispatchThreads(1, 1, 1);
 
-        auto p2 = g.compute(std::format("compute_pass_2_{}", index))
+        auto p2 = g.compute(std::format("compute_pass_2_{}", index), computePipeline1)
             .addStorageBufferRead(TRY(p1.output<canta::V2::BufferIndex>()))
             .addStorageBufferWrite(outputBuffer)
             .pushConstants(outputBuffer)
-            .dispatchThreads(64, 64, 1);
+            .dispatchThreads(1, 1, 1);
 
-        auto p3 = g.compute(std::format("compute_pass_3_{}", index))
+        auto p3 = g.compute(std::format("compute_pass_3_{}", index), computePipeline1)
             .addStorageBufferRead(TRY(p2.output<canta::V2::BufferIndex>()))
             .addStorageBufferWrite(outputBuffer)
             .pushConstants(outputBuffer)
-            .dispatchThreads(64, 64, 1);
+            .dispatchThreads(1, 1, 1);
 
         return p3.output<canta::V2::BufferIndex>();
     };
@@ -116,13 +196,15 @@ int main() {
     const auto b = TRY_MAIN(geometryPass(graph, 0));
     const auto c = TRY_MAIN(geometryPass(graph, 1));
 
-    auto computePass2 = graph.compute("pass_1");
+    auto computePass2 = graph.compute("pass_1", computePipeline);
     computePass2.addStorageBufferRead(b);
     computePass2.addStorageBufferRead(c);
     computePass2.addStorageImageRead(outputImage);
     computePass2.addStorageImageWrite(outputImage);
+    computePass2.pushConstants(b, outputImage);
+    computePass2.dispatchThreads();
 
-    auto graphicsPass = graph.graphics("pass_2")
+    auto graphicsPass = graph.graphics("pass_2", graphicsPipeline)
         .addSampledRead(TRY_MAIN(computePass2.output<canta::V2::ImageIndex>()), canta::PipelineStage::FRAGMENT_SHADER)
         .addColourWrite(swapImage)
         .pushConstants(outputImage)
@@ -146,6 +228,8 @@ int main() {
     graph.setRoot(rootEdge);
     TRY_MAIN(graph.compile());
     // TRY_MAIN(graph.compile());
+
+    TRY_MAIN(graph.run());
 
     // auto basePass = computePass.clone();
 

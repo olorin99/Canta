@@ -6,6 +6,7 @@
 #include <expected>
 #include <Canta/Device.h>
 #include <Canta/RenderGraphV2.h>
+#include <Ende/thread/ThreadPool.h>
 
 namespace canta::V2 {
 
@@ -15,6 +16,8 @@ namespace canta::V2 {
         NO_ROOT,
         INVALID_PASS,
         INVALID_PASS_COUNT,
+        INVALID_RESOURCE,
+        PASS_RUN,
     };
 
     struct ImageIndex : ende::graph::Edge {
@@ -88,7 +91,12 @@ namespace canta::V2 {
             return *this;
         }
 
-        auto setCallback(const std::function<void(CommandBuffer&, RenderGraph&, const PushData&)>& callback) -> RenderPass&;
+        auto setPipeline(PipelineHandle pipeline) -> RenderPass&;
+
+        // auto setCallback(const std::function<void(CommandBuffer&, RenderGraph&, const PushData&)>& callback) -> RenderPass&;
+        auto setCallback(const std::function<std::expected<bool, RenderGraphError>(CommandBuffer&, RenderGraph&, const PushData&)>& callback) -> RenderPass&;
+
+        auto run(RenderGraph& graph, CommandBuffer& commands) const -> std::expected<bool, RenderGraphError>;
 
     protected:
         friend RenderGraph;
@@ -106,15 +114,27 @@ namespace canta::V2 {
             Edge value;
             i32 offset = 0;
         };
-        static auto resolvePushConstants(RenderGraph& graph, PushData data, std::span<DeferredPushConstant> deferredConstants) -> PushData;
+        static auto resolvePushConstants(RenderGraph& graph, PushData data, std::span<const DeferredPushConstant> deferredConstants) -> std::expected<PushData, RenderGraphError>;
 
         void mergeAccesses();
 
+        PipelineHandle _pipeline = {};
+
         std::vector<DeferredPushConstant> _deferredPushConstants;
         PushData _pushData = {};
-        u32 _pushSize = 0;
-        std::function<void(CommandBuffer&, RenderGraph&, const PushData&)> _callback = {};
+        std::function<std::expected<bool, RenderGraphError>(CommandBuffer&, RenderGraph&, const PushData&)> _callback = {};
         std::vector<ResourceAccess> _accesses = {};
+
+        struct Attachment {
+            i32 index = -1;
+            ImageLayout layout = ImageLayout::UNDEFINED;
+            ClearValue clearColor = std::to_array({ 0.f, 0.f, 0.f, 1.f });
+        };
+        std::vector<Attachment> _colourAttachments = {};
+        Attachment _depthAttachment = {};
+
+        std::vector<canta::Attachment> _renderingColourAttachments = {};
+        canta::Attachment _renderingDepthAttachment = {};
 
         struct Barrier {
             i32 index = 0;
@@ -129,6 +149,7 @@ namespace canta::V2 {
             QueueType dstQueue = QueueType::NONE;
         };
         std::vector<Barrier> _barriers = {};
+        std::vector<std::pair<i32, QueueType>> _queueWaits = {};
 
         std::string _name = {};
 
@@ -140,6 +161,8 @@ namespace canta::V2 {
         PassBuilder(RenderGraph* graph, u32 index);
 
         auto pass() -> RenderPass&;
+
+        auto pipeline(const PipelineHandle &pipeline) -> PassBuilder&;
 
         auto read(BufferIndex index, Access access, PipelineStage stage) -> bool;
         auto read(ImageIndex index, Access access, PipelineStage stage, ImageLayout layout) -> bool;
@@ -345,6 +368,7 @@ namespace canta::V2 {
 
         struct CreateInfo {
             Device* device;
+            std::shared_ptr<ende::thread::ThreadPool> threadPool = nullptr;
         };
 
         static auto create(CreateInfo info) -> RenderGraph;
@@ -357,16 +381,16 @@ namespace canta::V2 {
         auto alias(BufferIndex index) -> BufferIndex;
         auto alias(ImageIndex index) -> ImageIndex;
 
-        auto getBuffer(BufferIndex index) -> BufferHandle;
+        auto getBuffer(BufferIndex index) const -> std::expected<BufferHandle, RenderGraphError>;
 
-        auto getImage(ImageIndex index) -> ImageHandle;
+        auto getImage(ImageIndex index) const -> std::expected<ImageHandle, RenderGraphError>;
 
         // pass management
-        auto compute(std::string_view name) -> ComputePass;
+        auto compute(std::string_view name, const PipelineHandle &pipeline = {}) -> ComputePass;
 
-        auto graphics(std::string_view name) -> GraphicsPass;
+        auto graphics(std::string_view name, const PipelineHandle &pipeline = {}) -> GraphicsPass;
 
-        auto transfer(std::string_view name) -> TransferPass;
+        auto transfer(std::string_view name, const PipelineHandle &pipeline = {}) -> TransferPass;
 
         auto host(std::string_view name) -> HostPass;
 
@@ -379,6 +403,8 @@ namespace canta::V2 {
         void setRoot(ImageIndex index);
 
         auto compile() -> std::expected<bool, RenderGraphError>;
+
+        auto run() -> std::expected<bool, RenderGraphError>;
 
         void reset();
 
@@ -399,10 +425,14 @@ namespace canta::V2 {
 
         [[nodiscard]] auto buildDependencyLevels(std::span<const RenderPass> passes) const -> std::expected<std::vector<std::vector<u32>>, RenderGraphError>;
 
-        void buildBarriers(std::span<RenderPass> passes);
+        void buildBarriers();
         void buildResources();
+        auto buildRenderAttachments() -> std::expected<bool, RenderGraphError> ;
 
         Device* _device = nullptr;
+        std::shared_ptr<ende::thread::ThreadPool> _threadPool = nullptr;
+
+        std::vector<RenderPass> _orderedPasses = {};
 
         i32 _rootEdge = -1;
         i32 _rootPass = -1;
@@ -410,6 +440,10 @@ namespace canta::V2 {
         // VmaPool _resourcePool = {};
         // u32 _poolSize = 0;
         std::vector<std::variant<BufferInfo, ImageInfo>> _resources = {};
+
+        // 0 = graphics, 1 = compute, 2 = transfer
+        std::array<std::array<CommandPool, 3>, FRAMES_IN_FLIGHT> _commandPools = {};
+        SemaphoreHandle _cpuTimeline = {};
 
     };
 

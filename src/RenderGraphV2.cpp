@@ -88,7 +88,7 @@ void unpack(canta::V2::RenderPass::PushData &dst, i32 &i, const canta::BufferHan
         dst.data[i + j] = data[j];
     }
     i += sizeof(addr);
-    dst.size += sizeof(addr);
+    // dst.size += sizeof(addr);
 }
 
 void unpack(canta::V2::RenderPass::PushData &dst, i32 &i, const canta::ImageHandle &handle) {
@@ -98,12 +98,37 @@ void unpack(canta::V2::RenderPass::PushData &dst, i32 &i, const canta::ImageHand
         dst.data[i + j] = data[j];
     }
     i += sizeof(id);
-    dst.size += sizeof(id);
+    // dst.size += sizeof(id);
 }
 
-auto canta::V2::RenderPass::setCallback(const std::function<void(CommandBuffer&, RenderGraph&, const PushData&)> &callback) -> RenderPass & {
+auto canta::V2::RenderPass::setPipeline(PipelineHandle pipeline) -> RenderPass & {
+    _pipeline = pipeline;
+    return *this;
+}
+
+// auto canta::V2::RenderPass::setCallback(const std::function<void(CommandBuffer&, RenderGraph&, const PushData&)> &callback) -> RenderPass & {
+//     _callback = [callback] (CommandBuffer& commands, RenderGraph& graph, const PushData& data) -> std::expected<bool, RenderGraphError> {
+//         callback(commands, graph, data);
+//         return true;
+//     };
+//     return *this;
+// }
+
+auto canta::V2::RenderPass::setCallback(const std::function<std::expected<bool, RenderGraphError>(CommandBuffer&, RenderGraph&, const PushData&)> &callback) -> RenderPass & {
     _callback = callback;
     return *this;
+}
+
+auto canta::V2::RenderPass::run(RenderGraph &graph, CommandBuffer &commands) const -> std::expected<bool, RenderGraphError> {
+    const auto pushData = TRY(resolvePushConstants(graph, _pushData, _deferredPushConstants));
+    if (_pipeline)
+        commands.bindPipeline(_pipeline);
+    try {
+        TRY(_callback(commands, graph, pushData));
+    } catch (std::exception& e) {
+        return std::unexpected(RenderGraphError::PASS_RUN);
+    }
+    return true;
 }
 
 auto canta::V2::RenderPass::inputResourceIndex(const u32 i) const -> u32 {
@@ -124,12 +149,13 @@ auto canta::V2::RenderPass::outputResourceIndex(u32 i) const -> u32 {
     }
 }
 
-auto canta::V2::RenderPass::resolvePushConstants(canta::V2::RenderGraph& graph, PushData data, const std::span<DeferredPushConstant> deferredConstants) -> PushData {
+auto canta::V2::RenderPass::resolvePushConstants(RenderGraph& graph, PushData data, const std::span<const DeferredPushConstant> deferredConstants) -> std::expected<PushData, RenderGraphError> {
     for (auto& deferredConstant : deferredConstants) {
+        auto offset = deferredConstant.offset;
         if (deferredConstant.type == 0)
-            ::unpack(data, deferredConstant.offset, graph.getBuffer(std::get<BufferIndex>(deferredConstant.value)));
+            ::unpack(data, offset, TRY(graph.getBuffer(std::get<BufferIndex>(deferredConstant.value))));
         else
-            ::unpack(data, deferredConstant.offset, graph.getImage(std::get<ImageIndex>(deferredConstant.value)));
+            ::unpack(data, offset, TRY(graph.getImage(std::get<ImageIndex>(deferredConstant.value))));
     }
     return data;
 }
@@ -157,6 +183,11 @@ canta::V2::PassBuilder::PassBuilder(RenderGraph *graph, const u32 index) : _grap
 
 auto canta::V2::PassBuilder::pass() -> RenderPass& {
     return _graph->getVertices()[_vertexIndex];
+}
+
+auto canta::V2::PassBuilder::pipeline(const PipelineHandle &pipeline) -> PassBuilder & {
+    pass().setPipeline(pipeline);
+    return *this;
 }
 
 auto canta::V2::PassBuilder::read(const BufferIndex index, const Access access, const PipelineStage stage) -> bool {
@@ -215,16 +246,30 @@ auto canta::V2::PassBuilder::addColourRead(const ImageIndex index) -> PassBuilde
 
 auto canta::V2::PassBuilder::addColourWrite(const ImageIndex index, const ClearValue& clearColour) -> PassBuilder& {
     write(index, Access::COLOUR_READ | Access::COLOUR_WRITE, PipelineStage::COLOUR_OUTPUT, ImageLayout::COLOUR_ATTACHMENT);
+    pass()._colourAttachments.push_back({
+        .index = index.index,
+        .layout = ImageLayout::COLOUR_ATTACHMENT,
+        .clearColor = clearColour,
+    });
     return *this;
 }
 
 auto canta::V2::PassBuilder::addDepthRead(const ImageIndex index) -> PassBuilder& {
     read(index, Access::DEPTH_STENCIL_READ, PipelineStage::EARLY_FRAGMENT_TEST | PipelineStage::LATE_FRAGMENT_TEST | PipelineStage::FRAGMENT_SHADER, ImageLayout::DEPTH_STENCIL_ATTACHMENT);
+    pass()._depthAttachment = {
+        .index = index.index,
+        .layout = ImageLayout::DEPTH_STENCIL_ATTACHMENT,
+    };
     return *this;
 }
 
 auto canta::V2::PassBuilder::addDepthWrite(const ImageIndex index, const ClearValue& clearColour) -> PassBuilder& {
     write(index, Access::DEPTH_STENCIL_READ | Access::DEPTH_STENCIL_WRITE, PipelineStage::EARLY_FRAGMENT_TEST | PipelineStage::LATE_FRAGMENT_TEST | PipelineStage::FRAGMENT_SHADER, ImageLayout::DEPTH_STENCIL_ATTACHMENT);
+    pass()._depthAttachment = {
+        .index = index.index,
+        .layout = ImageLayout::DEPTH_STENCIL_ATTACHMENT,
+        .clearColor = clearColour,
+    };
     return *this;
 }
 
@@ -339,6 +384,7 @@ auto canta::V2::ComputePass::dispatchThreads(u32 x, u32 y, u32 z) -> ComputePass
     pass().setCallback([x, y, z] (auto& cmd, auto& graph, const RenderPass::PushData& push) {
         cmd.pushConstants(ShaderStage::COMPUTE, { push.data.data(), push.size }, 0);
         cmd.dispatchThreads(x, y, z);
+        return true;
     });
     return *this;
 }
@@ -347,6 +393,7 @@ auto canta::V2::ComputePass::dispatchWorkgroups(u32 x, u32 y, u32 z) -> ComputeP
     pass().setCallback([x, y, z] (auto& cmd, auto& graph, const RenderPass::PushData& push) {
         cmd.pushConstants(ShaderStage::COMPUTE, { push.data.data(), push.size }, 0);
         cmd.dispatchWorkgroups(x, y, z);
+        return true;
     });
     return *this;
 }
@@ -355,6 +402,7 @@ auto canta::V2::ComputePass::dispatchIndirect(BufferHandle commandBuffer, u32 of
     pass().setCallback([commandBuffer, offset] (auto& cmd, auto& graph, const RenderPass::PushData& push) {
         cmd.pushConstants(ShaderStage::COMPUTE, { push.data.data(), push.size }, 0);
         cmd.dispatchIndirect(commandBuffer, offset);
+        return true;
     });
     return *this;
 }
@@ -411,6 +459,7 @@ auto canta::V2::GraphicsPass::draw(u32 count, u32 instanceCount, u32 firstVertex
     pass().setCallback([count, instanceCount, firstVertex, firstIndex, firstInstance, indexed] (auto& cmd, auto& graph, const RenderPass::PushData& push) {
         cmd.pushConstants(ShaderStage::VERTEX | ShaderStage::FRAGMENT, { push.data.data(), push.size }, 0);
         cmd.draw(count, instanceCount, firstVertex, firstIndex, firstInstance, indexed);
+        return true;
     });
     return *this;
 }
@@ -419,6 +468,7 @@ auto canta::V2::GraphicsPass::drawIndirect(BufferHandle commands, u32 offset, u3
     pass().setCallback([commands, offset, drawCount, indexed, stride] (auto& cmd, auto& graph, const RenderPass::PushData& push) {
         cmd.pushConstants(ShaderStage::VERTEX | ShaderStage::FRAGMENT, { push.data.data(), push.size }, 0);
         cmd.drawIndirect(commands, offset, drawCount, indexed, stride);
+        return true;
     });
     return *this;
 }
@@ -427,6 +477,7 @@ auto canta::V2::GraphicsPass::drawIndirectCount(BufferHandle commands, u32 offse
     pass().setCallback([commands, offset, countBuffer, countOffset, indexed, stride] (auto& cmd, auto& graph, const RenderPass::PushData& push) {
         cmd.pushConstants(ShaderStage::VERTEX | ShaderStage::FRAGMENT, { push.data.data(), push.size }, 0);
         cmd.drawIndirectCount(commands, offset, countBuffer, countOffset, indexed, stride);
+        return true;
     });
     return *this;
 }
@@ -435,6 +486,7 @@ auto canta::V2::GraphicsPass::drawMeshTasksThreads(u32 x, u32 y, u32 z) -> Graph
     pass().setCallback([x, y, z] (auto& cmd, auto& graph, const RenderPass::PushData& push) {
         cmd.pushConstants(ShaderStage::MESH | ShaderStage::FRAGMENT, { push.data.data(), push.size }, 0);
         cmd.drawMeshTasksThreads(x, y, z);
+        return true;
     });
     return *this;
 }
@@ -443,6 +495,7 @@ auto canta::V2::GraphicsPass::drawMeshTasksWorkgroups(u32 x, u32 y, u32 z) -> Gr
     pass().setCallback([x, y, z] (auto& cmd, auto& graph, const RenderPass::PushData& push) {
         cmd.pushConstants(ShaderStage::MESH | ShaderStage::FRAGMENT, { push.data.data(), push.size }, 0);
         cmd.drawMeshTasksWorkgroups(x, y, z);
+        return true;
     });
     return *this;
 }
@@ -451,6 +504,7 @@ auto canta::V2::GraphicsPass::drawMeshTasksIndirect(BufferHandle commands, u32 o
     pass().setCallback([commands, offset, drawCount, stride] (auto& cmd, auto& graph, const RenderPass::PushData& push) {
         cmd.pushConstants(ShaderStage::MESH | ShaderStage::FRAGMENT, { push.data.data(), push.size }, 0);
         cmd.drawMeshTasksIndirect(commands, offset, drawCount, stride);
+        return true;
     });
     return *this;
 }
@@ -459,6 +513,7 @@ auto canta::V2::GraphicsPass::drawMeshTasksIndirectCount(BufferHandle commands, 
     pass().setCallback([commands, offset, countBuffer, countOffset, stride] (auto& cmd, auto& graph, const RenderPass::PushData& push) {
         cmd.pushConstants(ShaderStage::MESH | ShaderStage::FRAGMENT, { push.data.data(), push.size }, 0);
         cmd.drawMeshTasksIndirectCount(commands, offset, countBuffer, countOffset, stride);
+        return true;
     });
     return *this;
 }
@@ -488,14 +543,15 @@ auto canta::V2::TransferPass::addTransferWrite(const ImageIndex index) -> Transf
 auto canta::V2::TransferPass::blit(const ImageIndex src, const ImageIndex dst, const Filter filter) -> TransferPass& {
     addTransferRead(src);
     addTransferWrite(dst);
-    pass().setCallback([src, dst, filter] (auto& cmd, auto& graph, const auto& push) {
+    pass().setCallback([src, dst, filter] (auto& cmd, auto& graph, const auto& push) -> std::expected<bool, RenderGraphError> {
         cmd.blit({
-            .src = graph.getImage(src),
-            .dst = graph.getImage(dst),
+            .src = TRY(graph.getImage(src)),
+            .dst = TRY(graph.getImage(dst)),
             .srcLayout = ImageLayout::TRANSFER_SRC,
             .dstLayout = ImageLayout::TRANSFER_DST,
             .filter = filter,
         });
+        return true;
     });
     return *this;
 }
@@ -503,14 +559,15 @@ auto canta::V2::TransferPass::blit(const ImageIndex src, const ImageIndex dst, c
 auto canta::V2::TransferPass::copy(BufferIndex src, BufferIndex dst, u32 srcOffset, u32 dstOffset, u32 size) -> TransferPass& {
     addTransferRead(src);
     addTransferWrite(dst);
-    pass().setCallback([src, dst, srcOffset, dstOffset, size] (auto& cmd, auto& graph, const auto& push) {
+    pass().setCallback([src, dst, srcOffset, dstOffset, size] (auto& cmd, auto& graph, const auto& push) -> std::expected<bool, RenderGraphError> {
         cmd.copyBuffer({
-            .src = graph.getBuffer(src),
-            .dst = graph.getBuffer(dst),
+            .src = TRY(graph.getBuffer(src)),
+            .dst = TRY(graph.getBuffer(dst)),
             .srcOffset = srcOffset,
             .dstOffset = dstOffset,
             .size = size,
         });
+        return true;
     });
     return *this;
 }
@@ -518,10 +575,10 @@ auto canta::V2::TransferPass::copy(BufferIndex src, BufferIndex dst, u32 srcOffs
 auto canta::V2::TransferPass::copy(BufferIndex src, ImageIndex dst, ImageCopy info) -> TransferPass& {
     addTransferRead(src);
     addTransferWrite(dst);
-    pass().setCallback([src, dst, info] (auto& cmd, auto& graph, const auto& push) {
+    pass().setCallback([src, dst, info] (auto& cmd, auto& graph, const auto& push) -> std::expected<bool, RenderGraphError> {
         cmd.copyBufferToImage({
-            .buffer = graph.getBuffer(src),
-            .image = graph.getImage(dst),
+            .buffer = TRY(graph.getBuffer(src)),
+            .image = TRY(graph.getImage(dst)),
             .dstLayout = info.layout,
             .dstDimensions = info.dimensions,
             .dstOffsets = info.offsets,
@@ -531,6 +588,7 @@ auto canta::V2::TransferPass::copy(BufferIndex src, ImageIndex dst, ImageCopy in
             .size = info.size,
             .srcOffset = info.offset,
         });
+        return true;
     });
     return *this;
 }
@@ -538,10 +596,10 @@ auto canta::V2::TransferPass::copy(BufferIndex src, ImageIndex dst, ImageCopy in
 auto canta::V2::TransferPass::copy(ImageIndex src, BufferIndex dst, ImageCopy info) -> TransferPass& {
     addTransferRead(src);
     addTransferWrite(dst);
-    pass().setCallback([src, dst, info] (auto& cmd, auto& graph, const auto& push) {
+    pass().setCallback([src, dst, info] (auto& cmd, auto& graph, const auto& push) -> std::expected<bool, RenderGraphError> {
         cmd.copyImageToBuffer({
-            .buffer = graph.getBuffer(dst),
-            .image = graph.getImage(src),
+            .buffer = TRY(graph.getBuffer(dst)),
+            .image = TRY(graph.getImage(src)),
             .dstLayout = info.layout,
             .dstDimensions = info.dimensions,
             .dstOffsets = info.offsets,
@@ -551,22 +609,25 @@ auto canta::V2::TransferPass::copy(ImageIndex src, BufferIndex dst, ImageCopy in
             .size = info.size,
             .srcOffset = info.offset,
         });
+        return true;
     });
     return *this;
 }
 
 auto canta::V2::TransferPass::clear(const ImageIndex index, const ClearValue &value) -> TransferPass& {
     addTransferWrite(index);
-    pass().setCallback([value, index] (auto& cmd, auto& graph, const auto& push) {
-        cmd.clearImage(graph.getImage(index), ImageLayout::TRANSFER_DST, value);
+    pass().setCallback([value, index] (auto& cmd, auto& graph, const auto& push) -> std::expected<bool, RenderGraphError> {
+        cmd.clearImage(TRY(graph.getImage(index)), ImageLayout::TRANSFER_DST, value);
+        return true;
     });
     return *this;
 }
 
 auto canta::V2::TransferPass::clear(BufferIndex index, u32 value, u32 offset, u32 size) -> TransferPass& {
     addTransferWrite(index);
-    pass().setCallback([index, value, offset, size] (auto& cmd, auto& graph, const auto& push) {
-        cmd.clearBuffer(graph.getBuffer(index), value, offset, size);
+    pass().setCallback([index, value, offset, size] (auto& cmd, auto& graph, const auto& push) -> std::expected<bool, RenderGraphError> {
+        cmd.clearBuffer(TRY(graph.getBuffer(index)), value, offset, size);
+        return true;
     });
     return *this;
 }
@@ -594,8 +655,9 @@ auto canta::V2::HostPass::write(const ImageIndex index) -> HostPass & {
 }
 
 auto canta::V2::HostPass::setCallback(const std::function<void(RenderGraph &)> &callback) -> HostPass & {
-    pass().setCallback([callback] (auto& cmd, auto& graph, const RenderPass::PushData& push) {
+    pass().setCallback([callback] (auto& cmd, auto& graph, const RenderPass::PushData& push) -> std::expected<bool, RenderGraphError> {
         callback(graph);
+        return true;
     });
     return *this;
 }
@@ -606,8 +668,9 @@ canta::V2::PresentPass::PresentPass(RenderGraph *graph, const u32 index) : PassB
 auto canta::V2::PresentPass::present(Swapchain* swapchain, const ImageIndex index) -> PresentPass& {
     read(index, Access::MEMORY_READ, PipelineStage::BOTTOM, ImageLayout::PRESENT);
     write(index, Access::MEMORY_READ | Access::MEMORY_WRITE, PipelineStage::BOTTOM, ImageLayout::PRESENT);
-    pass().setCallback([swapchain] (auto& cmd, auto& graph, const auto& push) {
+    pass().setCallback([swapchain] (auto& cmd, auto& graph, const auto& push) -> std::expected<bool, RenderGraphError> {
         swapchain->present();
+        return true;
     });
     return *this;
 }
@@ -616,6 +679,27 @@ auto canta::V2::PresentPass::present(Swapchain* swapchain, const ImageIndex inde
 auto canta::V2::RenderGraph::create(CreateInfo info) -> RenderGraph {
     auto graph = RenderGraph();
     graph._device = info.device;
+    graph._threadPool = info.threadPool;
+    if (!graph._threadPool)
+        graph._threadPool = std::make_shared<ende::thread::ThreadPool>();
+
+    for (auto& poolGroup : graph._commandPools) {
+        poolGroup[0] = *info.device->createCommandPool({
+            .queueType = QueueType::GRAPHICS,
+        });
+        poolGroup[1] = *info.device->createCommandPool({
+            .queueType = QueueType::COMPUTE,
+        });
+        poolGroup[2] = *info.device->createCommandPool({
+            .queueType = QueueType::TRANSFER,
+        });
+    }
+
+    graph._cpuTimeline = info.device->createSemaphore({
+        .initialValue = 0,
+        .name = "cpu_timeline"
+    }).value();
+
     return graph;
 }
 
@@ -653,35 +737,58 @@ auto canta::V2::RenderGraph::alias(ImageIndex index) -> ImageIndex {
     return std::get<ImageIndex>(edge);
 }
 
-auto canta::V2::RenderGraph::getBuffer(BufferIndex index) -> BufferHandle {
-    return {}; //TODO: actually get buffer not just stub
+auto canta::V2::RenderGraph::getBuffer(const BufferIndex index) const -> std::expected<BufferHandle, RenderGraphError> {
+    if (index.index >= _resources.size())
+        return std::unexpected(RenderGraphError::INVALID_RESOURCE);
+
+    if (const auto resource = _resources[index.index]; std::holds_alternative<BufferInfo>(resource)) {
+        const auto buffer = std::get<BufferInfo>(resource).buffer;
+        if (!buffer)
+            return std::unexpected(RenderGraphError::INVALID_RESOURCE);
+        return buffer;
+    }
+
+    return std::unexpected(RenderGraphError::INVALID_RESOURCE);
 }
 
-auto canta::V2::RenderGraph::getImage(ImageIndex index) -> ImageHandle {
-    return {}; //TODO: actually get image not just stub
+auto canta::V2::RenderGraph::getImage(const ImageIndex index) const -> std::expected<ImageHandle, RenderGraphError> {
+    if (index.index >= _resources.size())
+        return std::unexpected(RenderGraphError::INVALID_RESOURCE);
+
+    if (const auto resource = _resources[index.index]; std::holds_alternative<ImageInfo>(resource)) {
+        const auto image = std::get<ImageInfo>(resource).image;
+        if (!image)
+            return std::unexpected(RenderGraphError::INVALID_RESOURCE);
+        return image;
+    }
+
+    return std::unexpected(RenderGraphError::INVALID_RESOURCE);
 }
 
 
-auto canta::V2::RenderGraph::compute(const std::string_view name) -> ComputePass {
+auto canta::V2::RenderGraph::compute(const std::string_view name, const PipelineHandle &pipeline) -> ComputePass {
     auto& pass = addVertex();
     pass._type = RenderPass::Type::COMPUTE;
     pass._name = name;
+    pass.setPipeline(pipeline);
     const auto builder = ComputePass(this, vertexCount() - 1);
     return builder;
 }
 
-auto canta::V2::RenderGraph::graphics(const std::string_view name) -> GraphicsPass {
+auto canta::V2::RenderGraph::graphics(const std::string_view name, const PipelineHandle &pipeline) -> GraphicsPass {
     auto& pass = addVertex();
     pass._type = RenderPass::Type::GRAPHICS;
     pass._name = name;
+    pass.setPipeline(pipeline);
     const auto builder = GraphicsPass(this, vertexCount() - 1);
     return builder;
 }
 
-auto canta::V2::RenderGraph::transfer(const std::string_view name) -> TransferPass {
+auto canta::V2::RenderGraph::transfer(const std::string_view name, const PipelineHandle &pipeline) -> TransferPass {
     auto& pass = addVertex();
     pass._type = RenderPass::Type::TRANSFER;
     pass._name = name;
+    pass.setPipeline(pipeline);
     const auto builder = TransferPass(this, vertexCount() - 1);
     return builder;
 }
@@ -757,9 +864,183 @@ auto canta::V2::RenderGraph::compile() -> std::expected<bool, RenderGraphError> 
     }
 
 
-    buildBarriers(sorted);
-    buildResources();
+    _orderedPasses = sorted;
 
+    buildBarriers();
+    buildResources();
+    buildRenderAttachments();
+
+    return true;
+}
+
+inline auto getQueueIndex(const canta::QueueType queue) -> u32 {
+    switch (queue) {
+        case canta::QueueType::NONE:
+            return 3;
+        case canta::QueueType::GRAPHICS:
+            return 0;
+        case canta::QueueType::COMPUTE:
+            return 1;
+        case canta::QueueType::TRANSFER:
+            return 2;
+        case canta::QueueType::SPARSE_BINDING:
+            break;
+        case canta::QueueType::PRESENT:
+            break;
+    }
+    return 0;
+}
+
+auto canta::V2::RenderGraph::run() -> std::expected<bool, RenderGraphError> {
+    // for each sorted pass
+    // if current queue different than last end current command list and start a new one.
+    // new command list waits on timeline from previous queue.
+    // host passes get added to the threadpool.
+
+    for (auto& pool : _commandPools[_device->flyingIndex()])
+        pool.reset();
+
+    CommandBuffer* currentCommandBuffer = nullptr;
+    QueueType currentQueue = QueueType::NONE;
+
+    struct SubmissionInfo {
+        i32 commands;
+        std::size_t queueIndex;
+        std::size_t waitIndex;
+        i32 hostIndex;
+    };
+
+    std::vector<SubmissionInfo> submissions = {};
+    std::vector<std::vector<QueueType>> waits = {};
+    std::vector<u32> hostPasses = {};
+
+    std::array<std::vector<CommandBuffer*>, 4> _queues = {};
+
+    for (u32 passIndex = 0; passIndex < _orderedPasses.size(); passIndex++) {
+        const auto& pass = _orderedPasses[passIndex];
+
+        if (pass._type == RenderPass::Type::HOST) {
+            submissions.push_back({
+                .commands = -1,
+                .queueIndex = getQueueIndex(currentQueue),
+                .waitIndex = waits.size(),
+                .hostIndex = static_cast<i32>(hostPasses.size()),
+            });
+            hostPasses.push_back(passIndex);
+            waits.emplace_back();
+            for (auto& wait : pass._queueWaits) {
+                waits.back().push_back(wait.second);
+            }
+            continue;
+        }
+
+        if (!currentCommandBuffer) {
+            currentQueue = pass._queueType;
+            const auto queueIndex = getQueueIndex(currentQueue);
+            currentCommandBuffer = &_commandPools[_device->flyingIndex()][queueIndex].getBuffer();
+
+            currentCommandBuffer->begin();
+        }
+
+        if (currentQueue != pass._queueType) {
+            currentCommandBuffer->end();
+
+            submissions.push_back({
+                .commands = static_cast<i32>(_commandPools[_device->flyingIndex()][getQueueIndex(currentQueue)].index() - 1),
+                .queueIndex = getQueueIndex(currentQueue),
+                .waitIndex = waits.size(),
+                .hostIndex = -1,
+            });
+            waits.emplace_back();
+            for (auto& wait : pass._queueWaits) {
+                waits.back().push_back(wait.second);
+            }
+
+            currentQueue = pass._queueType;
+            const auto queueIndex = getQueueIndex(currentQueue);
+            currentCommandBuffer = &_commandPools[_device->flyingIndex()][queueIndex].getBuffer();
+
+            currentCommandBuffer->begin();
+        }
+
+        if (pass._type == RenderPass::Type::GRAPHICS) {
+            auto beginInfo = RenderingInfo{};
+
+            u32 width = 0;
+            u32 height = 0;
+
+            if (!pass._colourAttachments.empty()) {
+                width = pass._renderingColourAttachments.front().image->width();
+                height = pass._renderingColourAttachments.front().image->height();
+            } else if (pass._depthAttachment.index > -1) {
+                width = pass._renderingDepthAttachment.image->width();
+                height = pass._renderingDepthAttachment.image->height();
+            }
+
+            beginInfo.size = { width, height };
+
+            beginInfo.colourAttachments = pass._renderingColourAttachments;
+            if (pass._depthAttachment.index >= 0) {
+                beginInfo.depthAttachment = pass._renderingDepthAttachment;
+            }
+
+            currentCommandBuffer->beginRendering(beginInfo);
+        }
+
+        TRY(pass.run(*this, *currentCommandBuffer));
+
+        if (pass._type == RenderPass::Type::GRAPHICS)
+            currentCommandBuffer->endRendering();
+    }
+
+    if (currentCommandBuffer) {
+        if (currentQueue == QueueType::GRAPHICS)
+            currentCommandBuffer->endRendering();
+        currentCommandBuffer->end();
+    }
+
+    auto queues = std::to_array({
+        _device->queue(QueueType::GRAPHICS),
+        _device->queue(QueueType::COMPUTE),
+        _device->queue(QueueType::TRANSFER),
+    });
+
+    for (u32 commandIndex = 0; commandIndex < submissions.size(); commandIndex++) {
+        auto& submission = submissions[commandIndex];
+
+        if (submission.hostIndex > -1) {
+            auto hostIndex = submission.hostIndex;
+            auto hostWaits = waits[submission.waitIndex];
+            _threadPool->addJob([this, hostIndex, hostWaits] () {
+                for (auto& wait : hostWaits) {
+                    auto timeline = _device->queue(wait)->timeline();
+                    timeline->wait(timeline->value());
+                }
+                auto dummyCommands = CommandBuffer();
+                _orderedPasses[hostIndex].run(*this, dummyCommands);
+
+                _cpuTimeline->signal(_cpuTimeline->increment());
+                return false;
+            });
+        } else {
+
+            auto& commandList = _commandPools[_device->flyingIndex()][submission.queueIndex].buffers()[submission.commands];
+
+            std::vector<SemaphorePair> passWaits = {};
+            for (auto& wait : waits[submission.waitIndex]) {
+                if (wait == QueueType::NONE)
+                    passWaits.emplace_back(_cpuTimeline);
+                else
+                    passWaits.emplace_back(_device->queue(wait)->timeline());
+            }
+
+            auto queue = queues[submission.queueIndex];
+            auto signal = SemaphorePair(queue->timeline(), queue->timeline()->increment());
+
+            queue->submit({ &commandList, 1 }, passWaits, { &signal, 1 });
+
+        }
+    }
     return true;
 }
 
@@ -861,43 +1142,38 @@ auto canta::V2::RenderGraph::getPrevAccess(const std::span<const RenderPass> pas
     }};
 }
 
-void canta::V2::RenderGraph::buildBarriers(std::span<RenderPass> passes) {
-    for (auto& pass : passes)
+void canta::V2::RenderGraph::buildBarriers() {
+    for (auto& pass : _orderedPasses)
         pass.mergeAccesses();
 
-    for (i32 passIndex = passes.size() - 1; passIndex > 0; passIndex--) {
-        auto& pass = passes[passIndex];
+    for (i32 passIndex = _orderedPasses.size() - 1; passIndex > 0; passIndex--) {
+        auto& pass = _orderedPasses[passIndex];
 
         for (auto& access : pass._accesses) {
             i32 resource = access.index;
-            // if (std::holds_alternative<BufferIndex>(input)) {
-                // resource = std::get<BufferIndex>(input).index;
-            // } else {
-                // resource = std::get<ImageIndex>(input).index;
-            // }
 
-            const auto currAccess = getCurrAccess(passes, passIndex, resource);
-            const auto prevAccess = getPrevAccess(passes, passIndex, resource);
+            const auto currAccess = getCurrAccess(_orderedPasses, passIndex, resource);
+            const auto prevAccess = getPrevAccess(_orderedPasses, passIndex, resource);
 
-            // if (std::holds_alternative<BufferIndex>(input)) {
-            // if (access.layout == ImageLayout::UNDEFINED) {
-                auto barrier = RenderPass::Barrier {
-                    .index = resource,
-                    .passIndex = passIndex,
-                    .srcStage = prevAccess.access.stage,
-                    .dstStage = currAccess.access.stage,
-                    .srcAccess = prevAccess.access.access,
-                    .dstAccess = currAccess.access.access,
-                    .srcLayout = prevAccess.access.layout,
-                    .dstLayout = currAccess.access.layout,
-                };
-                pass._barriers.emplace_back(barrier);
-            // }
+            auto barrier = RenderPass::Barrier {
+                .index = resource,
+                .passIndex = passIndex,
+                .srcStage = prevAccess.access.stage,
+                .dstStage = currAccess.access.stage,
+                .srcAccess = prevAccess.access.access,
+                .dstAccess = currAccess.access.access,
+                .srcLayout = prevAccess.access.layout,
+                .dstLayout = currAccess.access.layout,
+            };
+            pass._barriers.emplace_back(barrier);
 
-
+            if (prevAccess.passIndex > -1) {
+                auto& prevPass = _orderedPasses[prevAccess.passIndex];
+                if (prevPass._queueType != pass._queueType) {
+                    pass._queueWaits.emplace_back(std::make_pair(prevAccess.passIndex, prevPass._queueType));
+                }
+            }
         }
-
-
     }
 }
 
@@ -959,4 +1235,53 @@ void canta::V2::RenderGraph::buildResources() {
             imageInfo.image = image;
         }
     }
+}
+
+auto canta::V2::RenderGraph::buildRenderAttachments() -> std::expected<bool, RenderGraphError> {
+    for (i32 i = 0; i < _orderedPasses.size(); i++) {
+        auto& pass = _orderedPasses[i];
+
+        pass._renderingColourAttachments.clear();
+
+        for (const auto& attachment : pass._colourAttachments) {
+            const auto resource = _resources[attachment.index];
+            if (!std::holds_alternative<ImageInfo>(resource))
+                return std::unexpected(RenderGraphError::INVALID_RESOURCE);
+            const auto image = std::get<ImageInfo>(resource).image;
+
+            const auto prevAccess = getPrevAccess(_orderedPasses, i, attachment.index);
+            const auto nextAccess = getNextAccess(_orderedPasses, i, attachment.index);
+
+            canta::Attachment renderingAttachment = {};
+            renderingAttachment.image = image;
+            renderingAttachment.imageLayout = attachment.layout;
+            renderingAttachment.loadOp = prevAccess.passIndex > -1 ? LoadOp::LOAD : LoadOp::CLEAR;
+            renderingAttachment.storeOp = nextAccess.passIndex > -1 ? StoreOp::STORE : StoreOp::NONE;
+            renderingAttachment.clearColour = attachment.clearColor;
+
+            pass._renderingColourAttachments.push_back(renderingAttachment);
+        }
+
+        if (pass._depthAttachment.index > -1) {
+            const auto resource = _resources[pass._depthAttachment.index];
+            if (!std::holds_alternative<ImageInfo>(resource))
+                return std::unexpected(RenderGraphError::INVALID_RESOURCE);
+            const auto image = std::get<ImageInfo>(resource).image;
+
+            const auto prevAccess = getPrevAccess(_orderedPasses, i, pass._depthAttachment.index);
+            const auto nextAccess = getNextAccess(_orderedPasses, i, pass._depthAttachment.index);
+
+            canta::Attachment renderingAttachment = {};
+            renderingAttachment.image = image;
+            renderingAttachment.imageLayout = pass._depthAttachment.layout;
+            renderingAttachment.loadOp = prevAccess.passIndex > -1 ? LoadOp::LOAD : LoadOp::CLEAR;
+            renderingAttachment.storeOp = nextAccess.passIndex > -1 ? StoreOp::STORE : StoreOp::NONE;
+            renderingAttachment.clearColour = pass._depthAttachment.clearColor;
+
+            pass._renderingDepthAttachment = renderingAttachment;
+        }
+
+    }
+
+    return true;
 }
