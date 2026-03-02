@@ -36,6 +36,27 @@ namespace canta::V2 {
         ImageLayout layout = ImageLayout::UNDEFINED;
     };
 
+    struct BufferInfo {
+        u32 size = 0;
+        BufferUsage usage = BufferUsage::STORAGE; //TODO: can probably derive from usage in graph
+        MemoryType type = MemoryType::DEVICE; //TODO: can probably derive from usage in graph
+        bool external = false;
+        BufferHandle buffer = {};
+        std::string name = {};
+    };
+
+    struct ImageInfo {
+        u32 width = 1;
+        u32 height = 1;
+        u32 depth = 1;
+        u32 mips = 1;
+        Format format = Format::RGBA8_UNORM;
+        ImageUsage usage = ImageUsage::STORAGE;
+        bool external = false;
+        ImageHandle image = {};
+        std::string name = {};
+    };
+
     class RenderGraph;
     class PassBuilder;
     class ComputePass;
@@ -164,11 +185,11 @@ namespace canta::V2 {
 
         auto pipeline(const PipelineHandle &pipeline) -> PassBuilder&;
 
-        auto read(BufferIndex index, Access access, PipelineStage stage) -> bool;
-        auto read(ImageIndex index, Access access, PipelineStage stage, ImageLayout layout) -> bool;
+        auto read(BufferIndex index, Access access, PipelineStage stage) -> std::expected<BufferInfo, RenderGraphError>;
+        auto read(ImageIndex index, Access access, PipelineStage stage, ImageLayout layout) -> std::expected<ImageInfo, RenderGraphError>;
 
-        auto write(BufferIndex index, Access access, PipelineStage stage) -> bool;
-        auto write(ImageIndex index, Access access, PipelineStage stage, ImageLayout layout) -> bool;
+        auto write(BufferIndex index, Access access, PipelineStage stage) -> std::expected<BufferInfo, RenderGraphError>;
+        auto write(ImageIndex index, Access access, PipelineStage stage, ImageLayout layout) -> std::expected<ImageInfo, RenderGraphError>;
 
         template <typename... Args>
         auto pushConstants(Args&&... args) -> PassBuilder& {
@@ -341,27 +362,6 @@ namespace canta::V2 {
 
     };
 
-    struct BufferInfo {
-        u32 size = 0;
-        BufferUsage usage = BufferUsage::STORAGE; //TODO: can probably derive from usage in graph
-        MemoryType type = MemoryType::DEVICE; //TODO: can probably derive from usage in graph
-        bool external = false;
-        BufferHandle buffer = {};
-        std::string name = {};
-    };
-
-    struct ImageInfo {
-        u32 width = 1;
-        u32 height = 1;
-        u32 depth = 1;
-        u32 mips = 1;
-        Format format = Format::RGBA8_UNORM;
-        ImageUsage usage = ImageUsage::STORAGE;
-        bool external = false;
-        ImageHandle image = {};
-        std::string name = {};
-    };
-
 
     class RenderGraph : public ende::graph::Graph<RenderPass> {
     public:
@@ -382,8 +382,13 @@ namespace canta::V2 {
         auto alias(ImageIndex index) -> ImageIndex;
 
         auto getBuffer(BufferIndex index) const -> std::expected<BufferHandle, RenderGraphError>;
-
         auto getImage(ImageIndex index) const -> std::expected<ImageHandle, RenderGraphError>;
+
+        auto getBufferInfo(BufferIndex index) const -> std::expected<BufferInfo, RenderGraphError>;
+        auto getImageInfo(ImageIndex index) const -> std::expected<ImageInfo, RenderGraphError>;
+
+        auto updateBufferInfo(BufferIndex index, BufferInfo info) -> std::expected<BufferInfo, RenderGraphError>;
+        auto updateImageInfo(ImageIndex index, ImageInfo info) -> std::expected<ImageInfo, RenderGraphError>;
 
         // pass management
         auto compute(std::string_view name, const PipelineHandle &pipeline = {}) -> ComputePass;

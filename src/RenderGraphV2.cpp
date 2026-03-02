@@ -190,7 +190,7 @@ auto canta::V2::PassBuilder::pipeline(const PipelineHandle &pipeline) -> PassBui
     return *this;
 }
 
-auto canta::V2::PassBuilder::read(const BufferIndex index, const Access access, const PipelineStage stage) -> bool {
+auto canta::V2::PassBuilder::read(const BufferIndex index, const Access access, const PipelineStage stage) -> std::expected<BufferInfo, RenderGraphError> {
     pass().inputs.emplace_back(index);
     pass()._accesses.emplace_back(ResourceAccess{
         .id = index.id,
@@ -198,10 +198,10 @@ auto canta::V2::PassBuilder::read(const BufferIndex index, const Access access, 
         .access = access,
         .stage = stage
     });
-    return true;
+    return _graph->getBufferInfo(index);
 }
 
-auto canta::V2::PassBuilder::read(const ImageIndex index, const Access access, const PipelineStage stage, const ImageLayout layout) -> bool {
+auto canta::V2::PassBuilder::read(const ImageIndex index, const Access access, const PipelineStage stage, const ImageLayout layout) -> std::expected<ImageInfo, RenderGraphError> {
     pass().inputs.emplace_back(index);
     pass()._accesses.emplace_back(ResourceAccess{
         .id = index.id,
@@ -210,10 +210,10 @@ auto canta::V2::PassBuilder::read(const ImageIndex index, const Access access, c
         .stage = stage,
         .layout = layout,
     });
-    return true;
+    return _graph->getImageInfo(index);
 }
 
-auto canta::V2::PassBuilder::write(const BufferIndex index, const Access access, const PipelineStage stage) -> bool {
+auto canta::V2::PassBuilder::write(const BufferIndex index, const Access access, const PipelineStage stage) -> std::expected<BufferInfo, RenderGraphError> {
     const auto alias = _graph->alias(index);
     pass().outputs.emplace_back(alias);
     pass()._accesses.emplace_back(ResourceAccess{
@@ -222,10 +222,10 @@ auto canta::V2::PassBuilder::write(const BufferIndex index, const Access access,
         .access = access,
         .stage = stage
     });
-    return true;
+    return _graph->getBufferInfo(index);
 }
 
-auto canta::V2::PassBuilder::write(const ImageIndex index, const Access access, const PipelineStage stage, const ImageLayout layout) -> bool {
+auto canta::V2::PassBuilder::write(const ImageIndex index, const Access access, const PipelineStage stage, const ImageLayout layout) -> std::expected<ImageInfo, RenderGraphError> {
     const auto alias = _graph->alias(index);
     pass().outputs.emplace_back(alias);
     pass()._accesses.emplace_back(ResourceAccess{
@@ -235,101 +235,149 @@ auto canta::V2::PassBuilder::write(const ImageIndex index, const Access access, 
         .stage = stage,
         .layout = layout,
     });
-    return true;
+    return _graph->getImageInfo(index);
 }
 
 
 auto canta::V2::PassBuilder::addColourRead(const ImageIndex index) -> PassBuilder& {
-    read(index, Access::COLOUR_READ, PipelineStage::COLOUR_OUTPUT, ImageLayout::COLOUR_ATTACHMENT);
+    auto info = *read(index, Access::COLOUR_READ, PipelineStage::COLOUR_OUTPUT, ImageLayout::COLOUR_ATTACHMENT);
+
+    info.usage |= ImageUsage::COLOUR_ATTACHMENT;
+    _graph->updateImageInfo(index, info);
     return *this;
 }
 
 auto canta::V2::PassBuilder::addColourWrite(const ImageIndex index, const ClearValue& clearColour) -> PassBuilder& {
-    write(index, Access::COLOUR_READ | Access::COLOUR_WRITE, PipelineStage::COLOUR_OUTPUT, ImageLayout::COLOUR_ATTACHMENT);
+    auto info = *write(index, Access::COLOUR_READ | Access::COLOUR_WRITE, PipelineStage::COLOUR_OUTPUT, ImageLayout::COLOUR_ATTACHMENT);
     pass()._colourAttachments.push_back({
         .index = index.index,
         .layout = ImageLayout::COLOUR_ATTACHMENT,
         .clearColor = clearColour,
     });
+
+    info.usage |= ImageUsage::COLOUR_ATTACHMENT;
+    _graph->updateImageInfo(index, info);
     return *this;
 }
 
 auto canta::V2::PassBuilder::addDepthRead(const ImageIndex index) -> PassBuilder& {
-    read(index, Access::DEPTH_STENCIL_READ, PipelineStage::EARLY_FRAGMENT_TEST | PipelineStage::LATE_FRAGMENT_TEST | PipelineStage::FRAGMENT_SHADER, ImageLayout::DEPTH_STENCIL_ATTACHMENT);
+    auto info = *read(index, Access::DEPTH_STENCIL_READ, PipelineStage::EARLY_FRAGMENT_TEST | PipelineStage::LATE_FRAGMENT_TEST | PipelineStage::FRAGMENT_SHADER, ImageLayout::DEPTH_STENCIL_ATTACHMENT);
     pass()._depthAttachment = {
         .index = index.index,
         .layout = ImageLayout::DEPTH_STENCIL_ATTACHMENT,
     };
+
+    info.usage |= ImageUsage::DEPTH_STENCIL_ATTACHMENT;
+    _graph->updateImageInfo(index, info);
     return *this;
 }
 
 auto canta::V2::PassBuilder::addDepthWrite(const ImageIndex index, const ClearValue& clearColour) -> PassBuilder& {
-    write(index, Access::DEPTH_STENCIL_READ | Access::DEPTH_STENCIL_WRITE, PipelineStage::EARLY_FRAGMENT_TEST | PipelineStage::LATE_FRAGMENT_TEST | PipelineStage::FRAGMENT_SHADER, ImageLayout::DEPTH_STENCIL_ATTACHMENT);
+    auto info = *write(index, Access::DEPTH_STENCIL_READ | Access::DEPTH_STENCIL_WRITE, PipelineStage::EARLY_FRAGMENT_TEST | PipelineStage::LATE_FRAGMENT_TEST | PipelineStage::FRAGMENT_SHADER, ImageLayout::DEPTH_STENCIL_ATTACHMENT);
     pass()._depthAttachment = {
         .index = index.index,
         .layout = ImageLayout::DEPTH_STENCIL_ATTACHMENT,
         .clearColor = clearColour,
     };
+
+    info.usage |= ImageUsage::DEPTH_STENCIL_ATTACHMENT;
+    _graph->updateImageInfo(index, info);
     return *this;
 }
 
 auto canta::V2::PassBuilder::addStorageImageRead(const ImageIndex index, const PipelineStage stage) -> PassBuilder & {
-    read(index, stage == PipelineStage::HOST ? Access::HOST_READ : Access::SHADER_READ, stage, ImageLayout::GENERAL);
+    auto info = *read(index, stage == PipelineStage::HOST ? Access::HOST_READ : Access::SHADER_READ, stage, ImageLayout::GENERAL);
+
+    info.usage |= ImageUsage::STORAGE;
+    _graph->updateImageInfo(index, info);
     return *this;
 }
 
 auto canta::V2::PassBuilder::addStorageImageWrite(const ImageIndex index, const PipelineStage stage) -> PassBuilder & {
-    write(index, stage == PipelineStage::HOST ? Access::HOST_READ | Access::HOST_WRITE : Access::SHADER_READ | Access::SHADER_WRITE, stage, ImageLayout::GENERAL);
+    auto info = *write(index, stage == PipelineStage::HOST ? Access::HOST_READ | Access::HOST_WRITE : Access::SHADER_READ | Access::SHADER_WRITE, stage, ImageLayout::GENERAL);
+
+    info.usage |= ImageUsage::STORAGE;
+    _graph->updateImageInfo(index, info);
     return *this;
 }
 
 auto canta::V2::PassBuilder::addStorageBufferRead(const BufferIndex index, const PipelineStage stage) -> PassBuilder & {
-    read(index, stage == PipelineStage::HOST ? Access::HOST_READ : Access::SHADER_READ, stage);
+    auto info = *read(index, stage == PipelineStage::HOST ? Access::HOST_READ : Access::SHADER_READ, stage);
+
+    info.usage |= BufferUsage::STORAGE;
+    _graph->updateBufferInfo(index, info);
     return *this;
 }
 
 auto canta::V2::PassBuilder::addStorageBufferWrite(const BufferIndex index, const PipelineStage stage) -> PassBuilder & {
-    write(index, stage == PipelineStage::HOST ? Access::HOST_READ | Access::HOST_WRITE : Access::SHADER_READ | Access::SHADER_WRITE, stage);
+    auto info = *write(index, stage == PipelineStage::HOST ? Access::HOST_READ | Access::HOST_WRITE : Access::SHADER_READ | Access::SHADER_WRITE, stage);
+
+    info.usage |= BufferUsage::STORAGE;
+    _graph->updateBufferInfo(index, info);
     return *this;
 }
 
 auto canta::V2::PassBuilder::addSampledRead(const ImageIndex index, const PipelineStage stage) -> PassBuilder& {
-    read(index, Access::SHADER_READ, stage, ImageLayout::SHADER_READ_ONLY);
+    auto info = *read(index, Access::SHADER_READ, stage, ImageLayout::SHADER_READ_ONLY);
+
+    info.usage |= ImageUsage::SAMPLED;
+    _graph->updateImageInfo(index, info);
     return *this;
 }
 
 auto canta::V2::PassBuilder::addBlitRead(const ImageIndex index) -> PassBuilder& {
-    read(index, Access::TRANSFER_READ, PipelineStage::TRANSFER, ImageLayout::TRANSFER_SRC);
+    auto info = *read(index, Access::TRANSFER_READ, PipelineStage::TRANSFER, ImageLayout::TRANSFER_SRC);
+
+    info.usage |= ImageUsage::TRANSFER_SRC;
+    _graph->updateImageInfo(index, info);
     return *this;
 }
 
 auto canta::V2::PassBuilder::addBlitWrite(const ImageIndex index) -> PassBuilder& {
-    write(index, Access::TRANSFER_READ | Access::TRANSFER_WRITE, PipelineStage::TRANSFER, ImageLayout::TRANSFER_DST);
+    auto info = *write(index, Access::TRANSFER_READ | Access::TRANSFER_WRITE, PipelineStage::TRANSFER, ImageLayout::TRANSFER_DST);
+
+    info.usage |= ImageUsage::TRANSFER_DST;
+    _graph->updateImageInfo(index, info);
     return *this;
 }
 
 auto canta::V2::PassBuilder::addTransferRead(const ImageIndex index) -> PassBuilder& {
-    read(index, Access::TRANSFER_READ, PipelineStage::TRANSFER, ImageLayout::TRANSFER_SRC);
+    auto info = *read(index, Access::TRANSFER_READ, PipelineStage::TRANSFER, ImageLayout::TRANSFER_SRC);
+
+    info.usage |= ImageUsage::TRANSFER_SRC;
+    _graph->updateImageInfo(index, info);
     return *this;
 }
 
 auto canta::V2::PassBuilder::addTransferWrite(const ImageIndex index) -> PassBuilder& {
-    write(index, Access::TRANSFER_READ | Access::TRANSFER_WRITE, PipelineStage::TRANSFER, ImageLayout::TRANSFER_DST);
+    auto info = *write(index, Access::TRANSFER_READ | Access::TRANSFER_WRITE, PipelineStage::TRANSFER, ImageLayout::TRANSFER_DST);
+
+    info.usage |= ImageUsage::TRANSFER_DST;
+    _graph->updateImageInfo(index, info);
     return *this;
 }
 
 auto canta::V2::PassBuilder::addTransferRead(const BufferIndex index) -> PassBuilder& {
-    read(index, Access::TRANSFER_READ, PipelineStage::TRANSFER);
+    auto info = *read(index, Access::TRANSFER_READ, PipelineStage::TRANSFER);
+
+    info.usage |= BufferUsage::TRANSFER_SRC;
+    _graph->updateBufferInfo(index, info);
     return *this;
 }
 
 auto canta::V2::PassBuilder::addTransferWrite(const BufferIndex index) -> PassBuilder& {
-    write(index, Access::TRANSFER_READ | Access::TRANSFER_WRITE, PipelineStage::TRANSFER);
+    auto info = *write(index, Access::TRANSFER_READ | Access::TRANSFER_WRITE, PipelineStage::TRANSFER);
+
+    info.usage |= BufferUsage::TRANSFER_DST;
+    _graph->updateBufferInfo(index, info);
     return *this;
 }
 
 auto canta::V2::PassBuilder::addIndirectRead(const BufferIndex index) -> PassBuilder& {
-    read(index, Access::INDIRECT, PipelineStage::DRAW_INDIRECT);
+    auto info = *read(index, Access::INDIRECT, PipelineStage::DRAW_INDIRECT);
+
+    info.usage |= BufferUsage::INDIRECT;
+    _graph->updateBufferInfo(index, info);
     return *this;
 }
 
@@ -742,7 +790,7 @@ auto canta::V2::RenderGraph::getBuffer(const BufferIndex index) const -> std::ex
         return std::unexpected(RenderGraphError::INVALID_RESOURCE);
 
     if (const auto resource = _resources[index.index]; std::holds_alternative<BufferInfo>(resource)) {
-        const auto buffer = std::get<BufferInfo>(resource).buffer;
+        auto buffer = std::get<BufferInfo>(resource).buffer;
         if (!buffer)
             return std::unexpected(RenderGraphError::INVALID_RESOURCE);
         return buffer;
@@ -756,7 +804,7 @@ auto canta::V2::RenderGraph::getImage(const ImageIndex index) const -> std::expe
         return std::unexpected(RenderGraphError::INVALID_RESOURCE);
 
     if (const auto resource = _resources[index.index]; std::holds_alternative<ImageInfo>(resource)) {
-        const auto image = std::get<ImageInfo>(resource).image;
+        auto image = std::get<ImageInfo>(resource).image;
         if (!image)
             return std::unexpected(RenderGraphError::INVALID_RESOURCE);
         return image;
@@ -765,6 +813,31 @@ auto canta::V2::RenderGraph::getImage(const ImageIndex index) const -> std::expe
     return std::unexpected(RenderGraphError::INVALID_RESOURCE);
 }
 
+auto canta::V2::RenderGraph::getBufferInfo(const BufferIndex index) const -> std::expected<BufferInfo, RenderGraphError> {
+    if (index.index >= _resources.size() || !std::holds_alternative<BufferInfo>(_resources[index.index]))
+        return std::unexpected(RenderGraphError::INVALID_RESOURCE);
+    return std::get<BufferInfo>(_resources[index.index]);
+}
+
+auto canta::V2::RenderGraph::getImageInfo(const ImageIndex index) const -> std::expected<ImageInfo, RenderGraphError> {
+    if (index.index >= _resources.size() || !std::holds_alternative<ImageInfo>(_resources[index.index]))
+        return std::unexpected(RenderGraphError::INVALID_RESOURCE);
+    return std::get<ImageInfo>(_resources[index.index]);
+}
+
+auto canta::V2::RenderGraph::updateBufferInfo(const BufferIndex index, const BufferInfo info) -> std::expected<BufferInfo, RenderGraphError> {
+    if (index.index >= _resources.size() || !std::holds_alternative<BufferInfo>(_resources[index.index]))
+        return std::unexpected(RenderGraphError::INVALID_RESOURCE);
+    _resources[index.index] = info;
+    return std::get<BufferInfo>(_resources[index.index]);
+}
+
+auto canta::V2::RenderGraph::updateImageInfo(const ImageIndex index, const ImageInfo info) -> std::expected<ImageInfo, RenderGraphError> {
+    if (index.index >= _resources.size() || !std::holds_alternative<ImageInfo>(_resources[index.index]))
+        return std::unexpected(RenderGraphError::INVALID_RESOURCE);
+    _resources[index.index] = info;
+    return std::get<ImageInfo>(_resources[index.index]);
+}
 
 auto canta::V2::RenderGraph::compute(const std::string_view name, const PipelineHandle &pipeline) -> ComputePass {
     auto& pass = addVertex();
@@ -912,7 +985,6 @@ auto canta::V2::RenderGraph::run() -> std::expected<bool, RenderGraphError> {
 
     std::vector<SubmissionInfo> submissions = {};
     std::vector<std::vector<QueueType>> waits = {};
-    std::vector<u32> hostPasses = {};
 
     std::array<std::vector<CommandBuffer*>, 4> _queues = {};
 
@@ -924,9 +996,8 @@ auto canta::V2::RenderGraph::run() -> std::expected<bool, RenderGraphError> {
                 .commands = -1,
                 .queueIndex = getQueueIndex(currentQueue),
                 .waitIndex = waits.size(),
-                .hostIndex = static_cast<i32>(hostPasses.size()),
+                .hostIndex = static_cast<i32>(passIndex),
             });
-            hostPasses.push_back(passIndex);
             waits.emplace_back();
             for (auto& wait : pass._queueWaits) {
                 waits.back().push_back(wait.second);
