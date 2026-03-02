@@ -747,7 +747,10 @@ auto canta::V2::PresentPass::present(Swapchain* swapchain, const ImageIndex inde
     read(index, Access::MEMORY_READ, PipelineStage::BOTTOM, ImageLayout::PRESENT);
     write(index, Access::MEMORY_READ | Access::MEMORY_WRITE, PipelineStage::BOTTOM, ImageLayout::PRESENT);
     pass().setCallback([swapchain] (auto& cmd, auto& graph, const auto& push) -> std::expected<bool, RenderGraphError> {
-        swapchain->present();
+        TRY(swapchain->present().transform_error([] (VulkanError error) {
+            // _graph->device->logger().error("Present error: {}", static_cast<u32>(error));
+            return RenderGraphError::DEVICE_ERROR;
+        }));
         return true;
     });
     return *this;
@@ -1101,15 +1104,21 @@ auto canta::V2::RenderGraph::run() -> std::expected<bool, RenderGraphError> {
         if (submission.hostIndex > -1) {
             auto hostIndex = submission.hostIndex;
             auto hostWaits = waits[submission.waitIndex];
-            _threadPool->addJob([this, hostIndex, hostWaits] () {
+            _threadPool->addJob([this, hostIndex, hostWaits] () -> std::expected<bool, RenderGraphError> {
                 for (auto& wait : hostWaits) {
                     auto timeline = _device->queue(wait)->timeline();
-                    timeline->wait(timeline->value());
+                    TRY(timeline->wait(timeline->value()).transform_error([this] (VulkanError error) -> RenderGraphError {
+                        _device->logger().error("Wait on invalid timeline: {}", static_cast<u32>(error));
+                        return RenderGraphError::DEVICE_ERROR;
+                    }));
                 }
                 auto dummyCommands = CommandBuffer();
-                _orderedPasses[hostIndex].run(*this, dummyCommands);
+                TRY(_orderedPasses[hostIndex].run(*this, dummyCommands));
 
-                _cpuTimeline->signal(_cpuTimeline->increment());
+                TRY(_cpuTimeline->signal(_cpuTimeline->increment()).transform_error([this] (VulkanError error) -> RenderGraphError {
+                    _device->logger().error("Signal on invalid timeline: {}", static_cast<u32>(error));
+                    return RenderGraphError::DEVICE_ERROR;
+                }));
                 return false;
             });
         } else {
@@ -1127,7 +1136,10 @@ auto canta::V2::RenderGraph::run() -> std::expected<bool, RenderGraphError> {
             auto queue = queues[submission.queueIndex];
             auto signal = SemaphorePair(queue->timeline(), queue->timeline()->increment());
 
-            queue->submit({ &commandList, 1 }, passWaits, { &signal, 1 });
+            TRY(queue->submit({ &commandList, 1 }, passWaits, { &signal, 1 }).transform_error([this] (VulkanError error) {
+                _device->logger().error("Invalid queue submit: {}", static_cast<u32>(error));
+                return RenderGraphError::DEVICE_ERROR;
+            }));
 
         }
     }

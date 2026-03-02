@@ -18,6 +18,7 @@ namespace canta::V2 {
         INVALID_PASS_COUNT,
         INVALID_RESOURCE,
         PASS_RUN,
+        DEVICE_ERROR,
     };
 
     struct ImageIndex : ende::graph::Edge {
