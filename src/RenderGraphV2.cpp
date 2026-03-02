@@ -242,6 +242,12 @@ auto canta::V2::PassBuilder::write(const ImageIndex index, const Access access, 
 auto canta::V2::PassBuilder::addColourRead(const ImageIndex index) -> PassBuilder& {
     auto info = *read(index, Access::COLOUR_READ, PipelineStage::COLOUR_OUTPUT, ImageLayout::COLOUR_ATTACHMENT);
 
+    auto dimensions = pass().dimensions();
+    pass()._dimensions = {
+        std::max(dimensions.x(), info.width),
+        std::max(dimensions.y(), info.height),
+    };
+
     info.usage |= ImageUsage::COLOUR_ATTACHMENT;
     _graph->updateImageInfo(index, info);
     return *this;
@@ -254,6 +260,11 @@ auto canta::V2::PassBuilder::addColourWrite(const ImageIndex index, const ClearV
         .layout = ImageLayout::COLOUR_ATTACHMENT,
         .clearColor = clearColour,
     });
+    auto dimensions = pass().dimensions();
+    pass()._dimensions = {
+        std::max(dimensions.x(), info.width),
+        std::max(dimensions.y(), info.height),
+    };
 
     info.usage |= ImageUsage::COLOUR_ATTACHMENT;
     _graph->updateImageInfo(index, info);
@@ -265,6 +276,11 @@ auto canta::V2::PassBuilder::addDepthRead(const ImageIndex index) -> PassBuilder
     pass()._depthAttachment = {
         .index = index.index,
         .layout = ImageLayout::DEPTH_STENCIL_ATTACHMENT,
+    };
+    auto dimensions = pass().dimensions();
+    pass()._dimensions = {
+        std::max(dimensions.x(), info.width),
+        std::max(dimensions.y(), info.height),
     };
 
     info.usage |= ImageUsage::DEPTH_STENCIL_ATTACHMENT;
@@ -504,7 +520,9 @@ auto canta::V2::GraphicsPass::addSampledRead(const ImageIndex index, const Pipel
 }
 
 auto canta::V2::GraphicsPass::draw(u32 count, u32 instanceCount, u32 firstVertex, u32 firstIndex, u32 firstInstance, bool indexed) -> GraphicsPass & {
-    pass().setCallback([count, instanceCount, firstVertex, firstIndex, firstInstance, indexed] (auto& cmd, auto& graph, const RenderPass::PushData& push) {
+    auto dimensions = pass().dimensions();
+    pass().setCallback([dimensions, count, instanceCount, firstVertex, firstIndex, firstInstance, indexed] (auto& cmd, auto& graph, const RenderPass::PushData& push) {
+        cmd.setViewport({ static_cast<f32>(dimensions.x()), static_cast<f32>(dimensions.y()) });
         cmd.pushConstants(ShaderStage::VERTEX | ShaderStage::FRAGMENT, { push.data.data(), push.size }, 0);
         cmd.draw(count, instanceCount, firstVertex, firstIndex, firstInstance, indexed);
         return true;
@@ -513,7 +531,9 @@ auto canta::V2::GraphicsPass::draw(u32 count, u32 instanceCount, u32 firstVertex
 }
 
 auto canta::V2::GraphicsPass::drawIndirect(BufferHandle commands, u32 offset, u32 drawCount, bool indexed, u32 stride) -> GraphicsPass & {
-    pass().setCallback([commands, offset, drawCount, indexed, stride] (auto& cmd, auto& graph, const RenderPass::PushData& push) {
+    auto dimensions = pass().dimensions();
+    pass().setCallback([dimensions, commands, offset, drawCount, indexed, stride] (auto& cmd, auto& graph, const RenderPass::PushData& push) {
+        cmd.setViewport({ static_cast<f32>(dimensions.x()), static_cast<f32>(dimensions.y()) });
         cmd.pushConstants(ShaderStage::VERTEX | ShaderStage::FRAGMENT, { push.data.data(), push.size }, 0);
         cmd.drawIndirect(commands, offset, drawCount, indexed, stride);
         return true;
@@ -522,7 +542,9 @@ auto canta::V2::GraphicsPass::drawIndirect(BufferHandle commands, u32 offset, u3
 }
 
 auto canta::V2::GraphicsPass::drawIndirectCount(BufferHandle commands, u32 offset, BufferHandle countBuffer, u32 countOffset, bool indexed, u32 stride) -> GraphicsPass & {
-    pass().setCallback([commands, offset, countBuffer, countOffset, indexed, stride] (auto& cmd, auto& graph, const RenderPass::PushData& push) {
+    auto dimensions = pass().dimensions();
+    pass().setCallback([dimensions, commands, offset, countBuffer, countOffset, indexed, stride] (auto& cmd, auto& graph, const RenderPass::PushData& push) {
+        cmd.setViewport({ static_cast<f32>(dimensions.x()), static_cast<f32>(dimensions.y()) });
         cmd.pushConstants(ShaderStage::VERTEX | ShaderStage::FRAGMENT, { push.data.data(), push.size }, 0);
         cmd.drawIndirectCount(commands, offset, countBuffer, countOffset, indexed, stride);
         return true;
@@ -531,7 +553,9 @@ auto canta::V2::GraphicsPass::drawIndirectCount(BufferHandle commands, u32 offse
 }
 
 auto canta::V2::GraphicsPass::drawMeshTasksThreads(u32 x, u32 y, u32 z) -> GraphicsPass & {
-    pass().setCallback([x, y, z] (auto& cmd, auto& graph, const RenderPass::PushData& push) {
+    auto dimensions = pass().dimensions();
+    pass().setCallback([dimensions, x, y, z] (auto& cmd, auto& graph, const RenderPass::PushData& push) {
+        cmd.setViewport({ static_cast<f32>(dimensions.x()), static_cast<f32>(dimensions.y()) });
         cmd.pushConstants(ShaderStage::MESH | ShaderStage::FRAGMENT, { push.data.data(), push.size }, 0);
         cmd.drawMeshTasksThreads(x, y, z);
         return true;
@@ -540,7 +564,9 @@ auto canta::V2::GraphicsPass::drawMeshTasksThreads(u32 x, u32 y, u32 z) -> Graph
 }
 
 auto canta::V2::GraphicsPass::drawMeshTasksWorkgroups(u32 x, u32 y, u32 z) -> GraphicsPass & {
-    pass().setCallback([x, y, z] (auto& cmd, auto& graph, const RenderPass::PushData& push) {
+    auto dimensions = pass().dimensions();
+    pass().setCallback([dimensions, x, y, z] (auto& cmd, auto& graph, const RenderPass::PushData& push) {
+        cmd.setViewport({ static_cast<f32>(dimensions.x()), static_cast<f32>(dimensions.y()) });
         cmd.pushConstants(ShaderStage::MESH | ShaderStage::FRAGMENT, { push.data.data(), push.size }, 0);
         cmd.drawMeshTasksWorkgroups(x, y, z);
         return true;
@@ -549,7 +575,9 @@ auto canta::V2::GraphicsPass::drawMeshTasksWorkgroups(u32 x, u32 y, u32 z) -> Gr
 }
 
 auto canta::V2::GraphicsPass::drawMeshTasksIndirect(BufferHandle commands, u32 offset, u32 drawCount, u32 stride) -> GraphicsPass & {
-    pass().setCallback([commands, offset, drawCount, stride] (auto& cmd, auto& graph, const RenderPass::PushData& push) {
+    auto dimensions = pass().dimensions();
+    pass().setCallback([dimensions, commands, offset, drawCount, stride] (auto& cmd, auto& graph, const RenderPass::PushData& push) {
+        cmd.setViewport({ static_cast<f32>(dimensions.x()), static_cast<f32>(dimensions.y()) });
         cmd.pushConstants(ShaderStage::MESH | ShaderStage::FRAGMENT, { push.data.data(), push.size }, 0);
         cmd.drawMeshTasksIndirect(commands, offset, drawCount, stride);
         return true;
@@ -558,7 +586,9 @@ auto canta::V2::GraphicsPass::drawMeshTasksIndirect(BufferHandle commands, u32 o
 }
 
 auto canta::V2::GraphicsPass::drawMeshTasksIndirectCount(BufferHandle commands, u32 offset, BufferHandle countBuffer, u32 countOffset, u32 stride) -> GraphicsPass & {
-    pass().setCallback([commands, offset, countBuffer, countOffset, stride] (auto& cmd, auto& graph, const RenderPass::PushData& push) {
+    auto dimensions = pass().dimensions();
+    pass().setCallback([dimensions, commands, offset, countBuffer, countOffset, stride] (auto& cmd, auto& graph, const RenderPass::PushData& push) {
+        cmd.setViewport({ static_cast<f32>(dimensions.x()), static_cast<f32>(dimensions.y()) });
         cmd.pushConstants(ShaderStage::MESH | ShaderStage::FRAGMENT, { push.data.data(), push.size }, 0);
         cmd.drawMeshTasksIndirectCount(commands, offset, countBuffer, countOffset, stride);
         return true;
@@ -1034,21 +1064,12 @@ auto canta::V2::RenderGraph::run() -> std::expected<bool, RenderGraphError> {
             currentCommandBuffer->begin();
         }
 
+        submitBarriers(*currentCommandBuffer, pass._barriers);
+
         if (pass._type == RenderPass::Type::GRAPHICS) {
             auto beginInfo = RenderingInfo{};
 
-            u32 width = 0;
-            u32 height = 0;
-
-            if (!pass._colourAttachments.empty()) {
-                width = pass._renderingColourAttachments.front().image->width();
-                height = pass._renderingColourAttachments.front().image->height();
-            } else if (pass._depthAttachment.index > -1) {
-                width = pass._renderingDepthAttachment.image->width();
-                height = pass._renderingDepthAttachment.image->height();
-            }
-
-            beginInfo.size = { width, height };
+            beginInfo.size = pass.dimensions();
 
             beginInfo.colourAttachments = pass._renderingColourAttachments;
             if (pass._depthAttachment.index >= 0) {
@@ -1211,6 +1232,45 @@ auto canta::V2::RenderGraph::getPrevAccess(const std::span<const RenderPass> pas
         .stage = PipelineStage::TOP,
         .layout = ImageLayout::UNDEFINED,
     }};
+}
+
+void canta::V2::RenderGraph::submitBarriers(CommandBuffer &commands, std::span<const RenderPass::Barrier> barriers) const {
+    u32 imageBarrierCount = 0;
+    ImageBarrier imageBarriers[barriers.size()];
+    u32 bufferBarrierCount = 0;
+    BufferBarrier bufferBarriers[barriers.size()];
+
+    for (const auto& barrier : barriers) {
+        const auto resource = _resources[barrier.index];
+        if (std::holds_alternative<BufferInfo>(resource)) {
+            const auto buffer = std::get<BufferInfo>(resource).buffer;
+
+            bufferBarriers[bufferBarrierCount++] = BufferBarrier {
+                .buffer = buffer,
+                .srcStage = barrier.srcStage,
+                .dstStage = barrier.dstStage,
+                .srcAccess = barrier.srcAccess,
+                .dstAccess = barrier.dstAccess,
+            };
+        } else {
+            const auto image = std::get<ImageInfo>(resource).image;
+
+            imageBarriers[imageBarrierCount++] = ImageBarrier {
+                .image = image,
+                .srcStage = barrier.srcStage,
+                .dstStage = barrier.dstStage,
+                .srcAccess = barrier.srcAccess,
+                .dstAccess = barrier.dstAccess,
+                .srcLayout = barrier.srcLayout,
+                .dstLayout = barrier.dstLayout,
+            };
+        }
+    }
+
+    for (u32 barrier = 0; barrier < imageBarrierCount; barrier++)
+        commands.barrier(imageBarriers[barrier]);
+    for (u32 barrier = 0; barrier < bufferBarrierCount; barrier++)
+        commands.barrier(bufferBarriers[barrier]);
 }
 
 void canta::V2::RenderGraph::buildBarriers() {

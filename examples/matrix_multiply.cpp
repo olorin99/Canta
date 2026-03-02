@@ -149,6 +149,9 @@ float4 main(
         .stage = canta::ShaderStage::FRAGMENT,
         .name = "fragment_0",
     }).value()
+        },
+        .colourFormats = {
+            canta::Format::RGBA8_UNORM
         }
 }).value();
 

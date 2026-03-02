@@ -79,6 +79,8 @@ namespace canta::V2 {
             u32 size = 0;
         };
 
+        auto dimensions() const -> ende::math::Vec<2, u32> { return _dimensions; }
+
         auto clone() -> RenderPass;
 
         template <typename T, typename U, typename... Args>
@@ -146,6 +148,7 @@ namespace canta::V2 {
         std::function<std::expected<bool, RenderGraphError>(CommandBuffer&, RenderGraph&, const PushData&)> _callback = {};
         std::vector<ResourceAccess> _accesses = {};
 
+        ende::math::Vec<2, u32> _dimensions = { 0, 0 };
         struct Attachment {
             i32 index = -1;
             ImageLayout layout = ImageLayout::UNDEFINED;
@@ -429,6 +432,8 @@ namespace canta::V2 {
 
 
         [[nodiscard]] auto buildDependencyLevels(std::span<const RenderPass> passes) const -> std::expected<std::vector<std::vector<u32>>, RenderGraphError>;
+
+        void submitBarriers(CommandBuffer& commands, std::span<const RenderPass::Barrier> barriers) const;
 
         void buildBarriers();
         void buildResources();
