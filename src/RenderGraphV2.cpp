@@ -596,6 +596,22 @@ auto canta::V2::GraphicsPass::drawMeshTasksIndirectCount(BufferHandle commands, 
     return *this;
 }
 
+auto canta::V2::GraphicsPass::blit(const ImageIndex src, const ImageIndex dst, const Filter filter) -> GraphicsPass& {
+    addTransferRead(src);
+    addTransferWrite(dst);
+    pass().setCallback([src, dst, filter] (auto& cmd, auto& graph, const auto& push) -> std::expected<bool, RenderGraphError> {
+        cmd.blit({
+            .src = TRY(graph.getImage(src)),
+            .dst = TRY(graph.getImage(dst)),
+            .srcLayout = ImageLayout::TRANSFER_SRC,
+            .dstLayout = ImageLayout::TRANSFER_DST,
+            .filter = filter,
+        });
+        return true;
+    });
+    return *this;
+}
+
 canta::V2::TransferPass::TransferPass(RenderGraph *graph, const u32 index) : PassBuilder(graph, index) {}
 
 auto canta::V2::TransferPass::addTransferRead(const BufferIndex index) -> TransferPass& {
@@ -615,22 +631,6 @@ auto canta::V2::TransferPass::addTransferRead(const ImageIndex index) -> Transfe
 
 auto canta::V2::TransferPass::addTransferWrite(const ImageIndex index) -> TransferPass& {
     PassBuilder::addTransferWrite(index);
-    return *this;
-}
-
-auto canta::V2::TransferPass::blit(const ImageIndex src, const ImageIndex dst, const Filter filter) -> TransferPass& {
-    addTransferRead(src);
-    addTransferWrite(dst);
-    pass().setCallback([src, dst, filter] (auto& cmd, auto& graph, const auto& push) -> std::expected<bool, RenderGraphError> {
-        cmd.blit({
-            .src = TRY(graph.getImage(src)),
-            .dst = TRY(graph.getImage(dst)),
-            .srcLayout = ImageLayout::TRANSFER_SRC,
-            .dstLayout = ImageLayout::TRANSFER_DST,
-            .filter = filter,
-        });
-        return true;
-    });
     return *this;
 }
 
@@ -1066,7 +1066,7 @@ auto canta::V2::RenderGraph::run() -> std::expected<bool, RenderGraphError> {
 
         submitBarriers(*currentCommandBuffer, pass._barriers);
 
-        if (pass._type == RenderPass::Type::GRAPHICS) {
+        if (pass._type == RenderPass::Type::GRAPHICS && pass._pipeline) {
             auto beginInfo = RenderingInfo{};
 
             beginInfo.size = pass.dimensions();
@@ -1081,13 +1081,11 @@ auto canta::V2::RenderGraph::run() -> std::expected<bool, RenderGraphError> {
 
         TRY(pass.run(*this, *currentCommandBuffer));
 
-        if (pass._type == RenderPass::Type::GRAPHICS)
+        if (pass._type == RenderPass::Type::GRAPHICS && pass._pipeline)
             currentCommandBuffer->endRendering();
     }
 
     if (currentCommandBuffer) {
-        if (currentQueue == QueueType::GRAPHICS)
-            currentCommandBuffer->endRendering();
         currentCommandBuffer->end();
     }
 

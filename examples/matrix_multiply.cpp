@@ -213,7 +213,7 @@ float4 main(
         .pushConstants(outputImage)
         .draw(10);
 
-    auto transferPass = graph.transfer("pass_4").blit(TRY_MAIN(graphicsPass.output<canta::V2::ImageIndex>()), outputImage);
+    auto transferPass = graph.graphics("pass_4").blit(TRY_MAIN(graphicsPass.output<canta::V2::ImageIndex>()), outputImage);
 
 
     auto hostPass = graph.host("pass_3")

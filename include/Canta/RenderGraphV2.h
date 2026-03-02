@@ -303,6 +303,7 @@ namespace canta::V2 {
         auto drawMeshTasksIndirect(BufferHandle commands, u32 offset, u32 drawCount, u32 stride = sizeof(VkDrawMeshTasksIndirectCommandEXT)) -> GraphicsPass&;
         auto drawMeshTasksIndirectCount(BufferHandle commands, u32 offset, BufferHandle countBuffer, u32 countOffset, u32 stride = sizeof(VkDrawMeshTasksIndirectCommandEXT)) -> GraphicsPass&;
 
+        auto blit(ImageIndex src, ImageIndex dst, Filter filter = Filter::LINEAR) -> GraphicsPass&;
     };
 
     class TransferPass : public PassBuilder {
@@ -314,8 +315,6 @@ namespace canta::V2 {
         auto addTransferWrite(BufferIndex index) -> TransferPass&;
         auto addTransferRead(ImageIndex index) -> TransferPass&;
         auto addTransferWrite(ImageIndex index) -> TransferPass&;
-
-        auto blit(ImageIndex src, ImageIndex dst, Filter filter = Filter::LINEAR) -> TransferPass&;
 
         auto copy(BufferIndex src, BufferIndex dst, u32 srcOffset = 0, u32 dstOffset = 0, u32 size = 0) -> TransferPass&;
         struct ImageCopy {
