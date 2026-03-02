@@ -1488,7 +1488,9 @@ auto canta::Device::createImage(Image::CreateInfo info, ImageHandle oldHandle) -
     createInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
     createInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
     createInfo.usage = static_cast<VkImageUsageFlagBits>(info.usage);
-    createInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+    createInfo.sharingMode = VK_SHARING_MODE_CONCURRENT;
+    createInfo.queueFamilyIndexCount = _enabledQueueFamilies.size();
+    createInfo.pQueueFamilyIndices = _enabledQueueFamilies.data();
     createInfo.samples = VK_SAMPLE_COUNT_1_BIT;
 
     if (info.layers == 6)
