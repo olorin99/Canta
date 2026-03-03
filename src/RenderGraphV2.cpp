@@ -42,7 +42,14 @@ constexpr auto checkPassStageMatch(const canta::V2::RenderPass::Type type, const
     return false;
 }
 
-
+auto mapGraphErrorToRenderGraphError(const ende::graph::Error error) -> canta::V2::RenderGraphError {
+    switch (error) {
+        case ende::graph::Error::IS_CYCLICAL:
+            return canta::V2::RenderGraphError::IS_CYCLICAL;
+        default:
+            return canta::V2::RenderGraphError::IS_CYCLICAL;
+    }
+}
 
 
 auto canta::V2::RenderPass::clone() -> RenderPass {
@@ -171,6 +178,7 @@ void canta::V2::RenderPass::mergeAccesses() {
 
                 access.access = access.access | nextAccess.access;
                 access.stage = std::min(access.stage, nextAccess.stage);
+                access.layout = nextAccess.layout;
 
                 _accesses.erase(_accesses.begin() + nextIndex--);
             }
@@ -187,6 +195,11 @@ auto canta::V2::PassBuilder::pass() -> RenderPass& {
 
 auto canta::V2::PassBuilder::pipeline(const PipelineHandle &pipeline) -> PassBuilder & {
     pass().setPipeline(pipeline);
+    return *this;
+}
+
+auto canta::V2::PassBuilder::setManualPipeline(const bool state) -> PassBuilder & {
+    pass().setManualPipeline(state);
     return *this;
 }
 
@@ -236,6 +249,11 @@ auto canta::V2::PassBuilder::write(const ImageIndex index, const Access access, 
         .layout = layout,
     });
     return _graph->getImageInfo(index);
+}
+
+auto canta::V2::PassBuilder::setCallback(const std::function<std::expected<bool, RenderGraphError>(CommandBuffer &, RenderGraph &, const RenderPass::PushData &)> &callback) -> PassBuilder& {
+    pass().setCallback(callback);
+    return *this;
 }
 
 
@@ -598,6 +616,7 @@ auto canta::V2::GraphicsPass::drawMeshTasksIndirectCount(BufferHandle commands, 
 
 auto canta::V2::GraphicsPass::blit(const ImageIndex src, const ImageIndex dst, const Filter filter) -> GraphicsPass& {
     addTransferRead(src);
+    addTransferRead(dst);
     addTransferWrite(dst);
     pass().setCallback([src, dst, filter] (auto& cmd, auto& graph, const auto& push) -> std::expected<bool, RenderGraphError> {
         cmd.blit({
@@ -742,18 +761,59 @@ auto canta::V2::HostPass::setCallback(const std::function<void(RenderGraph &)> &
 
 canta::V2::PresentPass::PresentPass(RenderGraph *graph, const u32 index) : PassBuilder(graph, index) {}
 
+auto canta::V2::PresentPass::acquire(Swapchain* swapchain) -> std::expected<ImageIndex, RenderGraphError> {
+    auto swapIndex = _graph->addImage({
+        .width = swapchain->width(),
+        .height = swapchain->height(),
+        .format = swapchain->format(),
+        .swapchainImage = true,
+        .name = "swapchain_index",
+    });
+    write(swapIndex, Access::MEMORY_READ | Access::MEMORY_WRITE, PipelineStage::BOTTOM, ImageLayout::UNDEFINED);
+    pass().setCallback([swapIndex, swapchain] (auto& cmd, auto& graph, const auto& push) -> std::expected<bool, RenderGraphError> {
+        auto image = TRY(swapchain->acquire(graph.timeline()).transform_error([] (VulkanError error) {
+            return RenderGraphError::DEVICE_ERROR;
+        }));
+        auto info = TRY(graph.getImageInfo(swapIndex));
+        info.image = image;
+        TRY(graph.updateImageInfo(swapIndex, info));
+        return true;
+    });
+
+    return output<ImageIndex>().transform_error(mapGraphErrorToRenderGraphError);
+}
+
 //TODO: will need to handle special. chain timeline semaphore with acquire/present semaphores
-auto canta::V2::PresentPass::present(Swapchain* swapchain, const ImageIndex index) -> PresentPass& {
+auto canta::V2::PresentPass::present(Swapchain* swapchain, const ImageIndex index) -> std::expected<ImageIndex, RenderGraphError> {
+    auto info = TRY(_graph->getImageInfo(index));
+    if (!info.swapchainImage)
+        return std::unexpected(RenderGraphError::INVALID_RESOURCE);
+
     read(index, Access::MEMORY_READ, PipelineStage::BOTTOM, ImageLayout::PRESENT);
     write(index, Access::MEMORY_READ | Access::MEMORY_WRITE, PipelineStage::BOTTOM, ImageLayout::PRESENT);
-    pass().setCallback([swapchain] (auto& cmd, auto& graph, const auto& push) -> std::expected<bool, RenderGraphError> {
-        TRY(swapchain->present().transform_error([] (VulkanError error) {
+    auto timeline = _graph->timeline();
+    pass().setCallback([timeline, swapchain] (auto& cmd, auto& graph, const auto& push) -> std::expected<bool, RenderGraphError> {
+        const uint* waits = reinterpret_cast<const uint*>(push.data.data());
+        u32 count = waits[0];
+
+        std::vector<SemaphoreHandle> semaphores = {};
+        for (u32 i = 1; i < count + 1; ++i) {
+            auto index = waits[i];
+            auto queueType = static_cast<QueueType>(index);
+
+            if (queueType == QueueType::NONE)
+                semaphores.emplace_back(graph.timeline());
+            else
+                semaphores.emplace_back(graph.device()->queue(queueType)->timeline());
+        }
+
+        TRY(swapchain->present(semaphores).transform_error([] (VulkanError error) {
             // _graph->device->logger().error("Present error: {}", static_cast<u32>(error));
             return RenderGraphError::DEVICE_ERROR;
         }));
         return true;
     });
-    return *this;
+    return output<ImageIndex>().transform_error(mapGraphErrorToRenderGraphError);
 }
 
 
@@ -761,6 +821,7 @@ auto canta::V2::RenderGraph::create(CreateInfo info) -> RenderGraph {
     auto graph = RenderGraph();
     graph._device = info.device;
     graph._threadPool = info.threadPool;
+    graph._multiQueue = info.multiQueue;
     if (!graph._threadPool)
         graph._threadPool = std::make_shared<ende::thread::ThreadPool>();
 
@@ -872,6 +933,15 @@ auto canta::V2::RenderGraph::updateImageInfo(const ImageIndex index, const Image
     return std::get<ImageInfo>(_resources[index.index]);
 }
 
+auto canta::V2::RenderGraph::pass(const std::string_view name, const RenderPass::Type type, const PipelineHandle &pipeline) -> PassBuilder {
+    auto& pass = addVertex();
+    pass._type = type;
+    pass._name = name;
+    pass.setPipeline(pipeline);
+    const auto builder = PassBuilder(this, vertexCount() - 1);
+    return builder;
+}
+
 auto canta::V2::RenderGraph::compute(const std::string_view name, const PipelineHandle &pipeline) -> ComputePass {
     auto& pass = addVertex();
     pass._type = RenderPass::Type::COMPUTE;
@@ -907,13 +977,20 @@ auto canta::V2::RenderGraph::host(const std::string_view name) -> HostPass {
     return builder;
 }
 
-auto canta::V2::RenderGraph::present(Swapchain *swapchain, const ImageIndex index) -> PresentPass {
+auto canta::V2::RenderGraph::acquire(Swapchain *swapchain) -> std::expected<ImageIndex, RenderGraphError> {
+    auto& pass = addVertex();
+    pass._type = RenderPass::Type::PRESENT;
+    pass._name = "acquire_pass";
+    auto builder = PresentPass(this, vertexCount() - 1);
+    return builder.acquire(swapchain);
+}
+
+auto canta::V2::RenderGraph::present(Swapchain *swapchain, const ImageIndex index) -> std::expected<ImageIndex, RenderGraphError> {
     auto& pass = addVertex();
     pass._type = RenderPass::Type::PRESENT;
     pass._name = "present_pass";
     auto builder = PresentPass(this, vertexCount() - 1);
-    builder.present(swapchain, index);
-    return builder;
+    return builder.present(swapchain, index);
 }
 
 void canta::V2::RenderGraph::setRoot(const BufferIndex index) {
@@ -924,15 +1001,6 @@ void canta::V2::RenderGraph::setRoot(const ImageIndex index) {
     _rootEdge = index.id;
 }
 
-auto mapGraphErrorToRenderGraphError(const ende::graph::Error error) -> canta::V2::RenderGraphError {
-    switch (error) {
-        case ende::graph::Error::IS_CYCLICAL:
-            return canta::V2::RenderGraphError::IS_CYCLICAL;
-        default:
-            return canta::V2::RenderGraphError::IS_CYCLICAL;
-    }
-}
-
 auto canta::V2::RenderGraph::compile() -> std::expected<bool, RenderGraphError> {
     if (_rootEdge < 0) return std::unexpected(RenderGraphError::NO_ROOT);
 
@@ -940,31 +1008,33 @@ auto canta::V2::RenderGraph::compile() -> std::expected<bool, RenderGraphError> 
 
     std::vector<std::pair<u32, u32>> indices = getResourceIndices(sorted);
 
-    const auto sortedSpan = std::span(sorted.data(), sorted.size());
-    const auto dependencyLevels = TRY(buildDependencyLevels(sortedSpan));
+    if (_multiQueue) {
+        const auto sortedSpan = std::span(sorted.data(), sorted.size());
+        const auto dependencyLevels = TRY(buildDependencyLevels(sortedSpan));
 
-    for (auto& level : dependencyLevels) {
-        for (auto& passIndex : level) {
-            auto& pass = sorted[passIndex];
+        for (auto& level : dependencyLevels) {
+            for (auto& passIndex : level) {
+                auto& pass = sorted[passIndex];
 
-            switch (pass._type) {
-                case RenderPass::Type::COMPUTE:
-                    pass._queueType = level.size() > 1 && passIndex == level.back() ? QueueType::COMPUTE : QueueType::GRAPHICS;
-                    break;
-                case RenderPass::Type::GRAPHICS:
-                    pass._queueType = QueueType::GRAPHICS;
-                    break;
-                case RenderPass::Type::TRANSFER:
-                    pass._queueType = QueueType::TRANSFER;
-                    break;
-                case RenderPass::Type::HOST:
-                    pass._queueType = QueueType::NONE;
-                    break;
-                case RenderPass::Type::NONE:
-                    return std::unexpected(RenderGraphError::INVALID_PASS);
-                case RenderPass::Type::PRESENT:
-                    pass._queueType = QueueType::GRAPHICS;
-                    break;
+                switch (pass._type) {
+                    case RenderPass::Type::COMPUTE:
+                        pass._queueType = level.size() > 1 && passIndex == level.back() ? QueueType::COMPUTE : QueueType::GRAPHICS;
+                        break;
+                    case RenderPass::Type::GRAPHICS:
+                        pass._queueType = QueueType::GRAPHICS;
+                        break;
+                    case RenderPass::Type::TRANSFER:
+                        pass._queueType = QueueType::TRANSFER;
+                        break;
+                    case RenderPass::Type::HOST:
+                        pass._queueType = QueueType::NONE;
+                        break;
+                    case RenderPass::Type::NONE:
+                        return std::unexpected(RenderGraphError::INVALID_PASS);
+                    case RenderPass::Type::PRESENT:
+                        pass._queueType = QueueType::GRAPHICS;
+                        break;
+                }
             }
         }
     }
@@ -974,7 +1044,7 @@ auto canta::V2::RenderGraph::compile() -> std::expected<bool, RenderGraphError> 
 
     buildBarriers();
     buildResources();
-    buildRenderAttachments();
+    TRY(buildRenderAttachments());
 
     return true;
 }
@@ -997,7 +1067,8 @@ inline auto getQueueIndex(const canta::QueueType queue) -> u32 {
     return 0;
 }
 
-auto canta::V2::RenderGraph::run() -> std::expected<bool, RenderGraphError> {
+auto canta::V2::RenderGraph::run(std::span<SemaphorePair> waits, std::span<SemaphorePair> signals) -> std::expected<bool, RenderGraphError> {
+    _device->updateBindlessDescriptors();
     // for each sorted pass
     // if current queue different than last end current command list and start a new one.
     // new command list waits on timeline from previous queue.
@@ -1017,62 +1088,135 @@ auto canta::V2::RenderGraph::run() -> std::expected<bool, RenderGraphError> {
     };
 
     std::vector<SubmissionInfo> submissions = {};
-    std::vector<std::vector<QueueType>> waits = {};
+    std::vector<std::vector<QueueType>> internalWaits = {};
+
+    std::vector<SemaphorePair> waitHandles = {};
+    std::vector<SemaphorePair> signalHandles = {};
 
     std::array<std::vector<CommandBuffer*>, 4> _queues = {};
 
-    for (u32 passIndex = 0; passIndex < _orderedPasses.size(); passIndex++) {
-        const auto& pass = _orderedPasses[passIndex];
+    const auto submitCommands = [this] (CommandBuffer* commands, const QueueType queueType, std::span<SemaphorePair> waits, std::span<SemaphorePair> signals) -> std::expected<bool, RenderGraphError> {
+        const auto queue = _device->queue(queueType);
 
-        if (pass._type == RenderPass::Type::HOST) {
-            submissions.push_back({
-                .commands = -1,
-                .queueIndex = getQueueIndex(currentQueue),
-                .waitIndex = waits.size(),
-                .hostIndex = static_cast<i32>(passIndex),
-            });
-            waits.emplace_back();
-            for (auto& wait : pass._queueWaits) {
-                waits.back().push_back(wait.second);
+        std::vector<SemaphorePair> passWaits = {};
+        passWaits.insert(passWaits.end(), waits.begin(), waits.end());
+
+        std::vector<SemaphorePair> passSignals = {};
+        passSignals.emplace_back(queue->timeline(), queue->timeline()->increment());
+        passSignals.insert(passSignals.end(), signals.begin(), signals.end());
+
+        TRY(queue->submit({ commands, 1 }, passWaits, passSignals).transform_error([this] (VulkanError error) {
+            _device->logger().error("Invalid queue submit: {}", static_cast<u32>(error));
+            return RenderGraphError::DEVICE_ERROR;
+        }));
+        return true;
+    };
+
+    for (u32 passIndex = 0; passIndex < _orderedPasses.size(); ++passIndex) {
+        if (passIndex == 0)
+            waitHandles.insert(waitHandles.end(), waits.begin(), waits.end());
+        if (passIndex == _orderedPasses.size() - 1)
+            signalHandles.insert(signalHandles.end(), signals.begin(), signals.end());
+
+
+        auto& pass = _orderedPasses[passIndex];
+
+        if (pass._type == RenderPass::Type::PRESENT) {
+            if (currentCommandBuffer) {
+
+                submitBarriers(*currentCommandBuffer, pass._barriers);
+
+                currentCommandBuffer->end();
+
+                TRY(submitCommands(currentCommandBuffer, currentQueue, waitHandles, signalHandles));
             }
+
+            auto dummyCommands = CommandBuffer();
+            u32 count = pass._queueWaits.size();
+            std::vector<u32> queueIndices = {};
+            for (auto& wait : pass._queueWaits)
+                queueIndices.emplace_back(static_cast<u32>(wait.second));
+
+            pass.pushConstants(count, queueIndices);
+            TRY(pass.run(*this, dummyCommands));
+
+            currentCommandBuffer = nullptr;
             continue;
         }
 
-        if (!currentCommandBuffer) {
-            currentQueue = pass._queueType;
-            const auto queueIndex = getQueueIndex(currentQueue);
-            currentCommandBuffer = &_commandPools[_device->flyingIndex()][queueIndex].getBuffer();
+        if (pass._type == RenderPass::Type::HOST) {
+            if (currentCommandBuffer) {
+                currentCommandBuffer->end();
 
-            currentCommandBuffer->begin();
-        }
-
-        if (currentQueue != pass._queueType) {
-            currentCommandBuffer->end();
-
-            submissions.push_back({
-                .commands = static_cast<i32>(_commandPools[_device->flyingIndex()][getQueueIndex(currentQueue)].index() - 1),
-                .queueIndex = getQueueIndex(currentQueue),
-                .waitIndex = waits.size(),
-                .hostIndex = -1,
-            });
-            waits.emplace_back();
-            for (auto& wait : pass._queueWaits) {
-                waits.back().push_back(wait.second);
+                TRY(submitCommands(currentCommandBuffer, currentQueue, waitHandles, signalHandles));
             }
 
+            auto semaphores = waitHandles;
+
+            auto cpuValue = _cpuTimeline->increment();
+            _threadPool->addJob([this, semaphores, cpuValue, pass] () -> std::expected<bool, RenderGraphError> {
+                TRY(_cpuTimeline->wait(cpuValue - 1).transform_error([this] (VulkanError error) -> RenderGraphError {
+                        _device->logger().error("Wait on invalid timeline: {}", static_cast<u32>(error));
+                        return RenderGraphError::DEVICE_ERROR;
+                    }));
+                for (auto& wait : semaphores) {
+                    TRY(wait.semaphore->wait(wait.value).transform_error([this] (VulkanError error) -> RenderGraphError {
+                        _device->logger().error("Wait on invalid timeline: {}", static_cast<u32>(error));
+                        return RenderGraphError::DEVICE_ERROR;
+                    }));
+                }
+                auto dummyCommands = CommandBuffer();
+                TRY(pass.run(*this, dummyCommands));
+
+                TRY(_cpuTimeline->signal(cpuValue).transform_error([this] (VulkanError error) -> RenderGraphError {
+                    _device->logger().error("Signal on invalid timeline: {}", static_cast<u32>(error));
+                    return RenderGraphError::DEVICE_ERROR;
+                }));
+                return false;
+            });
+
+            currentCommandBuffer = nullptr;
+            continue;
+        }
+
+        if (pass._queueType != currentQueue && currentCommandBuffer) {
+            currentCommandBuffer->end();
+
+            TRY(submitCommands(currentCommandBuffer, currentQueue, waitHandles, signalHandles));
+
+            currentCommandBuffer = nullptr;
+        }
+
+        if (currentCommandBuffer == nullptr) {
             currentQueue = pass._queueType;
-            const auto queueIndex = getQueueIndex(currentQueue);
+            const auto queueIndex = getQueueIndex(pass._queueType);
             currentCommandBuffer = &_commandPools[_device->flyingIndex()][queueIndex].getBuffer();
+
+            waitHandles.clear();
 
             currentCommandBuffer->begin();
         }
 
         submitBarriers(*currentCommandBuffer, pass._barriers);
 
-        if (pass._type == RenderPass::Type::GRAPHICS && pass._pipeline) {
+        if (pass._type == RenderPass::Type::GRAPHICS && (pass._pipeline || pass._manualPipeline)) {
             auto beginInfo = RenderingInfo{};
 
             beginInfo.size = pass.dimensions();
+
+            for (u32 attachmentIndex = 0; attachmentIndex < pass._colourAttachments.size(); attachmentIndex++) {
+                auto& attachment = pass._colourAttachments[attachmentIndex];
+                auto& renderingAttachment = pass._renderingColourAttachments[attachmentIndex];
+
+                if (!renderingAttachment.image) {
+                    auto resource = _resources[attachment.index];
+                    if (!std::holds_alternative<ImageInfo>(resource))
+                        return std::unexpected(RenderGraphError::INVALID_RESOURCE);
+                    auto image = std::get<ImageInfo>(resource).image;
+
+                    renderingAttachment.image = image;
+                }
+            }
 
             beginInfo.colourAttachments = pass._renderingColourAttachments;
             if (pass._depthAttachment.index >= 0) {
@@ -1082,66 +1226,19 @@ auto canta::V2::RenderGraph::run() -> std::expected<bool, RenderGraphError> {
             currentCommandBuffer->beginRendering(beginInfo);
         }
 
+        for (auto& wait : pass._queueWaits) {
+            if (wait.second == QueueType::NONE) {
+                waitHandles.emplace_back(_cpuTimeline);
+                continue;
+            }
+            auto waitedQueue = _device->queue(wait.second);
+            waitHandles.emplace_back(waitedQueue->timeline());
+        }
+
         TRY(pass.run(*this, *currentCommandBuffer));
 
-        if (pass._type == RenderPass::Type::GRAPHICS && pass._pipeline)
+        if (pass._type == RenderPass::Type::GRAPHICS && (pass._pipeline || pass._manualPipeline))
             currentCommandBuffer->endRendering();
-    }
-
-    if (currentCommandBuffer) {
-        currentCommandBuffer->end();
-    }
-
-    auto queues = std::to_array({
-        _device->queue(QueueType::GRAPHICS),
-        _device->queue(QueueType::COMPUTE),
-        _device->queue(QueueType::TRANSFER),
-    });
-
-    for (u32 commandIndex = 0; commandIndex < submissions.size(); commandIndex++) {
-        auto& submission = submissions[commandIndex];
-
-        if (submission.hostIndex > -1) {
-            auto hostIndex = submission.hostIndex;
-            auto hostWaits = waits[submission.waitIndex];
-            _threadPool->addJob([this, hostIndex, hostWaits] () -> std::expected<bool, RenderGraphError> {
-                for (auto& wait : hostWaits) {
-                    auto timeline = _device->queue(wait)->timeline();
-                    TRY(timeline->wait(timeline->value()).transform_error([this] (VulkanError error) -> RenderGraphError {
-                        _device->logger().error("Wait on invalid timeline: {}", static_cast<u32>(error));
-                        return RenderGraphError::DEVICE_ERROR;
-                    }));
-                }
-                auto dummyCommands = CommandBuffer();
-                TRY(_orderedPasses[hostIndex].run(*this, dummyCommands));
-
-                TRY(_cpuTimeline->signal(_cpuTimeline->increment()).transform_error([this] (VulkanError error) -> RenderGraphError {
-                    _device->logger().error("Signal on invalid timeline: {}", static_cast<u32>(error));
-                    return RenderGraphError::DEVICE_ERROR;
-                }));
-                return false;
-            });
-        } else {
-
-            auto& commandList = _commandPools[_device->flyingIndex()][submission.queueIndex].buffers()[submission.commands];
-
-            std::vector<SemaphorePair> passWaits = {};
-            for (auto& wait : waits[submission.waitIndex]) {
-                if (wait == QueueType::NONE)
-                    passWaits.emplace_back(_cpuTimeline);
-                else
-                    passWaits.emplace_back(_device->queue(wait)->timeline());
-            }
-
-            auto queue = queues[submission.queueIndex];
-            auto signal = SemaphorePair(queue->timeline(), queue->timeline()->increment());
-
-            TRY(queue->submit({ &commandList, 1 }, passWaits, { &signal, 1 }).transform_error([this] (VulkanError error) {
-                _device->logger().error("Invalid queue submit: {}", static_cast<u32>(error));
-                return RenderGraphError::DEVICE_ERROR;
-            }));
-
-        }
     }
     return true;
 }
@@ -1263,7 +1360,11 @@ void canta::V2::RenderGraph::submitBarriers(CommandBuffer &commands, std::span<c
                 .dstAccess = barrier.dstAccess,
             };
         } else {
-            const auto image = std::get<ImageInfo>(resource).image;
+            const auto imageInfo= std::get<ImageInfo>(resource);
+            if (imageInfo.swapchainImage && !imageInfo.image)
+                continue;
+
+            const auto image = imageInfo.image;
 
             imageBarriers[imageBarrierCount++] = ImageBarrier {
                 .image = image,
@@ -1310,9 +1411,11 @@ void canta::V2::RenderGraph::buildBarriers() {
 
             if (prevAccess.passIndex > -1) {
                 auto& prevPass = _orderedPasses[prevAccess.passIndex];
-                if (prevPass._queueType != pass._queueType) {
+                if (prevPass._queueType != pass._queueType || pass._type == RenderPass::Type::PRESENT) {
                     pass._queueWaits.emplace_back(std::make_pair(prevAccess.passIndex, prevPass._queueType));
                 }
+                if (prevPass._type == RenderPass::Type::PRESENT)
+                    pass._queueWaits.emplace_back(std::make_pair(prevAccess.passIndex, QueueType::NONE));
             }
         }
     }
@@ -1346,7 +1449,7 @@ void canta::V2::RenderGraph::buildResources() {
     for (auto& resource : _resources) {
         if (std::holds_alternative<BufferInfo>(resource)) {
             auto& bufferInfo = std::get<BufferInfo>(resource);
-            if (bufferInfo.buffer && compareBuffer(bufferInfo, bufferInfo.buffer))
+            if (bufferInfo.buffer)
                 continue;
 
             const auto buffer = _device->createBuffer({
@@ -1360,7 +1463,7 @@ void canta::V2::RenderGraph::buildResources() {
 
         } else {
             auto& imageInfo = std::get<ImageInfo>(resource);
-            if (imageInfo.image && compareImage(imageInfo, imageInfo.image))
+            if (imageInfo.swapchainImage || (imageInfo.image && compareImage(imageInfo, imageInfo.image)))
                 continue;
 
             const auto image = _device->createImage({

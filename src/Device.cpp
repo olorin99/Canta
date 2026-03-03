@@ -1820,7 +1820,8 @@ void canta::Device::updateBindlessImage(u32 index, ImageViewHandle image, bool s
         .index = index,
         .imageView = image,
         .sampled = sampled,
-        .storage = storage
+        .storage = storage,
+        .endFrame = frameValue() + FRAMES_IN_FLIGHT,
     });
 }
 
@@ -1828,7 +1829,8 @@ void canta::Device::updateBindlessBuffer(u32 index, canta::BufferHandle buffer) 
     std::unique_lock lock(_descriptorMutex);
     _descriptorUpdates.push_back({
         .index = index,
-        .buffer = buffer
+        .buffer = buffer,
+        .endFrame = frameValue() + FRAMES_IN_FLIGHT,
     });
 }
 
@@ -1836,16 +1838,17 @@ void canta::Device::updateBindlessSampler(u32 index, canta::SamplerHandle sample
     std::unique_lock lock(_descriptorMutex);
     _descriptorUpdates.push_back({
         .index = index,
-        .sampler = sampler
+        .sampler = sampler,
+        .endFrame = frameValue() + FRAMES_IN_FLIGHT,
     });
 }
 
 void canta::Device::updateBindlessDescriptors() {
     std::unique_lock lock(_descriptorMutex);
 
-    auto frameIndex = flyingIndex();
+    auto frameVal = frameValue();
 
-    for (auto it = _descriptorUpdates.begin(); it != _descriptorUpdates.end(); it++) {
+    for (auto it = _descriptorUpdates.begin(); it != _descriptorUpdates.end(); ++it) {
         auto& update = *it;
         if (update.imageView) {
             VkWriteDescriptorSet descriptorWrite[2] = {};
@@ -1921,8 +1924,9 @@ void canta::Device::updateBindlessDescriptors() {
 
             logger().info("FrameIndex({}): Sampler bound to index {}", flyingIndex(), update.index);
         }
-        update.frames--;
-        if (update.frames <= 0) {
+        // update.frames--;
+        // if (update.frames <= 0) {
+        if (update.endFrame <= frameVal) {
             _descriptorUpdates.erase(it--);
         }
     }

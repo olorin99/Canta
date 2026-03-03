@@ -32,9 +32,9 @@ namespace canta {
         Swapchain(Swapchain&& rhs) noexcept;
         auto operator=(Swapchain&& rhs) noexcept -> Swapchain&;
 
-        [[nodiscard]] auto acquire() -> std::expected<ImageHandle, VulkanError>;
+        [[nodiscard]] auto acquire(SemaphoreHandle timeline = {}) -> std::expected<ImageHandle, VulkanError>;
 
-        [[nodiscard]] auto present() -> std::expected<u32, VulkanError>;
+        [[nodiscard]] auto present(std::span<SemaphoreHandle> timelines = {}) -> std::expected<u32, VulkanError>;
 
         [[nodiscard]] auto acquireSemaphore() -> SemaphoreHandle { return _semaphores[_semaphoreIndex].acquire; }
         [[nodiscard]] auto presentSemaphore() -> SemaphoreHandle { return _semaphores[_semaphoreIndex].present; }
@@ -70,11 +70,11 @@ namespace canta {
         std::vector<ImageHandle> _imageHandles = {};
         std::vector<VkImage> _images = {};
         std::vector<VkImageView> _imageViews = {};
-        struct SemaphorePair {
+        struct AdaptorSemaphores {
             SemaphoreHandle acquire;
             SemaphoreHandle present;
         };
-        std::vector<SemaphorePair> _semaphores = {};
+        std::vector<AdaptorSemaphores> _semaphores = {};
         u32 _semaphoreIndex = 0;
 
         std::function<u32(Format)> _selector = {};

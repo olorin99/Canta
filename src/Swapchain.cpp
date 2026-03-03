@@ -2,6 +2,7 @@
 #include <Canta/Device.h>
 #include <numeric>
 #include <format>
+#include <utility>
 
 VkSurfaceCapabilitiesKHR getCapabilities(VkPhysicalDevice device, VkSurfaceKHR surface) {
     VkSurfaceCapabilitiesKHR capabilities;
@@ -100,9 +101,10 @@ auto canta::Swapchain::operator=(canta::Swapchain &&rhs) noexcept -> Swapchain &
     return *this;
 }
 
-auto canta::Swapchain::acquire() -> std::expected<ImageHandle, VulkanError> {
+auto canta::Swapchain::acquire(SemaphoreHandle timeline) -> std::expected<ImageHandle, VulkanError> {
     _semaphoreIndex = (_semaphoreIndex % _semaphores.size());
-    auto result = vkAcquireNextImageKHR(_device->logicalDevice(), _swapchain, std::numeric_limits<u64>::max(), _semaphores[_semaphoreIndex].acquire->semaphore(), VK_NULL_HANDLE, &_index);
+    auto acquireSemaphore = _semaphores[_semaphoreIndex].acquire;
+    const auto result = vkAcquireNextImageKHR(_device->logicalDevice(), _swapchain, std::numeric_limits<u64>::max(), acquireSemaphore->semaphore(), VK_NULL_HANDLE, &_index);
     switch (result) {
         case VK_SUCCESS:
             break;
@@ -115,18 +117,46 @@ auto canta::Swapchain::acquire() -> std::expected<ImageHandle, VulkanError> {
         default:
             return std::unexpected(static_cast<VulkanError>(result));
     }
+
+    if (timeline) {
+        auto waits = std::to_array({
+            SemaphorePair(acquireSemaphore)
+        });
+        auto signals = std::to_array({
+            SemaphorePair(timeline, timeline->increment())
+        });
+
+        TRY(_device->queue(QueueType::PRESENT)->submit({}, waits, signals));
+    }
+
+
     return _imageHandles[_index];
 }
 
-auto canta::Swapchain::present() -> std::expected<u32, VulkanError> {
-    auto presentSemaphore = _semaphores[_semaphoreIndex].present->semaphore();
+auto canta::Swapchain::present(std::span<SemaphoreHandle> timelines) -> std::expected<u32, VulkanError> {
+    auto presentSemaphore = _semaphores[_semaphoreIndex].present;
     _semaphoreIndex = (_semaphoreIndex + 1 % _semaphores.size());
+
+    if (!timelines.empty()) {
+        // auto waits = std::to_array({
+        //     SemaphorePair(std::move(timeline))
+        // });
+        std::vector<SemaphorePair> waits = {};
+        for (auto& timeline : timelines)
+            waits.emplace_back(timeline);
+        auto signals = std::to_array({
+            SemaphorePair(presentSemaphore)
+        });
+
+        TRY(_device->queue(QueueType::PRESENT)->submit({}, waits, signals));
+    }
 
     VkPresentInfoKHR presentInfo = {};
     presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
 
     presentInfo.waitSemaphoreCount = 1;
-    presentInfo.pWaitSemaphores = &presentSemaphore;
+    const auto rawSemaphore = presentSemaphore->semaphore();
+    presentInfo.pWaitSemaphores = &rawSemaphore;
 
     presentInfo.swapchainCount = 1;
     presentInfo.pSwapchains = &_swapchain;
@@ -140,12 +170,12 @@ auto canta::Swapchain::present() -> std::expected<u32, VulkanError> {
     return _index;
 }
 
-void canta::Swapchain::setPresentMode(canta::PresentMode mode) {
+void canta::Swapchain::setPresentMode(const canta::PresentMode mode) {
     _presentMode = mode;
     recreate();
 }
 
-void canta::Swapchain::resize(u32 width, u32 height) {
+void canta::Swapchain::resize(const u32 width, const u32 height) {
     _extent.width = width;
     _extent.height = height;
     recreate();

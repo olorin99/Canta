@@ -55,12 +55,14 @@ namespace canta::V2 {
         ImageUsage usage = ImageUsage::STORAGE;
         bool external = false;
         ImageHandle image = {};
+        bool swapchainImage = false;
         std::string name = {};
     };
 
     class RenderGraph;
     class PassBuilder;
     class ComputePass;
+    class PresentPass;
 
     class RenderPass : public ende::graph::Vertex<BufferIndex, ImageIndex> {
     public:
@@ -108,6 +110,13 @@ namespace canta::V2 {
 
         void unpack(PushData& dst, i32& i, const ImageHandle& handle);
 
+        template <std::ranges::range Range>
+        auto unpack(PushData& dst, i32& i, const Range& range) {
+            for (auto& t : range) {
+                unpack(dst, i, t);
+            }
+        }
+
         template <typename... Args>
         auto pushConstants(const Args&... args) -> RenderPass& {
             i32 i = 0;
@@ -116,6 +125,7 @@ namespace canta::V2 {
         }
 
         auto setPipeline(PipelineHandle pipeline) -> RenderPass&;
+        auto setManualPipeline(const bool state) -> RenderPass& { _manualPipeline = state; return *this; }
 
         // auto setCallback(const std::function<void(CommandBuffer&, RenderGraph&, const PushData&)>& callback) -> RenderPass&;
         auto setCallback(const std::function<std::expected<bool, RenderGraphError>(CommandBuffer&, RenderGraph&, const PushData&)>& callback) -> RenderPass&;
@@ -128,7 +138,7 @@ namespace canta::V2 {
         friend ComputePass;
 
         Type _type = Type::NONE;
-        QueueType _queueType = QueueType::NONE;
+        QueueType _queueType = QueueType::GRAPHICS;
 
         auto inputResourceIndex(u32 i) const -> u32;
         auto outputResourceIndex(u32 i) const -> u32;
@@ -143,6 +153,7 @@ namespace canta::V2 {
         void mergeAccesses();
 
         PipelineHandle _pipeline = {};
+        bool _manualPipeline = false;
 
         std::vector<DeferredPushConstant> _deferredPushConstants;
         PushData _pushData = {};
@@ -188,6 +199,7 @@ namespace canta::V2 {
         auto pass() -> RenderPass&;
 
         auto pipeline(const PipelineHandle &pipeline) -> PassBuilder&;
+        auto setManualPipeline(bool state) -> PassBuilder&;
 
         auto read(BufferIndex index, Access access, PipelineStage stage) -> std::expected<BufferInfo, RenderGraphError>;
         auto read(ImageIndex index, Access access, PipelineStage stage, ImageLayout layout) -> std::expected<ImageInfo, RenderGraphError>;
@@ -206,7 +218,10 @@ namespace canta::V2 {
             return pass().output<T>(index);
         }
 
-    protected:
+        auto setCallback(const std::function<std::expected<bool, RenderGraphError>(CommandBuffer&, RenderGraph&, const RenderPass::PushData&)>& callback) -> PassBuilder&;
+
+
+    // protected:
 
         auto addColourRead(ImageIndex index) -> PassBuilder&;
         auto addColourWrite(ImageIndex index, const ClearValue& clearColor = std::to_array({ 0.f, 0.f, 0.f, 1.f })) -> PassBuilder&;
@@ -239,6 +254,7 @@ namespace canta::V2 {
 
     private:
         friend RenderGraph;
+        friend PresentPass;
 
         RenderGraph* _graph = nullptr;
         u32 _vertexIndex = 0;
@@ -356,7 +372,9 @@ namespace canta::V2 {
 
         PresentPass(RenderGraph* graph, u32 index);
 
-        auto present(Swapchain* swapchain, ImageIndex index) -> PresentPass&;
+        auto acquire(Swapchain* swapchain) -> std::expected<ImageIndex, RenderGraphError>;
+
+        auto present(Swapchain* swapchain, ImageIndex index) -> std::expected<ImageIndex, RenderGraphError>;
 
     };
 
@@ -372,6 +390,7 @@ namespace canta::V2 {
         struct CreateInfo {
             Device* device;
             std::shared_ptr<ende::thread::ThreadPool> threadPool = nullptr;
+            bool multiQueue = false;
         };
 
         static auto create(CreateInfo info) -> RenderGraph;
@@ -394,6 +413,8 @@ namespace canta::V2 {
         auto updateImageInfo(ImageIndex index, ImageInfo info) -> std::expected<ImageInfo, RenderGraphError>;
 
         // pass management
+        auto pass(std::string_view name, RenderPass::Type type, const PipelineHandle& pipeline = {}) -> PassBuilder;
+
         auto compute(std::string_view name, const PipelineHandle &pipeline = {}) -> ComputePass;
 
         auto graphics(std::string_view name, const PipelineHandle &pipeline = {}) -> GraphicsPass;
@@ -402,7 +423,9 @@ namespace canta::V2 {
 
         auto host(std::string_view name) -> HostPass;
 
-        auto present(Swapchain* swapchain, ImageIndex index) -> PresentPass;
+        auto acquire(Swapchain* swapchain) -> std::expected<ImageIndex, RenderGraphError>;
+
+        auto present(Swapchain* swapchain, ImageIndex index) -> std::expected<ImageIndex, RenderGraphError>;
 
 
         // finalisation
@@ -412,9 +435,14 @@ namespace canta::V2 {
 
         auto compile() -> std::expected<bool, RenderGraphError>;
 
-        auto run() -> std::expected<bool, RenderGraphError>;
+        auto run(std::span<SemaphorePair> waits = {}, std::span<SemaphorePair> signals = {}) -> std::expected<bool, RenderGraphError>;
 
         void reset();
+
+
+        auto device() const -> Device* { return _device; }
+
+        auto timeline() -> SemaphoreHandle { return _cpuTimeline; }
 
     private:
 
@@ -441,6 +469,7 @@ namespace canta::V2 {
 
         Device* _device = nullptr;
         std::shared_ptr<ende::thread::ThreadPool> _threadPool = nullptr;
+        bool _multiQueue = false;
 
         std::vector<RenderPass> _orderedPasses = {};
 

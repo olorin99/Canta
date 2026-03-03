@@ -12,6 +12,7 @@
 #include <Canta/debug/PipelineManagerDebugger.h>
 #include <Canta/debug/RenderGraphDebugger.h>
 
+#include "Canta/RenderGraphV2.h"
 #include "Canta/debug/CommandQueueDebugger.h"
 
 int main() {
@@ -27,7 +28,10 @@ int main() {
     auto device = TRY_MAIN(canta::Device::create({
         .applicationName = "hello_triangle",
         .enableMeshShading = false,
-        .instanceExtensions = window.requiredExtensions()
+        // .enableAsyncComputeQueue = false,
+        // .enableAsyncTransferQueue = false,
+        .instanceExtensions = window.requiredExtensions(),
+        .logLevel = spdlog::level::warn,
     }));
 
     auto swapchain = device->createSwapchain({
@@ -120,14 +124,19 @@ int main() {
     uploadBuffer.flushStagedData();
     if (!uploadBuffer.wait()) return -1;
 
-    auto renderGraph = TRY_MAIN(canta::RenderGraph::create({
-        .device = device.get(),
-        .multiQueue = false,
-        .name = "Renderer"
-    }));
+    // auto renderGraph = TRY_MAIN(canta::RenderGraph::create({
+    //     .device = device.get(),
+    //     .multiQueue = false,
+    //     .name = "Renderer"
+    // }));
 
-    auto renderGraphDebugger = canta::RenderGraphDebugger::create({
-        .renderGraph = &renderGraph,
+    // auto renderGraphDebugger = canta::RenderGraphDebugger::create({
+        // .renderGraph = &renderGraph,
+    // });
+
+    auto renderGraph = canta::V2::RenderGraph::create({
+        .device = device.get(),
+        .multiQueue = true,
     });
 
     auto pipelineManagerDebugger = canta::PipelineManagerDebugger::create({
@@ -150,6 +159,7 @@ int main() {
             }
             imguiContext.processEvent(&event);
         }
+        // device->startFrameCapture();
         device->beginFrame();
         device->gc();
         pipelineManager.reloadAll();
@@ -190,57 +200,57 @@ int main() {
                 }
             }
 
-            auto multiQueue = renderGraph.multiQueueEnabled();
-            if (ImGui::Checkbox("MultiQueue", &multiQueue))
-                renderGraph.setMultiQueueEnabled(multiQueue);
-
-            auto timingEnabled = renderGraph.timingEnabled();
-            if (ImGui::Checkbox("RenderGraph Timing", &timingEnabled))
-                renderGraph.setTimingEnabled(timingEnabled);
-            const char* modes[] = { "PER_PASS", "PER_GROUP", "SINGLE" };
-            static int modeIndex = 0;
-            if (ImGui::Combo("TimingMode", &modeIndex, modes, 3)) {
-                switch (modeIndex) {
-                    case 0:
-                        renderGraph.setTimingMode(canta::RenderGraph::TimingMode::PER_PASS);
-                        break;
-                    case 1:
-                        renderGraph.setTimingMode(canta::RenderGraph::TimingMode::PER_GROUP);
-                        break;
-                    case 2:
-                        renderGraph.setTimingMode(canta::RenderGraph::TimingMode::SINGLE);
-                        break;
-                }
-            }
-            auto pipelineStatsEnabled = renderGraph.pipelineStatisticsEnabled();
-            if (ImGui::Checkbox("RenderGraph PiplelineStats", &pipelineStatsEnabled))
-                renderGraph.setPipelineStatisticsEnabled(pipelineStatsEnabled);
-            auto individualPipelineStatistics = renderGraph.individualPipelineStatistics();
-            if (ImGui::Checkbox("RenderGraph Per Pass PiplelineStats", &individualPipelineStatistics))
-                renderGraph.setIndividualPipelineStatistics(individualPipelineStatistics);
-
-            auto timers = renderGraph.timers();
-            for (auto& timer : timers) {
-                ImGui::Text("%s: %f ms", timer.first.data(), TRY_MAIN(timer.second.result()) / 1000000.f);
-            }
-            auto pipelineStatistics = renderGraph.pipelineStatistics();
-            for (auto& pipelineStats : pipelineStatistics) {
-                if (ImGui::TreeNode(pipelineStats.first.c_str())) {
-                    auto stats = TRY_MAIN(pipelineStats.second.result());
-                    ImGui::Text("Input Assembly Vertices: %lu", stats.inputAssemblyVertices);
-                    ImGui::Text("Input Assembly Primitives: %lu", stats.inputAssemblyPrimitives);
-                    ImGui::Text("Vertex Shader Invocations: %lu", stats.vertexShaderInvocations);
-                    ImGui::Text("Geometry Shader Invocations: %lu", stats.geometryShaderInvocations);
-                    ImGui::Text("Geometry Shader Primitives: %lu", stats.geometryShaderPrimitives);
-                    ImGui::Text("Clipping Invocations: %lu", stats.clippingInvocations);
-                    ImGui::Text("Clipping Primitives: %lu", stats.clippingPrimitives);
-                    ImGui::Text("Fragment Shader Invocations: %lu", stats.fragmentShaderInvocations);
-                    ImGui::Text("Tessellation Control Shader Patches: %lu", stats.tessellationControlShaderPatches);
-                    ImGui::Text("Tessellation Evaluation Shader Invocations: %lu", stats.tessellationEvaluationShaderInvocations);
-                    ImGui::Text("Compute Shader Invocations: %lu", stats.computeShaderInvocations);
-                    ImGui::TreePop();
-                }
-            }
+            // auto multiQueue = renderGraph.multiQueueEnabled();
+            // if (ImGui::Checkbox("MultiQueue", &multiQueue))
+            //     renderGraph.setMultiQueueEnabled(multiQueue);
+            //
+            // auto timingEnabled = renderGraph.timingEnabled();
+            // if (ImGui::Checkbox("RenderGraph Timing", &timingEnabled))
+            //     renderGraph.setTimingEnabled(timingEnabled);
+            // const char* modes[] = { "PER_PASS", "PER_GROUP", "SINGLE" };
+            // static int modeIndex = 0;
+            // if (ImGui::Combo("TimingMode", &modeIndex, modes, 3)) {
+            //     switch (modeIndex) {
+            //         case 0:
+            //             renderGraph.setTimingMode(canta::RenderGraph::TimingMode::PER_PASS);
+            //             break;
+            //         case 1:
+            //             renderGraph.setTimingMode(canta::RenderGraph::TimingMode::PER_GROUP);
+            //             break;
+            //         case 2:
+            //             renderGraph.setTimingMode(canta::RenderGraph::TimingMode::SINGLE);
+            //             break;
+            //     }
+            // }
+            // auto pipelineStatsEnabled = renderGraph.pipelineStatisticsEnabled();
+            // if (ImGui::Checkbox("RenderGraph PiplelineStats", &pipelineStatsEnabled))
+            //     renderGraph.setPipelineStatisticsEnabled(pipelineStatsEnabled);
+            // auto individualPipelineStatistics = renderGraph.individualPipelineStatistics();
+            // if (ImGui::Checkbox("RenderGraph Per Pass PiplelineStats", &individualPipelineStatistics))
+            //     renderGraph.setIndividualPipelineStatistics(individualPipelineStatistics);
+            //
+            // auto timers = renderGraph.timers();
+            // for (auto& timer : timers) {
+            //     ImGui::Text("%s: %f ms", timer.first.data(), TRY_MAIN(timer.second.result()) / 1000000.f);
+            // }
+            // auto pipelineStatistics = renderGraph.pipelineStatistics();
+            // for (auto& pipelineStats : pipelineStatistics) {
+            //     if (ImGui::TreeNode(pipelineStats.first.c_str())) {
+            //         auto stats = TRY_MAIN(pipelineStats.second.result());
+            //         ImGui::Text("Input Assembly Vertices: %lu", stats.inputAssemblyVertices);
+            //         ImGui::Text("Input Assembly Primitives: %lu", stats.inputAssemblyPrimitives);
+            //         ImGui::Text("Vertex Shader Invocations: %lu", stats.vertexShaderInvocations);
+            //         ImGui::Text("Geometry Shader Invocations: %lu", stats.geometryShaderInvocations);
+            //         ImGui::Text("Geometry Shader Primitives: %lu", stats.geometryShaderPrimitives);
+            //         ImGui::Text("Clipping Invocations: %lu", stats.clippingInvocations);
+            //         ImGui::Text("Clipping Primitives: %lu", stats.clippingPrimitives);
+            //         ImGui::Text("Fragment Shader Invocations: %lu", stats.fragmentShaderInvocations);
+            //         ImGui::Text("Tessellation Control Shader Patches: %lu", stats.tessellationControlShaderPatches);
+            //         ImGui::Text("Tessellation Evaluation Shader Invocations: %lu", stats.tessellationEvaluationShaderInvocations);
+            //         ImGui::Text("Compute Shader Invocations: %lu", stats.computeShaderInvocations);
+            //         ImGui::TreePop();
+            //     }
+            // }
 
             auto memoryUsage = device->memoryUsage();
             ImGui::Text("VRAM Budget: %lu mb", memoryUsage.budget / 1000000);
@@ -267,12 +277,12 @@ int main() {
             ImGui::Text("Timestamp Query Pools %d", resourceStats.timestampQueryPools);
             ImGui::Text("PipelineStats Pools %d", resourceStats.pipelineStatsPools);
 
-            auto renderGraphStats = renderGraph.statistics();
-            ImGui::Text("Passes: %d", renderGraphStats.passes);
-            ImGui::Text("Resource: %d", renderGraphStats.resources);
-            ImGui::Text("Image: %d", renderGraphStats.images);
-            ImGui::Text("Buffers: %d", renderGraphStats.buffers);
-            ImGui::Text("Command Buffers: %d", renderGraphStats.commandBuffers);
+            // auto renderGraphStats = renderGraph.statistics();
+            // ImGui::Text("Passes: %d", renderGraphStats.passes);
+            // ImGui::Text("Resource: %d", renderGraphStats.resources);
+            // ImGui::Text("Image: %d", renderGraphStats.images);
+            // ImGui::Text("Buffers: %d", renderGraphStats.buffers);
+            // ImGui::Text("Command Buffers: %d", renderGraphStats.commandBuffers);
 
             if (ImGui::TreeNode("markers")) {
                 auto& markers = device->getFrameDebugMarkers(device->framePrevValue() % canta::FRAMES_IN_FLIGHT);
@@ -312,8 +322,8 @@ int main() {
         }
         ImGui::End();
 
-        renderGraphDebugger.render();
-        renderGraphDebugger.drawRenderGraph();
+        // renderGraphDebugger.render();
+        // renderGraphDebugger.drawRenderGraph();
 
         pipelineManagerDebugger.render();
 
@@ -323,21 +333,24 @@ int main() {
 
 
 
-        auto swapImage = TRY_MAIN(swapchain->acquire());
+        // auto swapImage = TRY_MAIN(swapchain->acquire());
 
         renderGraph.reset();
 
         auto imageIndex = renderGraph.addImage({
-            .mipLevels = 4,
+            .width = 1920,
+            .height = 1080,
+            .mips = 4,
             .name = "image"
         });
-        auto swapchainIndex = renderGraph.addImage({
-            .handle = swapImage,
-            .name = "swapchain_image"
-        });
+        // auto swapchainIndex = renderGraph.addImage({
+            // .image = swapImage,
+            // .swapchainImage = true,
+            // .name = "swapchain_image",
+        // });
 
         auto particleBufferIndex = renderGraph.addBuffer({
-            .handle = buffer,
+            .buffer = buffer,
             .name = "particles_buffer"
         });
 
@@ -350,15 +363,47 @@ int main() {
         //     });
 
         // renderGraph.addClearPass("clear_image", imageAlias);
-        auto imageAlias = TRY_MAIN(renderGraph.addClearPass("clear_image", imageIndex).aliasImageOutput(0));
+        // auto imageAlias = TRY_MAIN(renderGraph.addClearPass("clear_image", imageIndex).aliasImageOutput(0));
 
-        auto particleGroup = renderGraph.getGroup("particles");
+        auto swapchainIndex = TRY_MAIN(renderGraph.acquire(&*swapchain));
 
-        auto particlesMovePassOutputs = TRY_MAIN(renderGraph.addPass({.name = "particles_move"})
-            .setGroup(particleGroup)
-            .setPipeline(pipeline)
-            .pushConstants(canta::Write(particleBufferIndex), numParticles, static_cast<f32>(dt))
-            .dispatchThreads(numParticles).aliasBufferOutput(particleBufferIndex));
+        auto clearedImage = TRY_MAIN(renderGraph.transfer("clear_image").clear(imageIndex).output<canta::V2::ImageIndex>());
+
+        auto movedParticles = TRY_MAIN(renderGraph.compute("particles_move", pipeline)
+            .addStorageBufferWrite(particleBufferIndex)
+            .pushConstants(particleBufferIndex, numParticles, static_cast<f32>(dt))
+            .dispatchThreads(numParticles).output<canta::V2::BufferIndex>());
+
+        auto drawnParticles = TRY_MAIN(renderGraph.compute("particles_draw", pipelineDraw)
+            .addStorageBufferRead(movedParticles)
+            .addStorageImageRead(clearedImage)
+            .addStorageImageWrite(clearedImage)
+            .pushConstants(movedParticles, clearedImage, numParticles)
+            .dispatchThreads(numParticles).output<canta::V2::ImageIndex>());
+
+        auto blittedSwapchain = TRY_MAIN(renderGraph.graphics("blit_to_swapchain").blit(drawnParticles, swapchainIndex).output<canta::V2::ImageIndex>());
+
+        auto uiSwapchain = TRY_MAIN(renderGraph.pass("ui", canta::V2::RenderPass::Type::GRAPHICS)
+            .setManualPipeline(true)
+            .addColourRead(blittedSwapchain)
+            .addColourWrite(blittedSwapchain)
+            .setCallback([&imguiContext, &swapchain] (auto& commands, auto& graph, const auto& push) {
+                imguiContext.render(ImGui::GetDrawData(), commands, swapchain->format());
+                return true;
+            }).output<canta::V2::ImageIndex>());
+
+        auto presentOutput = TRY_MAIN(renderGraph.present(&*swapchain, uiSwapchain));
+
+        // renderGraph.setRoot(uiSwapchain);
+        renderGraph.setRoot(presentOutput);
+
+        // auto particleGroup = renderGraph.getGroup("particles");
+
+        // auto particlesMovePassOutputs = TRY_MAIN(renderGraph.addPass({.name = "particles_move"})
+            // .setGroup(particleGroup)
+            // .setPipeline(pipeline)
+            // .pushConstants(canta::Write(particleBufferIndex), numParticles, static_cast<f32>(dt))
+            // .dispatchThreads(numParticles).aliasBufferOutput(particleBufferIndex));
 
         // renderGraph.addPass({.name = "copy", .type = canta::PassType::HOST})
             // .addDummyRead(particlesMovePassOutputs)
@@ -367,50 +412,66 @@ int main() {
                // std::printf("test\n");
             // });
 
-        auto& particlesDrawPass = renderGraph.addPass({.name = "particles_draw"})
-            .setGroup(particleGroup)
-            .setPipeline(pipelineDraw)
-            .addStorageImageRead(imageAlias)
-            .pushConstants(canta::Read(particlesMovePassOutputs), canta::Write(imageIndex), numParticles)
-            .dispatchThreads(numParticles);
+        // auto& particlesDrawPass = renderGraph.addPass({.name = "particles_draw"})
+        //     .setGroup(particleGroup)
+        //     .setPipeline(pipelineDraw)
+        //     .addStorageImageRead(imageAlias)
+        //     .pushConstants(canta::Read(particlesMovePassOutputs), canta::Write(imageIndex), numParticles)
+        //     .dispatchThreads(numParticles);
 
-        renderGraphDebugger.setBasePass(particlesDrawPass);
-        renderGraphDebugger.setBaseResource(imageIndex);
+        // renderGraphDebugger.setBasePass(particlesDrawPass);
+        // renderGraphDebugger.setBaseResource(imageIndex);
 
-        auto [uiSwapchainIndex] = renderGraph.addBlitPass("blit_to_swapchain", imageIndex, swapchainIndex).aliasImageOutputs<1>();
+        // auto [uiSwapchainIndex] = renderGraph.addBlitPass("blit_to_swapchain", imageIndex, swapchainIndex).aliasImageOutputs<1>();
 
-        auto& uiPass = renderGraph.addPass({.name = "ui", .type = canta::PassType::GRAPHICS})
-            .setManualPipeline(true)
-            // .addColourRead(swapchainIndex)
-            .addColourRead(uiSwapchainIndex)
-            // .addColourWrite(uiSwapchainIndex)
-            .addColourWrite(swapchainIndex)
-            .setExecuteFunction([&imguiContext, &swapchain](canta::CommandBuffer& cmd, canta::RenderGraph& graph) {
-            imguiContext.render(ImGui::GetDrawData(), cmd, swapchain->format());
-        });
+        // auto& uiPass = renderGraph.addPass({.name = "ui", .type = canta::PassType::GRAPHICS})
+        //     .setManualPipeline(true)
+        //     // .addColourRead(swapchainIndex)
+        //     .addColourRead(uiSwapchainIndex)
+        //     // .addColourWrite(uiSwapchainIndex)
+        //     .addColourWrite(swapchainIndex)
+        //     .setExecuteFunction([&imguiContext, &swapchain](canta::CommandBuffer& cmd, canta::RenderGraph& graph) {
+        //     imguiContext.render(ImGui::GetDrawData(), cmd, swapchain->format());
+        // });
 
-        renderGraphDebugger.debug();
+        // renderGraphDebugger.debug();
 
-        renderGraph.setBackbuffer(swapchainIndex, canta::ImageLayout::PRESENT);
+        // renderGraph.setBackbuffer(swapchainIndex, canta::ImageLayout::PRESENT);
 //        renderGraph.setBackbuffer(swapchainIndex);
         if (!renderGraph.compile())
             return -1;
 
-        auto waits = std::to_array({
-            canta::SemaphorePair{ device->frameSemaphore(), device->framePrevValue() },
-            canta::SemaphorePair(swapchain->acquireSemaphore()),
-            canta::SemaphorePair(uploadBuffer.timeline())
-        });
-        auto signals = std::to_array({
-            canta::SemaphorePair(device->frameSemaphore()),
-            canta::SemaphorePair(swapchain->presentSemaphore())
-        });
-        if (!renderGraph.execute(waits, signals, {}, false))
-            return -2;
+        // auto waits = std::to_array({
+        //     canta::SemaphorePair{ device->frameSemaphore() },
+        //     canta::SemaphorePair(uploadBuffer.timeline())
+        // });
+        // auto signals = std::to_array({
+        //     canta::SemaphorePair(device->frameSemaphore(), device->frameSemaphore()->increment()),
+        // });
+        // if (!renderGraph.execute(waits, signals, {}, false))
+        //     return -2;
 
-        TRY_MAIN(swapchain->present());
+        auto waits = std::to_array({ canta::SemaphorePair(device->frameSemaphore(), device->framePrevValue()), canta::SemaphorePair(uploadBuffer.timeline()) });
+        auto signals = std::to_array({ canta::SemaphorePair(device->frameSemaphore(), device->frameSemaphore()->value())});
+        // auto waits = std::to_array({
+            // canta::SemaphorePair{ device->frameSemaphore(), device->framePrevValue() },
+            // canta::SemaphorePair(swapchain->acquireSemaphore()),
+            // canta::SemaphorePair(uploadBuffer.timeline())
+        // });
+        // auto signals = std::to_array({
+            // canta::SemaphorePair(device->frameSemaphore()),
+            // canta::SemaphorePair(swapchain->presentSemaphore())
+        // });
+
+
+
+        TRY_MAIN(renderGraph.run(waits, signals));
+
+        // TRY_MAIN(swapchain->present());
 
         dt = device->endFrame();
+        // device->endFrameCapture();
+        // printf("frame: %lu\n", device->frameValue());
     }
 
     TRY_MAIN(device->waitIdle());

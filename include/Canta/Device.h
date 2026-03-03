@@ -370,7 +370,7 @@ namespace canta {
             bool storage = false;
             BufferHandle buffer = {};
             SamplerHandle sampler = {};
-            i32 frames = FRAMES_IN_FLIGHT;
+            u64 endFrame = 0;
         };
         std::vector<DescriptorUpdate> _descriptorUpdates = {};
         std::mutex _descriptorMutex = {};
