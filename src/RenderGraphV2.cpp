@@ -1239,7 +1239,7 @@ auto canta::V2::RenderGraph::run(std::span<SemaphorePair> waits, std::span<Semap
 
     std::array<std::vector<CommandBuffer*>, 4> _queues = {};
 
-    const auto submitCommands = [this, async] (CommandBuffer* commands, const QueueType queueType, std::span<SemaphorePair> waits, std::span<SemaphorePair> signals) -> std::expected<bool, RenderGraphError> {
+    const auto submitCommands = [this, async] (CommandBuffer* commands, const QueueType queueType, std::span<SemaphorePair> waits, std::span<SemaphorePair> signals, const bool final) -> std::expected<bool, RenderGraphError> {
         const auto queue = _device->queue(queueType);
 
         std::vector<SemaphorePair> passWaits = {};
@@ -1248,7 +1248,7 @@ auto canta::V2::RenderGraph::run(std::span<SemaphorePair> waits, std::span<Semap
         std::vector<SemaphorePair> passSignals = {};
         passSignals.emplace_back(queue->timeline(), queue->timeline()->increment());
         passSignals.insert(passSignals.end(), signals.begin(), signals.end());
-        if (async)
+        if (async && final)
             passSignals.emplace_back(_cpuTimeline, _cpuTimeline->increment());
 
         TRY(queue->submit({ commands, 1 }, passWaits, passSignals).transform_error([this] (VulkanError error) {
@@ -1274,7 +1274,7 @@ auto canta::V2::RenderGraph::run(std::span<SemaphorePair> waits, std::span<Semap
 
                 currentCommandBuffer->end();
 
-                TRY(submitCommands(currentCommandBuffer, currentQueue, waitHandles, signalHandles));
+                TRY(submitCommands(currentCommandBuffer, currentQueue, waitHandles, signalHandles, passIndex == _orderedPasses.size() - 1));
             }
 
             auto dummyCommands = CommandBuffer();
@@ -1294,7 +1294,7 @@ auto canta::V2::RenderGraph::run(std::span<SemaphorePair> waits, std::span<Semap
             if (currentCommandBuffer) {
                 currentCommandBuffer->end();
 
-                TRY(submitCommands(currentCommandBuffer, currentQueue, waitHandles, signalHandles));
+                TRY(submitCommands(currentCommandBuffer, currentQueue, waitHandles, signalHandles, passIndex == _orderedPasses.size() - 1));
             }
 
             auto semaphores = waitHandles;
@@ -1328,7 +1328,7 @@ auto canta::V2::RenderGraph::run(std::span<SemaphorePair> waits, std::span<Semap
         if (pass._queueType != currentQueue && currentCommandBuffer) {
             currentCommandBuffer->end();
 
-            TRY(submitCommands(currentCommandBuffer, currentQueue, waitHandles, signalHandles));
+            TRY(submitCommands(currentCommandBuffer, currentQueue, waitHandles, signalHandles, passIndex == _orderedPasses.size() - 1));
 
             currentCommandBuffer = nullptr;
         }
@@ -1389,7 +1389,7 @@ auto canta::V2::RenderGraph::run(std::span<SemaphorePair> waits, std::span<Semap
     if (currentCommandBuffer) {
         currentCommandBuffer->end();
 
-        TRY(submitCommands(currentCommandBuffer, currentQueue, waitHandles, signalHandles));
+        TRY(submitCommands(currentCommandBuffer, currentQueue, waitHandles, signalHandles, true));
     }
 
     if (async)

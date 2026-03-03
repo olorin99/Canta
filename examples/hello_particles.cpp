@@ -347,7 +347,7 @@ int main() {
 
         auto swapchainIndex = TRY_MAIN(renderGraph.acquire(&*swapchain));
 
-        auto clearedImage = TRY_MAIN(renderGraph.transfer("clear_image").clear(imageIndex).output<canta::V2::ImageIndex>());
+        auto clearedImage = TRY_MAIN(renderGraph.transfer("clear_image").clear(imageIndex));
 
         auto movedParticles = TRY_MAIN(renderGraph.compute("particles_move", pipeline)
             .pushConstants(canta::V2::Write(particleBufferIndex), numParticles, static_cast<f32>(dt))
