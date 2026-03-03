@@ -9,9 +9,25 @@ jobs:
           apt-get install -y build-essential python3 cmake ninja-build nodejs git libsdl2-dev libspdlog-dev libvulkan-dev
       - name: checkout code
         uses: actions/checkout@v4
-      - name: build
+      - name: Setup build folder
         run: |
           mkdir build
           cd build
+      - name: Load cache
+        id: load-cache
+        uses: actions/cache/restore@v5
+        with:
+          path: build
+          key: canta-cache
+      - name: Setup cmake
+        run: |
           cmake -G Ninja -DCMAKE_BUILD_TYPE=Release -DCANTA_ENABLE_RENDERDOC=OFF ..
+      - name: Build
+        run: |
           cmake --build . --target Canta -j8
+      - name: Store cache
+        id: store-cache
+        uses: actions/cache/save@v5
+        with:
+          path: build
+          key: ${{ steps.load-cache.outputs.cache-primary-key }}
