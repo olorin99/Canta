@@ -729,7 +729,7 @@ auto canta::V2::TransferPass::addTransferWrite(const ImageIndex index) -> Transf
     return *this;
 }
 
-auto canta::V2::TransferPass::copy(BufferIndex src, BufferIndex dst, u32 srcOffset, u32 dstOffset, u32 size) -> TransferPass& {
+auto canta::V2::TransferPass::copy(BufferIndex src, BufferIndex dst, u32 srcOffset, u32 dstOffset, u32 size) -> std::expected<BufferIndex, RenderGraphError> {
     addTransferRead(src);
     addTransferWrite(dst);
     pass().setCallback([src, dst, srcOffset, dstOffset, size] (auto& cmd, auto& graph, const auto& push) -> std::expected<bool, RenderGraphError> {
@@ -742,67 +742,93 @@ auto canta::V2::TransferPass::copy(BufferIndex src, BufferIndex dst, u32 srcOffs
         });
         return true;
     });
-    return *this;
+    return output<BufferIndex>().transform_error(mapGraphErrorToRenderGraphError);
 }
 
-auto canta::V2::TransferPass::copy(BufferIndex src, ImageIndex dst, ImageCopy info) -> TransferPass& {
+auto canta::V2::TransferPass::copy(BufferIndex src, ImageIndex dst, ImageCopy info) -> std::expected<ImageIndex, RenderGraphError> {
     addTransferRead(src);
     addTransferWrite(dst);
     pass().setCallback([src, dst, info] (auto& cmd, auto& graph, const auto& push) -> std::expected<bool, RenderGraphError> {
+        auto copyInfo = info;
+        if (copyInfo.size == 0 || copyInfo.dimensions.x() == 0 || copyInfo.dimensions.y() == 0 || copyInfo.dimensions.z() == 0) {
+            auto bufferInfo = TRY(graph.getBufferInfo(src));
+            auto imageInfo = TRY(graph.getImageInfo(dst));
+
+            copyInfo.dimensions = {
+                imageInfo.image->width(),
+                imageInfo.image->height(),
+                imageInfo.image->depth(),
+            };
+            copyInfo.size = bufferInfo.size;
+        }
+
         cmd.copyBufferToImage({
             .buffer = TRY(graph.getBuffer(src)),
             .image = TRY(graph.getImage(dst)),
-            .dstLayout = info.layout,
-            .dstDimensions = info.dimensions,
-            .dstOffsets = info.offsets,
-            .dstMipLevel = info.mipLevel,
-            .dstLayer = info.layer,
-            .dstLayerCount = info.layerCount,
-            .size = info.size,
-            .srcOffset = info.offset,
+            .dstLayout = copyInfo.layout,
+            .dstDimensions = copyInfo.dimensions,
+            .dstOffsets = copyInfo.offsets,
+            .dstMipLevel = copyInfo.mipLevel,
+            .dstLayer = copyInfo.layer,
+            .dstLayerCount = copyInfo.layerCount,
+            .size = copyInfo.size,
+            .srcOffset = copyInfo.offset,
         });
         return true;
     });
-    return *this;
+    return output<ImageIndex>().transform_error(mapGraphErrorToRenderGraphError);
 }
 
-auto canta::V2::TransferPass::copy(ImageIndex src, BufferIndex dst, ImageCopy info) -> TransferPass& {
+auto canta::V2::TransferPass::copy(ImageIndex src, BufferIndex dst, ImageCopy info) -> std::expected<BufferIndex, RenderGraphError> {
     addTransferRead(src);
     addTransferWrite(dst);
     pass().setCallback([src, dst, info] (auto& cmd, auto& graph, const auto& push) -> std::expected<bool, RenderGraphError> {
+        auto copyInfo = info;
+        if (copyInfo.size == 0 || copyInfo.dimensions.x() == 0 || copyInfo.dimensions.y() == 0 || copyInfo.dimensions.z() == 0) {
+            auto bufferInfo = TRY(graph.getBufferInfo(dst));
+            auto imageInfo = TRY(graph.getImageInfo(src));
+
+            copyInfo.dimensions = {
+                imageInfo.image->width(),
+                imageInfo.image->height(),
+                imageInfo.image->depth(),
+            };
+            copyInfo.size = bufferInfo.size;
+        }
+
         cmd.copyImageToBuffer({
             .buffer = TRY(graph.getBuffer(dst)),
             .image = TRY(graph.getImage(src)),
-            .dstLayout = info.layout,
-            .dstDimensions = info.dimensions,
-            .dstOffsets = info.offsets,
-            .dstMipLevel = info.mipLevel,
-            .dstLayer = info.layer,
-            .dstLayerCount = info.layerCount,
-            .size = info.size,
-            .srcOffset = info.offset,
+            .dstLayout = copyInfo.layout,
+            .dstDimensions = copyInfo.dimensions,
+            .dstOffsets = copyInfo.offsets,
+            .dstMipLevel = copyInfo.mipLevel,
+            .dstLayer = copyInfo.layer,
+            .dstLayerCount = copyInfo.layerCount,
+            .size = copyInfo.size,
+            .srcOffset = copyInfo.offset,
         });
         return true;
     });
-    return *this;
+    return output<BufferIndex>().transform_error(mapGraphErrorToRenderGraphError);
 }
 
-auto canta::V2::TransferPass::clear(const ImageIndex index, const ClearValue &value) -> TransferPass& {
+auto canta::V2::TransferPass::clear(const ImageIndex index, const ClearValue &value) -> std::expected<ImageIndex, RenderGraphError> {
     addTransferWrite(index);
     pass().setCallback([value, index] (auto& cmd, auto& graph, const auto& push) -> std::expected<bool, RenderGraphError> {
         cmd.clearImage(TRY(graph.getImage(index)), ImageLayout::TRANSFER_DST, value);
         return true;
     });
-    return *this;
+    return output<ImageIndex>().transform_error(mapGraphErrorToRenderGraphError);
 }
 
-auto canta::V2::TransferPass::clear(BufferIndex index, u32 value, u32 offset, u32 size) -> TransferPass& {
+auto canta::V2::TransferPass::clear(BufferIndex index, u32 value, u32 offset, u32 size) -> std::expected<BufferIndex, RenderGraphError> {
     addTransferWrite(index);
     pass().setCallback([index, value, offset, size] (auto& cmd, auto& graph, const auto& push) -> std::expected<bool, RenderGraphError> {
         cmd.clearBuffer(TRY(graph.getBuffer(index)), value, offset, size);
         return true;
     });
-    return *this;
+    return output<BufferIndex>().transform_error(mapGraphErrorToRenderGraphError);
 }
 
 canta::V2::HostPass::HostPass(RenderGraph *graph, const u32 index) : PassBuilder(graph, index) {}
@@ -833,6 +859,32 @@ auto canta::V2::HostPass::setCallback(const std::function<void(RenderGraph &)> &
         return true;
     });
     return *this;
+}
+
+auto canta::V2::HostPass::upload(BufferIndex dst, std::span<const u8> data) -> std::expected<BufferIndex, RenderGraphError> {
+    addStorageBufferWrite(dst);
+    auto dstInfo = TRY(_graph->getBufferInfo(dst));
+    dstInfo.type = MemoryType::STAGING;
+    TRY(_graph->updateBufferInfo(dst, dstInfo));
+    setCallback([dst, data] (auto& graph) {
+        auto buffer = *graph.getBuffer(dst);
+        buffer->data(data);
+    });
+    return output<BufferIndex>().transform_error(mapGraphErrorToRenderGraphError);
+}
+
+auto canta::V2::HostPass::readback(const BufferIndex src, std::span<u8> data) -> std::expected<BufferIndex, RenderGraphError> {
+    addStorageBufferRead(src);
+    addStorageBufferWrite(src);
+    auto srcInfo = TRY(_graph->getBufferInfo(src));
+    srcInfo.type = MemoryType::READBACK;
+    TRY(_graph->updateBufferInfo(src, srcInfo));
+    setCallback([src, data] (auto& graph) {
+        auto buffer = *graph.getBuffer(src);
+        auto mapped = buffer->map();
+        std::memcpy(data.data(), mapped.address(), data.size());
+    });
+    return output<BufferIndex>().transform_error(mapGraphErrorToRenderGraphError);
 }
 
 canta::V2::PresentPass::PresentPass(RenderGraph *graph, const u32 index) : PassBuilder(graph, index) {}
@@ -1143,7 +1195,7 @@ inline auto getQueueIndex(const canta::QueueType queue) -> u32 {
     return 0;
 }
 
-auto canta::V2::RenderGraph::run(std::span<SemaphorePair> waits, std::span<SemaphorePair> signals) -> std::expected<bool, RenderGraphError> {
+auto canta::V2::RenderGraph::run(std::span<SemaphorePair> waits, std::span<SemaphorePair> signals, const bool async) -> std::expected<bool, RenderGraphError> {
     _device->updateBindlessDescriptors();
     // for each sorted pass
     // if current queue different than last end current command list and start a new one.
@@ -1171,7 +1223,7 @@ auto canta::V2::RenderGraph::run(std::span<SemaphorePair> waits, std::span<Semap
 
     std::array<std::vector<CommandBuffer*>, 4> _queues = {};
 
-    const auto submitCommands = [this] (CommandBuffer* commands, const QueueType queueType, std::span<SemaphorePair> waits, std::span<SemaphorePair> signals) -> std::expected<bool, RenderGraphError> {
+    const auto submitCommands = [this, async] (CommandBuffer* commands, const QueueType queueType, std::span<SemaphorePair> waits, std::span<SemaphorePair> signals) -> std::expected<bool, RenderGraphError> {
         const auto queue = _device->queue(queueType);
 
         std::vector<SemaphorePair> passWaits = {};
@@ -1180,6 +1232,8 @@ auto canta::V2::RenderGraph::run(std::span<SemaphorePair> waits, std::span<Semap
         std::vector<SemaphorePair> passSignals = {};
         passSignals.emplace_back(queue->timeline(), queue->timeline()->increment());
         passSignals.insert(passSignals.end(), signals.begin(), signals.end());
+        if (async)
+            passSignals.emplace_back(_cpuTimeline, _cpuTimeline->increment());
 
         TRY(queue->submit({ commands, 1 }, passWaits, passSignals).transform_error([this] (VulkanError error) {
             _device->logger().error("Invalid queue submit: {}", static_cast<u32>(error));
@@ -1316,6 +1370,15 @@ auto canta::V2::RenderGraph::run(std::span<SemaphorePair> waits, std::span<Semap
         if (pass._type == RenderPass::Type::GRAPHICS && (pass._pipeline || pass._manualPipeline))
             currentCommandBuffer->endRendering();
     }
+    if (currentCommandBuffer) {
+        currentCommandBuffer->end();
+
+        TRY(submitCommands(currentCommandBuffer, currentQueue, waitHandles, signalHandles));
+    }
+
+    if (async)
+        TRY(_cpuTimeline->wait(_cpuTimeline->value()).transform_error([] (VulkanError error) { return RenderGraphError::DEVICE_ERROR; }));
+
     return true;
 }
 
@@ -1329,7 +1392,7 @@ auto canta::V2::RenderGraph::getResourceIndices(const std::span<const RenderPass
     for (u32 i = 0; i < _resources.size(); i++) {
         indices.emplace_back(passes.size(), 0);
     }
-    for (u32 passIndex = 0; passIndex < _resources.size(); ++passIndex) {
+    for (u32 passIndex = 0; passIndex < passes.size(); ++passIndex) {
         auto& pass = passes[passIndex];
         for (u32 i = 0; i < pass.inputs.size(); i++) {
             const auto index = pass.inputResourceIndex(i);

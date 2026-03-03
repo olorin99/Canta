@@ -67,6 +67,7 @@ namespace canta::V2 {
     class PassBuilder;
     class ComputePass;
     class GraphicsPass;
+    class HostPass;
     class PresentPass;
 
     template <typename T>
@@ -313,6 +314,7 @@ namespace canta::V2 {
 
     private:
         friend RenderGraph;
+        friend HostPass;
         friend PresentPass;
 
         RenderGraph* _graph = nullptr;
@@ -397,7 +399,7 @@ namespace canta::V2 {
         auto addTransferRead(ImageIndex index) -> TransferPass&;
         auto addTransferWrite(ImageIndex index) -> TransferPass&;
 
-        auto copy(BufferIndex src, BufferIndex dst, u32 srcOffset = 0, u32 dstOffset = 0, u32 size = 0) -> TransferPass&;
+        auto copy(BufferIndex src, BufferIndex dst, u32 srcOffset = 0, u32 dstOffset = 0, u32 size = 0) -> std::expected<BufferIndex, RenderGraphError>;
         struct ImageCopy {
             ImageLayout layout = ImageLayout::TRANSFER_DST;
             ende::math::Vec<3, u32> dimensions = { 0, 0, 0 };
@@ -408,11 +410,11 @@ namespace canta::V2 {
             u32 size = 0;
             u32 offset;
         };
-        auto copy(BufferIndex src, ImageIndex dst, ImageCopy info) -> TransferPass&;
-        auto copy(ImageIndex src, BufferIndex dst, ImageCopy info) -> TransferPass&;
+        auto copy(BufferIndex src, ImageIndex dst, ImageCopy info) -> std::expected<ImageIndex, RenderGraphError>;
+        auto copy(ImageIndex src, BufferIndex dst, ImageCopy info) -> std::expected<BufferIndex, RenderGraphError>;
 
-        auto clear(ImageIndex index, const ClearValue& value = std::to_array({0.f, 0.f, 0.f, 1.f})) -> TransferPass&;
-        auto clear(BufferIndex index, u32 value = 0, u32 offset = 0, u32 size = 0) -> TransferPass&;
+        auto clear(ImageIndex index, const ClearValue& value = std::to_array({0.f, 0.f, 0.f, 1.f})) -> std::expected<ImageIndex, RenderGraphError>;
+        auto clear(BufferIndex index, u32 value = 0, u32 offset = 0, u32 size = 0) -> std::expected<BufferIndex, RenderGraphError>;
 
     };
 
@@ -429,6 +431,18 @@ namespace canta::V2 {
 
         auto setCallback(const std::function<void(RenderGraph&)>& callback) -> HostPass&;
 
+
+        template <std::ranges::range Range>
+        auto upload(const BufferIndex dst, const Range& range) -> std::expected<BufferIndex, RenderGraphError> {
+            return upload(dst, std::span<const u8>(reinterpret_cast<const u8*>(std::ranges::data(range)), std::ranges::size(range) * sizeof(std::ranges::range_value_t<Range>)));
+        }
+        auto upload(BufferIndex dst, std::span<const u8> data) -> std::expected<BufferIndex, RenderGraphError>;
+
+        template <std::ranges::range Range>
+        auto readback(const BufferIndex dst, Range& range) -> std::expected<BufferIndex, RenderGraphError> {
+            return readback(dst, std::span<u8>(reinterpret_cast<u8*>(std::ranges::data(range)), std::ranges::size(range) * sizeof(std::ranges::range_value_t<Range>)));
+        }
+        auto readback(BufferIndex src, std::span<u8> data) -> std::expected<BufferIndex, RenderGraphError>;
     };
 
     class PresentPass : public PassBuilder {
@@ -499,7 +513,7 @@ namespace canta::V2 {
 
         auto compile() -> std::expected<bool, RenderGraphError>;
 
-        auto run(std::span<SemaphorePair> waits = {}, std::span<SemaphorePair> signals = {}) -> std::expected<bool, RenderGraphError>;
+        auto run(std::span<SemaphorePair> waits = {}, std::span<SemaphorePair> signals = {}, bool async = true) -> std::expected<bool, RenderGraphError>;
 
         void reset();
 

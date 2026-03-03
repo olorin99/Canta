@@ -1,5 +1,5 @@
 #include <Canta/Device.h>
-#include <Canta/RenderGraph.h>
+#include <Canta/RenderGraphV2.h>
 #include <Canta/SDLWindow.h>
 #include <Ende/filesystem/File.h>
 
@@ -49,10 +49,10 @@ int main() {
         .rootPath = CANTA_SRC_DIR
     });
 
-    auto renderGraph = TRY_MAIN(canta::RenderGraph::create({
+    auto renderGraph = TRY_MAIN(canta::V2::RenderGraph::create({
         .device = device.get(),
         .multiQueue = false,
-        .name = "graph"
+        // .name = "graph"
     }));
 
     auto camera = Camera({ 0, 0, 0 }, aspectRatio);
@@ -76,7 +76,6 @@ int main() {
     });
 
     auto outputImage = renderGraph.addImage({
-        .matchesBackbuffer = false,
         .width = imageWidth,
         .height = imageHeight,
         .format = canta::Format::RGBA32_SFLOAT,
@@ -84,32 +83,29 @@ int main() {
     });
 
     auto outputBufferIndex = renderGraph.addBuffer({
-        .handle = outputBuffer,
+        .buffer = outputBuffer,
         .name = "output_buffer"
     });
 
-    renderGraph.addUploadPass("sphere_upload", sphereBuffer, spheres);
+    auto uploadedData = TRY_MAIN(renderGraph.host("sphere_upload").upload(sphereBuffer, spheres));
 
-    renderGraph.addPass({.name = "trace_rays"})
-        .setPipeline(pipelineManager.getPipeline(canta::Pipeline::CreateInfo{
+    auto image = TRY_MAIN(renderGraph.compute("trace_rays", pipelineManager.getPipeline(canta::Pipeline::CreateInfo{
             .compute = {
                 .path = CANTA_SRC_DIR"/examples/hello_raytrace.slang",
                 .entryPoint = "traceMain"
             }
         }).value())
-        .pushConstants(canta::Read(sphereBuffer), canta::Write(outputImage), static_cast<u32>(spheres.size()), camera, imageWidth, imageHeight)
-        .dispatchThreads(imageWidth, imageHeight);
+        .pushConstants(canta::V2::Read(uploadedData), canta::V2::Write(outputImage), static_cast<u32>(spheres.size()), camera, imageWidth, imageHeight)
+        .dispatchThreads(imageWidth, imageHeight).output<canta::V2::ImageIndex>());
 
-    renderGraph.addCopyPass("copy_to_buffer", outputImage, outputBufferIndex);
+    auto output = TRY_MAIN(renderGraph.transfer("copy_to_buffer").copy(image, outputBufferIndex, {}));
 
-    renderGraph.setBackbuffer(outputBufferIndex);
+    renderGraph.setRoot(output);
 
-    if (!renderGraph.compile()) return -1;
-    device->updateBindlessDescriptors();
-    if (!renderGraph.execute({}, {}, {}, true)) return -2;
+    TRY_MAIN(renderGraph.compile());
+    TRY_MAIN(renderGraph.run({}, {}, false));
 
-
-    auto mapped = renderGraph.getBuffer(outputBufferIndex)->map();
+    auto mapped = (*renderGraph.getBuffer(outputBufferIndex))->map();
 
     auto outFile = ende::fs::File::open("image.ppm", ende::fs::out).value();
 
