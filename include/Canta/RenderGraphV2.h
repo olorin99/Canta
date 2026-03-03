@@ -8,6 +8,10 @@
 #include <Canta/RenderGraphV2.h>
 #include <Ende/thread/ThreadPool.h>
 
+namespace canta {
+    class ImGuiContext;
+}
+
 namespace canta::V2 {
 
     enum class RenderGraphError {
@@ -321,6 +325,9 @@ namespace canta::V2 {
         auto drawMeshTasksIndirectCount(BufferHandle commands, u32 offset, BufferHandle countBuffer, u32 countOffset, u32 stride = sizeof(VkDrawMeshTasksIndirectCommandEXT)) -> GraphicsPass&;
 
         auto blit(ImageIndex src, ImageIndex dst, Filter filter = Filter::LINEAR) -> GraphicsPass&;
+
+
+        auto imgui(ImGuiContext& context, ImageIndex image) -> std::expected<ImageIndex, RenderGraphError>;
     };
 
     class TransferPass : public PassBuilder {
@@ -393,7 +400,7 @@ namespace canta::V2 {
             bool multiQueue = false;
         };
 
-        static auto create(CreateInfo info) -> RenderGraph;
+        static auto create(CreateInfo info) -> std::expected<RenderGraph, RenderGraphError>;
 
         // resource management
         auto addBuffer(BufferInfo info) -> BufferIndex;

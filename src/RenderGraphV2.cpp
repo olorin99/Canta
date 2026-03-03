@@ -1,6 +1,8 @@
 #include <ranges>
 #include <Canta/RenderGraphV2.h>
 
+#include "Canta/ImGuiContext.h"
+
 constexpr auto defaultPassStage(const canta::V2::RenderPass::Type type) -> canta::PipelineStage {
     switch (type) {
         case canta::V2::RenderPass::Type::GRAPHICS:
@@ -631,6 +633,18 @@ auto canta::V2::GraphicsPass::blit(const ImageIndex src, const ImageIndex dst, c
     return *this;
 }
 
+auto canta::V2::GraphicsPass::imgui(ImGuiContext &context, ImageIndex image) -> std::expected<ImageIndex, RenderGraphError> {
+    addColourRead(image);
+    addColourWrite(image);
+    setManualPipeline(true);
+    pass().setCallback([&context, image] (auto& cmd, auto& graph, const auto& push) {
+        auto imageInfo = graph.getImageInfo(image);
+        context.render(ImGui::GetDrawData(), cmd, imageInfo->format);
+        return true;
+    });
+    return TRY(output<ImageIndex>().transform_error(mapGraphErrorToRenderGraphError));
+}
+
 canta::V2::TransferPass::TransferPass(RenderGraph *graph, const u32 index) : PassBuilder(graph, index) {}
 
 auto canta::V2::TransferPass::addTransferRead(const BufferIndex index) -> TransferPass& {
@@ -817,7 +831,7 @@ auto canta::V2::PresentPass::present(Swapchain* swapchain, const ImageIndex inde
 }
 
 
-auto canta::V2::RenderGraph::create(CreateInfo info) -> RenderGraph {
+auto canta::V2::RenderGraph::create(CreateInfo info) -> std::expected<RenderGraph, RenderGraphError> {
     auto graph = RenderGraph();
     graph._device = info.device;
     graph._threadPool = info.threadPool;
@@ -837,10 +851,10 @@ auto canta::V2::RenderGraph::create(CreateInfo info) -> RenderGraph {
         });
     }
 
-    graph._cpuTimeline = info.device->createSemaphore({
+    graph._cpuTimeline = TRY(info.device->createSemaphore({
         .initialValue = 0,
         .name = "cpu_timeline"
-    }).value();
+    }).transform_error([] (VulkanError e) { return RenderGraphError::DEVICE_ERROR; }));
 
     return graph;
 }

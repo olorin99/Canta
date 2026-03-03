@@ -134,10 +134,10 @@ int main() {
         // .renderGraph = &renderGraph,
     // });
 
-    auto renderGraph = canta::V2::RenderGraph::create({
+    auto renderGraph = TRY_MAIN(canta::V2::RenderGraph::create({
         .device = device.get(),
         .multiQueue = true,
-    });
+    }));
 
     auto pipelineManagerDebugger = canta::PipelineManagerDebugger::create({
         .pipelineManager = &pipelineManager,
@@ -363,14 +363,7 @@ int main() {
 
         auto blittedSwapchain = TRY_MAIN(renderGraph.graphics("blit_to_swapchain").blit(drawnParticles, swapchainIndex).output<canta::V2::ImageIndex>());
 
-        auto uiSwapchain = TRY_MAIN(renderGraph.pass("ui", canta::V2::RenderPass::Type::GRAPHICS)
-            .setManualPipeline(true)
-            .addColourRead(blittedSwapchain)
-            .addColourWrite(blittedSwapchain)
-            .setCallback([&imguiContext, &swapchain] (auto& commands, auto& graph, const auto& push) {
-                imguiContext.render(ImGui::GetDrawData(), commands, swapchain->format());
-                return true;
-            }).output<canta::V2::ImageIndex>());
+        auto uiSwapchain = TRY_MAIN(renderGraph.graphics("ui").imgui(imguiContext, blittedSwapchain));
 
         auto presentOutput = TRY_MAIN(renderGraph.present(&*swapchain, uiSwapchain));
 
