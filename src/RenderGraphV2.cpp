@@ -253,6 +253,58 @@ auto canta::V2::PassBuilder::write(const ImageIndex index, const Access access, 
     return _graph->getImageInfo(index);
 }
 
+void canta::V2::PassBuilder::unpack(RenderPass::PushData &dst, i32 &i, const BufferIndex &index) {
+    pass()._deferredPushConstants.push_back(RenderPass::DeferredPushConstant{
+        .type = 0,
+        .value = index,
+        .offset = i
+    });
+    i += sizeof(u64);
+    dst.size += sizeof(u64);
+    assert(i <= 128);
+}
+
+void canta::V2::PassBuilder::unpack(RenderPass::PushData &dst, i32 &i, const ImageIndex &index) {
+    pass()._deferredPushConstants.emplace_back(RenderPass::DeferredPushConstant{
+        .type = 1,
+        .value = index,
+        .offset = i,
+    });
+    i += sizeof(u32);
+    dst.size += sizeof(u32);
+    assert(i <= 128);
+}
+
+void canta::V2::PassBuilder::unpack(RenderPass::PushData &dst, i32 &i, const BufferHandle &handle) {
+    const auto addr = handle->address();
+    unpack(dst, i, addr);
+}
+
+void canta::V2::PassBuilder::unpack(RenderPass::PushData &dst, i32 &i, const ImageHandle &handle) {
+    const auto id = handle->defaultView().index();
+    unpack(dst, i, id);
+}
+
+void canta::V2::PassBuilder::unpack(RenderPass::PushData& dst, i32& i, const Read<ImageIndex>& image) {
+    addStorageImageRead(image.resource);
+    unpack(dst, i, image.resource);
+}
+
+void canta::V2::PassBuilder::unpack(RenderPass::PushData& dst, i32& i, const Read<BufferIndex>& buffer) {
+    addStorageBufferRead(buffer.resource);
+    unpack(dst, i, buffer.resource);
+}
+
+void canta::V2::PassBuilder::unpack(RenderPass::PushData& dst, i32& i, const Write<ImageIndex>& image) {
+    addStorageImageWrite(image.resource);
+    unpack(dst, i, image.resource);
+}
+
+void canta::V2::PassBuilder::unpack(RenderPass::PushData& dst, i32& i, const Write<BufferIndex>& buffer) {
+    addStorageBufferWrite(buffer.resource);
+    unpack(dst, i, buffer.resource);
+}
+
 auto canta::V2::PassBuilder::setCallback(const std::function<std::expected<bool, RenderGraphError>(CommandBuffer &, RenderGraph &, const RenderPass::PushData &)> &callback) -> PassBuilder& {
     pass().setCallback(callback);
     return *this;
@@ -321,7 +373,9 @@ auto canta::V2::PassBuilder::addDepthWrite(const ImageIndex index, const ClearVa
     return *this;
 }
 
-auto canta::V2::PassBuilder::addStorageImageRead(const ImageIndex index, const PipelineStage stage) -> PassBuilder & {
+auto canta::V2::PassBuilder::addStorageImageRead(const ImageIndex index, PipelineStage stage) -> PassBuilder & {
+    if (stage == PipelineStage::NONE)
+        stage = defaultPassStage(pass()._type);
     auto info = *read(index, stage == PipelineStage::HOST ? Access::HOST_READ : Access::SHADER_READ, stage, ImageLayout::GENERAL);
 
     info.usage |= ImageUsage::STORAGE;
@@ -329,7 +383,9 @@ auto canta::V2::PassBuilder::addStorageImageRead(const ImageIndex index, const P
     return *this;
 }
 
-auto canta::V2::PassBuilder::addStorageImageWrite(const ImageIndex index, const PipelineStage stage) -> PassBuilder & {
+auto canta::V2::PassBuilder::addStorageImageWrite(const ImageIndex index, PipelineStage stage) -> PassBuilder & {
+    if (stage == PipelineStage::NONE)
+        stage = defaultPassStage(pass()._type);
     auto info = *write(index, stage == PipelineStage::HOST ? Access::HOST_READ | Access::HOST_WRITE : Access::SHADER_READ | Access::SHADER_WRITE, stage, ImageLayout::GENERAL);
 
     info.usage |= ImageUsage::STORAGE;
@@ -337,7 +393,9 @@ auto canta::V2::PassBuilder::addStorageImageWrite(const ImageIndex index, const 
     return *this;
 }
 
-auto canta::V2::PassBuilder::addStorageBufferRead(const BufferIndex index, const PipelineStage stage) -> PassBuilder & {
+auto canta::V2::PassBuilder::addStorageBufferRead(const BufferIndex index, PipelineStage stage) -> PassBuilder & {
+    if (stage == PipelineStage::NONE)
+        stage = defaultPassStage(pass()._type);
     auto info = *read(index, stage == PipelineStage::HOST ? Access::HOST_READ : Access::SHADER_READ, stage);
 
     info.usage |= BufferUsage::STORAGE;
@@ -345,7 +403,9 @@ auto canta::V2::PassBuilder::addStorageBufferRead(const BufferIndex index, const
     return *this;
 }
 
-auto canta::V2::PassBuilder::addStorageBufferWrite(const BufferIndex index, const PipelineStage stage) -> PassBuilder & {
+auto canta::V2::PassBuilder::addStorageBufferWrite(const BufferIndex index, PipelineStage stage) -> PassBuilder & {
+    if (stage == PipelineStage::NONE)
+        stage = defaultPassStage(pass()._type);
     auto info = *write(index, stage == PipelineStage::HOST ? Access::HOST_READ | Access::HOST_WRITE : Access::SHADER_READ | Access::SHADER_WRITE, stage);
 
     info.usage |= BufferUsage::STORAGE;
@@ -353,7 +413,9 @@ auto canta::V2::PassBuilder::addStorageBufferWrite(const BufferIndex index, cons
     return *this;
 }
 
-auto canta::V2::PassBuilder::addSampledRead(const ImageIndex index, const PipelineStage stage) -> PassBuilder& {
+auto canta::V2::PassBuilder::addSampledRead(const ImageIndex index, PipelineStage stage) -> PassBuilder& {
+    if (stage == PipelineStage::NONE)
+        stage = defaultPassStage(pass()._type);
     auto info = *read(index, Access::SHADER_READ, stage, ImageLayout::SHADER_READ_ONLY);
 
     info.usage |= ImageUsage::SAMPLED;

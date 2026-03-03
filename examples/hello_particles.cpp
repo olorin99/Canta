@@ -350,15 +350,12 @@ int main() {
         auto clearedImage = TRY_MAIN(renderGraph.transfer("clear_image").clear(imageIndex).output<canta::V2::ImageIndex>());
 
         auto movedParticles = TRY_MAIN(renderGraph.compute("particles_move", pipeline)
-            .addStorageBufferWrite(particleBufferIndex)
-            .pushConstants(particleBufferIndex, numParticles, static_cast<f32>(dt))
+            .pushConstants(canta::V2::Write(particleBufferIndex), numParticles, static_cast<f32>(dt))
             .dispatchThreads(numParticles).output<canta::V2::BufferIndex>());
 
         auto drawnParticles = TRY_MAIN(renderGraph.compute("particles_draw", pipelineDraw)
-            .addStorageBufferRead(movedParticles)
-            .addStorageImageRead(clearedImage)
             .addStorageImageWrite(clearedImage)
-            .pushConstants(movedParticles, clearedImage, numParticles)
+            .pushConstants(canta::V2::Read(movedParticles), canta::V2::Read(clearedImage), numParticles)
             .dispatchThreads(numParticles).output<canta::V2::ImageIndex>());
 
         auto blittedSwapchain = TRY_MAIN(renderGraph.graphics("blit_to_swapchain").blit(drawnParticles, swapchainIndex).output<canta::V2::ImageIndex>());

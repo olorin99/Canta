@@ -66,7 +66,20 @@ namespace canta::V2 {
     class RenderGraph;
     class PassBuilder;
     class ComputePass;
+    class GraphicsPass;
     class PresentPass;
+
+    template <typename T>
+    struct Read {
+        explicit Read(T r) : resource(std::move(r)) {}
+        T resource;
+    };
+
+    template <typename T>
+    struct Write {
+        explicit Write(T r) : resource(std::move(r)) {}
+        T resource;
+    };
 
     class RenderPass : public ende::graph::Vertex<BufferIndex, ImageIndex> {
     public:
@@ -140,6 +153,7 @@ namespace canta::V2 {
         friend RenderGraph;
         friend PassBuilder;
         friend ComputePass;
+        friend GraphicsPass;
 
         Type _type = Type::NONE;
         QueueType _queueType = QueueType::GRAPHICS;
@@ -211,9 +225,50 @@ namespace canta::V2 {
         auto write(BufferIndex index, Access access, PipelineStage stage) -> std::expected<BufferInfo, RenderGraphError>;
         auto write(ImageIndex index, Access access, PipelineStage stage, ImageLayout layout) -> std::expected<ImageInfo, RenderGraphError>;
 
+
+        template <typename T, typename U, typename... Args>
+        void unpack(RenderPass::PushData& dst, i32& i, const T& t, const U& u, const Args&... args) {
+            unpack(dst, i, t);
+            unpack(dst, i, u, args...);
+        }
+
+        template <typename T>
+        void unpack(RenderPass::PushData& dst, i32& i, const T& t) {
+            auto* data = reinterpret_cast<const u8*>(&t);
+            for (auto j = 0; j < sizeof(T); j++) {
+                dst.data[i + j] = data[j];
+            }
+            i += sizeof(T);
+            dst.size += sizeof(T);
+        }
+
+        void unpack(RenderPass::PushData& dst, i32& i, const BufferIndex& index);
+
+        void unpack(RenderPass::PushData& dst, i32& i, const ImageIndex& index);
+
+        void unpack(RenderPass::PushData& dst, i32& i, const BufferHandle& handle);
+
+        void unpack(RenderPass::PushData& dst, i32& i, const ImageHandle& handle);
+
+        template <std::ranges::range Range>
+        auto unpack(RenderPass::PushData& dst, i32& i, const Range& range) {
+            for (auto& t : range) {
+                unpack(dst, i, t);
+            }
+        }
+
+        void unpack(RenderPass::PushData& dst, i32&, const Read<ImageIndex>& image);
+
+        void unpack(RenderPass::PushData& dst, i32&, const Read<BufferIndex>& buffer);
+
+        void unpack(RenderPass::PushData& dst, i32&, const Write<ImageIndex>& image);
+
+        void unpack(RenderPass::PushData& dst, i32&, const Write<BufferIndex>& buffer);
+
         template <typename... Args>
         auto pushConstants(Args&&... args) -> PassBuilder& {
-            pass().pushConstants(std::forward<Args>(args)...);
+            i32 i = 0;
+            unpack(pass()._pushData, i, args...);
             return *this;
         }
 
@@ -280,7 +335,8 @@ namespace canta::V2 {
 
         template <typename... Args>
         auto pushConstants(Args&&... args) -> ComputePass& {
-            pass().pushConstants(std::forward<Args>(args)...);
+            i32 i = 0;
+            unpack(pass()._pushData, i, args...);
             return *this;
         }
 
@@ -311,7 +367,8 @@ namespace canta::V2 {
 
         template <typename... Args>
         auto pushConstants(Args&&... args) -> GraphicsPass& {
-            pass().pushConstants(std::forward<Args>(args)...);
+            i32 i = 0;
+            unpack(pass()._pushData, i, args...);
             return *this;
         }
 
