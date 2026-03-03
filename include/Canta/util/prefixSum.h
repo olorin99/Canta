@@ -1,13 +1,13 @@
 #ifndef CANTA_PREFIXSUM_H
 #define CANTA_PREFIXSUM_H
 
-#include <Canta/RenderGraph.h>
+#include <Canta/RenderGraphV2.h>
 
 namespace canta {
 
-    auto prefixSumExclusive(RenderGraph& graph, BufferIndex values, u32 count) -> BufferIndex;
+    auto prefixSumExclusive(V2::RenderGraph& graph, V2::BufferIndex values, u32 count) -> V2::BufferIndex;
 
-    auto prefixSumInclusive(RenderGraph& graph, BufferIndex values, u32 count) -> BufferIndex;
+    auto prefixSumInclusive(V2::RenderGraph& graph, V2::BufferIndex values, u32 count) -> V2::BufferIndex;
 
 }
 

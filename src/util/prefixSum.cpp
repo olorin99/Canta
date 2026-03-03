@@ -1,6 +1,6 @@
 #include <Canta/util/prefixSum.h>
 
-auto canta::prefixSumExclusive(RenderGraph &graph, BufferIndex values, const u32 count) -> BufferIndex {
+auto canta::prefixSumExclusive(V2::RenderGraph &graph, V2::BufferIndex values, const u32 count) -> V2::BufferIndex {
 
     const auto vectorizedSize = ((count + 4) / 4 * 4) / 4;
     constexpr auto partitionSize = 3072;
@@ -22,20 +22,19 @@ auto canta::prefixSumExclusive(RenderGraph &graph, BufferIndex values, const u32
         .name = "sums"
     });
 
-    const auto clearedScanBump = graph.addClearPass("clear_scan_bump", scanBump).aliasBufferOutput(0);
-    const auto clearedThreadBlockReductions = graph.addClearPass("clear_thread_block_reductions", threadBlockReductions).aliasBufferOutput(0);
+    const auto clearedScanBump = graph.transfer("clear_scan_bump").clear(scanBump);
+    const auto clearedThreadBlockReductions = graph.transfer("clear_thread_block_reductions").clear(threadBlockReductions);
 
-    const auto summed = graph.addPass({.name = "sum"})
+    const auto summed = graph.compute("sum", graph.device()->prefixSumExclusive())
         .addStorageBufferRead(*clearedScanBump)
         .addStorageBufferRead(*clearedThreadBlockReductions)
-        .setPipeline(graph.device()->prefixSumExclusive())
-        .pushConstants(Read(values), Write(sums), Write(*clearedScanBump), Write(*clearedThreadBlockReductions), vectorizedSize, partitions)
-        .dispatchThreads(count).aliasBufferOutputs();
+        .pushConstants(V2::Read(values), V2::Write(sums), V2::Write(*clearedScanBump), V2::Write(*clearedThreadBlockReductions), vectorizedSize, partitions)
+        .dispatchThreads(count).output<V2::BufferIndex>();
 
-    return summed.front();
+    return *summed;
 }
 
-auto canta::prefixSumInclusive(RenderGraph &graph, BufferIndex values, const u32 count) -> BufferIndex {
+auto canta::prefixSumInclusive(V2::RenderGraph &graph, V2::BufferIndex values, const u32 count) -> V2::BufferIndex {
 
     const auto vectorizedSize = ((count + 4) / 4 * 4) / 4;
     constexpr auto partitionSize = 3072;
@@ -57,15 +56,14 @@ auto canta::prefixSumInclusive(RenderGraph &graph, BufferIndex values, const u32
         .name = "sums"
     });
 
-    const auto clearedScanBump = graph.addClearPass("clear_scan_bump", scanBump).aliasBufferOutput(0);
-    const auto clearedThreadBlockReductions = graph.addClearPass("clear_thread_block_reductions", threadBlockReductions).aliasBufferOutput(0);
+    const auto clearedScanBump = graph.transfer("clear_scan_bump").clear(scanBump);
+    const auto clearedThreadBlockReductions = graph.transfer("clear_thread_block_reductions").clear(threadBlockReductions);
 
-    const auto summed = graph.addPass({.name = "sum"})
+    const auto summed = graph.compute("sum", graph.device()->prefixSumInclusive())
         .addStorageBufferRead(*clearedScanBump)
         .addStorageBufferRead(*clearedThreadBlockReductions)
-        .setPipeline(graph.device()->prefixSumInclusive())
-        .pushConstants(Read(values), Write(sums), Write(*clearedScanBump), Write(*clearedThreadBlockReductions), vectorizedSize, partitions)
-        .dispatchThreads(count).aliasBufferOutputs();
+        .pushConstants(V2::Read(values), V2::Write(sums), V2::Write(*clearedScanBump), V2::Write(*clearedThreadBlockReductions), vectorizedSize, partitions)
+        .dispatchThreads(count).output<V2::BufferIndex>();
 
-    return summed.front();
+    return *summed;
 }

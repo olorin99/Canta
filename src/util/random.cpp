@@ -3,7 +3,7 @@
 
 #include "Canta/RenderGraphV2.h"
 
-auto canta::randomListUint(RenderGraph &graph, const u32 min, const u32 max, const u32 count, const u32 offset, BufferIndex buffer) -> BufferIndex {
+auto canta::randomListUint(V2::RenderGraph &graph, const u32 min, const u32 max, const u32 count, const u32 offset, V2::BufferIndex buffer) -> V2::BufferIndex {
     if (buffer.id < 0) {
         buffer = graph.addBuffer({
             .size = static_cast<u32>(count * sizeof(f32)),
@@ -15,15 +15,14 @@ auto canta::randomListUint(RenderGraph &graph, const u32 min, const u32 max, con
 
     assert(max > min);
 
-    const auto output = graph.addPass({.name = "generate_random_list"})
-        .setPipeline(graph.device()->randomListGenerator())
-        .pushConstants(Write(buffer), count, offset, max, min, seed)
-        .dispatchThreads(count).aliasBufferOutput(0);
+    const auto output = graph.compute("generate_random_list", graph.device()->randomListGenerator())
+        .pushConstants(V2::Write(buffer), count, offset, max, min, seed)
+        .dispatchThreads(count).output<V2::BufferIndex>();
 
     return *output;
 }
 
-auto canta::randomListFloat(RenderGraph &graph, const f32 min, const f32 max, const u32 count, const u32 offset, BufferIndex buffer) -> BufferIndex {
+auto canta::randomListFloat(V2::RenderGraph &graph, const f32 min, const f32 max, const u32 count, const u32 offset, V2::BufferIndex buffer) -> V2::BufferIndex {
     if (buffer.id < 0) {
         buffer = graph.addBuffer({
             .size = static_cast<u32>(count * sizeof(f32)),
@@ -35,10 +34,9 @@ auto canta::randomListFloat(RenderGraph &graph, const f32 min, const f32 max, co
 
     assert(max > min);
 
-    const auto output = graph.addPass({.name = "generate_random_list"})
-        .setPipeline(graph.device()->randomListGeneratorFloat())
-        .pushConstants(Write(buffer), count, offset, max, min, seed)
-        .dispatchThreads(count).aliasBufferOutput(0);
+    const auto output = graph.compute("generate_random_list", graph.device()->randomListGeneratorFloat())
+        .pushConstants(V2::Write(buffer), count, offset, max, min, seed)
+        .dispatchThreads(count).output<V2::BufferIndex>();
 
     return *output;
 }

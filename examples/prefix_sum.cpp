@@ -1,5 +1,5 @@
 
-#include <Canta/RenderGraph.h>
+#include <Canta/RenderGraphV2.h>
 #include <Canta/PipelineManager.h>
 #include <Ende/math/random.h>
 
@@ -25,10 +25,10 @@ int main() {
         .rootPath = CANTA_SRC_DIR"/examples",
     });
 
-    auto renderGraph = TRY_MAIN(canta::RenderGraph::create({
+    auto renderGraph = TRY_MAIN(canta::V2::RenderGraph::create({
         .device = device.get(),
         .multiQueue = true,
-        .name = "graph"
+        // .name = "graph"
     }));
 
     constexpr auto N = 2 << 16;
@@ -41,19 +41,19 @@ int main() {
     const auto summedValues = canta::prefixSumExclusive(renderGraph, values, N);
     // const auto summedValues = canta::prefixSumInclusive(renderGraph, values, N);
 
-    const auto output = TRY_MAIN(renderGraph.addReadbackPass("data_read", summedValues, outputData).aliasBufferOutput(0));
-    renderGraph.setBackbuffer(output);
+    const auto output = TRY_MAIN(renderGraph.host("data_read").readback(summedValues, outputData));
+    renderGraph.setRoot(output);
 
     TRY_MAIN(renderGraph.compile());
-    TRY_MAIN(renderGraph.execute({}, {}, {}, true));
+    TRY_MAIN(renderGraph.run({}, {}, false));
 
-    u64 totalTime = 0;
-    for (auto timers = renderGraph.timers(); auto&[name, timer] : timers) {
-        const auto time = TRY_MAIN(timer.result());
-        printf("Pass: %s (%fms)\n", name.c_str(), time / 1e6);
-        totalTime += time;
-    }
-    printf("Total time: %fms\n", totalTime / 1e6);
+    // u64 totalTime = 0;
+    // for (auto timers = renderGraph.timers(); auto&[name, timer] : timers) {
+    //     const auto time = TRY_MAIN(timer.result());
+    //     printf("Pass: %s (%fms)\n", name.c_str(), time / 1e6);
+    //     totalTime += time;
+    // }
+    // printf("Total time: %fms\n", totalTime / 1e6);
 
     device->endFrameCapture();
 
