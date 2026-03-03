@@ -1,6 +1,8 @@
 #include <Ende/math/random.h>
 #include <Canta/util/random.h>
 
+#include "Canta/RenderGraphV2.h"
+
 auto canta::randomListUint(RenderGraph &graph, const u32 min, const u32 max, const u32 count, const u32 offset, BufferIndex buffer) -> BufferIndex {
     if (buffer.id < 0) {
         buffer = graph.addBuffer({
@@ -41,10 +43,9 @@ auto canta::randomListFloat(RenderGraph &graph, const f32 min, const f32 max, co
     return *output;
 }
 
-auto canta::generateRandomNoise(RenderGraph &graph, const u32 width, const u32 height, u32 seed, ImageIndex image) -> ImageIndex {
+auto canta::generateRandomNoise(V2::RenderGraph &graph, const u32 width, const u32 height, u32 seed, V2::ImageIndex image) -> V2::ImageIndex {
     if (image.id < 0) {
         image = graph.addImage({
-            .matchesBackbuffer = false,
             .width = width,
             .height = height,
             .name = "random_noise"
@@ -54,19 +55,17 @@ auto canta::generateRandomNoise(RenderGraph &graph, const u32 width, const u32 h
     if (seed == 0) {
         seed = ende::math::rand<u32>(0, 1e9);
     }
-
-    const auto output = graph.addPass({.name = "generate_random_noise"})
-        .setPipeline(graph.device()->generateRandomNoise())
-        .pushConstants(Write(image), seed)
-        .dispatchThreads(width, height).aliasImageOutput(0);
+    auto output = graph.compute("generate_random_noise", graph.device()->generateRandomNoise())
+        .pushConstants(V2::Write(image), seed, seed)
+        .dispatchThreads(width, height)
+        .output<V2::ImageIndex>();
 
     return *output;
 }
 
-auto canta::generatePerlinNoise(RenderGraph &graph, const u32 width, const u32 height, const PerlinOptions options, ImageIndex image) -> ImageIndex {
+auto canta::generatePerlinNoise(V2::RenderGraph &graph, const u32 width, const u32 height, const PerlinOptions options, V2::ImageIndex image) -> V2::ImageIndex {
     if (image.id < 0) {
         image = graph.addImage({
-            .matchesBackbuffer = false,
             .width = width,
             .height = height,
             .format = Format::RGBA32_SFLOAT,
@@ -76,10 +75,10 @@ auto canta::generatePerlinNoise(RenderGraph &graph, const u32 width, const u32 h
 
     const auto seed = options.seed == 0 ? ende::math::rand<u32>(0, 100) : options.seed;
 
-    const auto output = graph.addPass({.name = "generate_perlin_noise"})
-        .setPipeline(graph.device()->generatePerlinNoise())
-        .pushConstants(Write(image), options.time, options.octaves, options.persistence, options.lacunarity, seed)
-        .dispatchThreads(width, height).aliasImageOutput(0);
+    auto output = graph.compute("generate_perlin_noise", graph.device()->generatePerlinNoise())
+        .pushConstants(V2::Write(image), options.time, options.octaves, options.persistence, options.lacunarity, seed)
+        .dispatchThreads(width, height)
+        .output<V2::ImageIndex>();
 
     return *output;
 }

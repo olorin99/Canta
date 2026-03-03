@@ -1,8 +1,7 @@
 
-#include <Canta/RenderGraph.h>
+#include <Canta/RenderGraphV2.h>
 #include <Canta/PipelineManager.h>
-
-#include "../cmake-build-debug-clang/_deps/ende-src/include/Ende/time/time.h"
+#include <Ende/time/time.h>
 #include "Canta/ImGuiContext.h"
 #include "Canta/SDLWindow.h"
 #include "Canta/util/random.h"
@@ -32,10 +31,10 @@ int main() {
         .pipelineManager = &pipelineManger,
     });
 
-    auto renderGraph = TRY_MAIN(canta::RenderGraph::create({
+    auto renderGraph = TRY_MAIN(canta::V2::RenderGraph::create({
         .device = device.get(),
         .multiQueue = false,
-        .name = "render_graph"
+        // .name = "render_graph"
     }));
 
     i32 noiseTypeIndex = 0;
@@ -82,14 +81,7 @@ int main() {
 
         renderGraph.reset();
 
-        auto swapImage = TRY_MAIN(swapchain->acquire());
-
-        auto swapIndex = renderGraph.addImage({
-            .handle = swapImage,
-            .name = "swapchain_image"
-        });
-
-        canta::ImageIndex noiseImage = {};
+        canta::V2::ImageIndex noiseImage = {};
         assert(noiseTypeIndex <= 1);
         switch (noiseTypeIndex) {
             case 0:
@@ -109,32 +101,26 @@ int main() {
         // auto noiseImage = canta::generateRandomNoise(renderGraph, 1920, 1080, seed);
         // auto noiseImage = canta::generatePerlinNoise(renderGraph, 1920, 1080, {.time = (clock.elapsed().milliseconds() / 1000.f) * timeScale, .seed = static_cast<u32>(seed)});
 
-        auto uiSwapImage = TRY_MAIN(renderGraph.addBlitPass("blit_to_swapchain", noiseImage, swapIndex).aliasImageOutput(0));
+        auto swapIndex = TRY_MAIN(renderGraph.acquire(&*swapchain));
 
-        auto swapchainFormat = swapchain->format();
-        auto backbuffer = TRY_MAIN(renderGraph.addPass({.name = "ui", .type = canta::PassType::GRAPHICS})
-            .setManualPipeline(true)
-            .addColourRead(uiSwapImage)
-            .addColourWrite(swapIndex)
-            .setExecuteFunction([&imgui, swapchainFormat] (auto& cmd, auto& graph) {
-                imgui.render(ImGui::GetDrawData(), cmd, swapchainFormat);
-            }).aliasImageOutput(0));
+        auto uiSwapImage = TRY_MAIN(renderGraph.graphics("blit_to_swapchain").blit(noiseImage, swapIndex).output<canta::V2::ImageIndex>());
 
-        renderGraph.setBackbuffer(backbuffer);
+        auto uiImage = TRY_MAIN(renderGraph.graphics("ui").imgui(imgui, uiSwapImage));
+
+        auto root = TRY_MAIN(renderGraph.present(&*swapchain, uiImage));
+
+
+        renderGraph.setRoot(root);
 
         TRY_MAIN(renderGraph.compile());
 
         auto waits = std::to_array({
             canta::SemaphorePair{device->frameSemaphore(), device->framePrevValue()},
-            canta::SemaphorePair{swapchain->acquireSemaphore()}
         });
         auto signals = std::to_array({
             canta::SemaphorePair{device->frameSemaphore()},
-            canta::SemaphorePair{swapchain->presentSemaphore()}
         });
-        TRY_MAIN(renderGraph.execute(waits, signals));
-
-        TRY_MAIN(swapchain->present());
+        TRY_MAIN(renderGraph.run(waits, signals));
 
         dt = device->endFrame();
     }
