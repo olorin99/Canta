@@ -12,7 +12,6 @@ jobs:
       - name: Setup build folder
         run: |
           mkdir build
-          cd build
       - name: Load cache
         id: load-cache
         uses: actions/cache/restore@v5
@@ -21,9 +20,11 @@ jobs:
           key: canta-cache
       - name: Setup cmake
         run: |
+          cd build
           cmake -G Ninja -DCMAKE_BUILD_TYPE=Release -DCANTA_ENABLE_RENDERDOC=OFF ..
       - name: Build
         run: |
+          cd build
           cmake --build . --target Canta -j8
       - name: Store cache
         id: store-cache
