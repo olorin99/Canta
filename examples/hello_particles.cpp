@@ -331,10 +331,6 @@ int main() {
 
         ImGui::Render();
 
-
-
-        // auto swapImage = TRY_MAIN(swapchain->acquire());
-
         renderGraph.reset();
 
         auto imageIndex = renderGraph.addImage({
@@ -343,27 +339,11 @@ int main() {
             .mips = 4,
             .name = "image"
         });
-        // auto swapchainIndex = renderGraph.addImage({
-            // .image = swapImage,
-            // .swapchainImage = true,
-            // .name = "swapchain_image",
-        // });
 
         auto particleBufferIndex = renderGraph.addBuffer({
             .buffer = buffer,
             .name = "particles_buffer"
         });
-
-        // auto imageAlias = renderGraph.addAlias(imageIndex);
-        // renderGraph.addPass({.name = "cpu_test", .type = canta::PassType::HOST})
-        //     .addStorageImageWrite(imageIndex, canta::PipelineStage::HOST)
-        //     // .addStorageImageWrite(imageAlias, canta::PipelineStage::HOST)
-        //     .setExecuteFunction([](canta::CommandBuffer& cmd, canta::RenderGraph& graph) {
-        //         printf("run on host\n");
-        //     });
-
-        // renderGraph.addClearPass("clear_image", imageAlias);
-        // auto imageAlias = TRY_MAIN(renderGraph.addClearPass("clear_image", imageIndex).aliasImageOutput(0));
 
         auto swapchainIndex = TRY_MAIN(renderGraph.acquire(&*swapchain));
 
@@ -397,77 +377,18 @@ int main() {
         // renderGraph.setRoot(uiSwapchain);
         renderGraph.setRoot(presentOutput);
 
-        // auto particleGroup = renderGraph.getGroup("particles");
-
-        // auto particlesMovePassOutputs = TRY_MAIN(renderGraph.addPass({.name = "particles_move"})
-            // .setGroup(particleGroup)
-            // .setPipeline(pipeline)
-            // .pushConstants(canta::Write(particleBufferIndex), numParticles, static_cast<f32>(dt))
-            // .dispatchThreads(numParticles).aliasBufferOutput(particleBufferIndex));
-
-        // renderGraph.addPass({.name = "copy", .type = canta::PassType::HOST})
-            // .addDummyRead(particlesMovePassOutputs)
-            // .addDummyWrite(particleBufferIndex)
-            // .setExecuteFunction([](auto& cmd, auto& graph) {
-               // std::printf("test\n");
-            // });
-
-        // auto& particlesDrawPass = renderGraph.addPass({.name = "particles_draw"})
-        //     .setGroup(particleGroup)
-        //     .setPipeline(pipelineDraw)
-        //     .addStorageImageRead(imageAlias)
-        //     .pushConstants(canta::Read(particlesMovePassOutputs), canta::Write(imageIndex), numParticles)
-        //     .dispatchThreads(numParticles);
-
         // renderGraphDebugger.setBasePass(particlesDrawPass);
         // renderGraphDebugger.setBaseResource(imageIndex);
 
-        // auto [uiSwapchainIndex] = renderGraph.addBlitPass("blit_to_swapchain", imageIndex, swapchainIndex).aliasImageOutputs<1>();
-
-        // auto& uiPass = renderGraph.addPass({.name = "ui", .type = canta::PassType::GRAPHICS})
-        //     .setManualPipeline(true)
-        //     // .addColourRead(swapchainIndex)
-        //     .addColourRead(uiSwapchainIndex)
-        //     // .addColourWrite(uiSwapchainIndex)
-        //     .addColourWrite(swapchainIndex)
-        //     .setExecuteFunction([&imguiContext, &swapchain](canta::CommandBuffer& cmd, canta::RenderGraph& graph) {
-        //     imguiContext.render(ImGui::GetDrawData(), cmd, swapchain->format());
-        // });
 
         // renderGraphDebugger.debug();
 
-        // renderGraph.setBackbuffer(swapchainIndex, canta::ImageLayout::PRESENT);
-//        renderGraph.setBackbuffer(swapchainIndex);
         if (!renderGraph.compile())
             return -1;
-
-        // auto waits = std::to_array({
-        //     canta::SemaphorePair{ device->frameSemaphore() },
-        //     canta::SemaphorePair(uploadBuffer.timeline())
-        // });
-        // auto signals = std::to_array({
-        //     canta::SemaphorePair(device->frameSemaphore(), device->frameSemaphore()->increment()),
-        // });
-        // if (!renderGraph.execute(waits, signals, {}, false))
-        //     return -2;
-
         auto waits = std::to_array({ canta::SemaphorePair(device->frameSemaphore(), device->framePrevValue()), canta::SemaphorePair(uploadBuffer.timeline()) });
         auto signals = std::to_array({ canta::SemaphorePair(device->frameSemaphore(), device->frameSemaphore()->value())});
-        // auto waits = std::to_array({
-            // canta::SemaphorePair{ device->frameSemaphore(), device->framePrevValue() },
-            // canta::SemaphorePair(swapchain->acquireSemaphore()),
-            // canta::SemaphorePair(uploadBuffer.timeline())
-        // });
-        // auto signals = std::to_array({
-            // canta::SemaphorePair(device->frameSemaphore()),
-            // canta::SemaphorePair(swapchain->presentSemaphore())
-        // });
-
-
 
         TRY_MAIN(renderGraph.run(waits, signals));
-
-        // TRY_MAIN(swapchain->present());
 
         dt = device->endFrame();
         // device->endFrameCapture();
