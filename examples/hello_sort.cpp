@@ -1,5 +1,5 @@
 #include <Canta/Device.h>
-#include <Canta/RenderGraph.h>
+#include <Canta/RenderGraphV2.h>
 #include <Canta/PipelineManager.h>
 #include <Canta/util/sort.h>
 #include <Ende/math/random.h>
@@ -29,10 +29,10 @@ int main() {
         .rootPath = CANTA_SRC_DIR"/examples",
     });
 
-    auto renderGraph = TRY_MAIN(canta::RenderGraph::create({
+    auto renderGraph = TRY_MAIN(canta::V2::RenderGraph::create({
         .device = device.get(),
         .multiQueue = false,
-        .name = "graph"
+        // .name = "graph"
     }));
 
     constexpr auto N = 1000000;
@@ -62,12 +62,12 @@ int main() {
         v.value3 = data[i];
     }
 
-    const auto keys = TRY_MAIN(renderGraph.addUploadPass("data_upload", buffer, data).aliasBufferOutput(0));
-    const auto values = TRY_MAIN(renderGraph.addUploadPass("data_upload_second", buffer1, valueData).aliasBufferOutput(0));
+    const auto keys = TRY_MAIN(renderGraph.host("data_upload").upload(buffer, data));
+    const auto values = TRY_MAIN(renderGraph.host("data_upload_second").upload(buffer1, valueData));
 
     // const auto sortOutputs = canta::sort<Value>(renderGraph, keys, values);
 
-    const auto sortOutputs = canta::multiSort<Value>(renderGraph, keys, values);
+    const auto sortOutputs = TRY_MAIN(canta::V2::multiSort<Value>(renderGraph, keys, values));
 
     // auto index = keys;
     // for (u32 iteration = 0; iteration < 4; iteration++) {
@@ -94,13 +94,13 @@ int main() {
     // }
 
 
-    const auto output = TRY_MAIN(renderGraph.addReadbackPass("data_read", sortOutputs.keys, outputData).aliasBufferOutput(0));
+    const auto output = TRY_MAIN(renderGraph.host("data_read").readback(sortOutputs.keys, outputData));
     // const auto output = TRY_MAIN(renderGraph.addReadbackPass("data_read", histogramOutput, outputData).aliasBufferOutput(0));
     // const auto output = TRY_MAIN(renderGraph.addReadbackPass("data_read", index, outputData).aliasBufferOutput(0));
-    renderGraph.setBackbuffer(output);
+    renderGraph.setRoot(output);
 
     if (!renderGraph.compile()) return -1;
-    if (!renderGraph.execute({}, {}, {}, true)) return -2;
+    if (!renderGraph.run({}, {}, false)) return -2;
 
     // TRY_MAIN(device->waitIdle());
 
@@ -143,13 +143,13 @@ int main() {
     //     }
     // }
 
-    u64 totalTime = 0;
-    for (auto timers = renderGraph.timers(); auto&[name, timer] : timers) {
-        const auto time = TRY_MAIN(timer.result());
-        printf("Pass: %s (%fms)\n", name.c_str(), time / 1e6);
-        totalTime += time;
-    }
-    printf("Total time: %fms\n", totalTime / 1e6);
+    // u64 totalTime = 0;
+    // for (auto timers = renderGraph.timers(); auto&[name, timer] : timers) {
+    //     const auto time = TRY_MAIN(timer.result());
+    //     printf("Pass: %s (%fms)\n", name.c_str(), time / 1e6);
+    //     totalTime += time;
+    // }
+    // printf("Total time: %fms\n", totalTime / 1e6);
 
     device->endFrameCapture();
 

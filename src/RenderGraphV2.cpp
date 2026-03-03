@@ -44,12 +44,12 @@ constexpr auto checkPassStageMatch(const canta::V2::RenderPass::Type type, const
     return false;
 }
 
-auto mapGraphErrorToRenderGraphError(const ende::graph::Error error) -> canta::V2::RenderGraphError {
+auto canta::V2::mapGraphErrorToRenderGraphError(const ende::graph::Error error) -> RenderGraphError {
     switch (error) {
         case ende::graph::Error::IS_CYCLICAL:
-            return canta::V2::RenderGraphError::IS_CYCLICAL;
+            return RenderGraphError::IS_CYCLICAL;
         default:
-            return canta::V2::RenderGraphError::IS_CYCLICAL;
+            return RenderGraphError::IS_CYCLICAL;
     }
 }
 
@@ -704,7 +704,7 @@ auto canta::V2::GraphicsPass::imgui(ImGuiContext &context, ImageIndex image) -> 
         context.render(ImGui::GetDrawData(), cmd, imageInfo->format);
         return true;
     });
-    return TRY(output<ImageIndex>().transform_error(mapGraphErrorToRenderGraphError));
+    return output<ImageIndex>();
 }
 
 canta::V2::TransferPass::TransferPass(RenderGraph *graph, const u32 index) : PassBuilder(graph, index) {}
@@ -742,7 +742,7 @@ auto canta::V2::TransferPass::copy(BufferIndex src, BufferIndex dst, u32 srcOffs
         });
         return true;
     });
-    return output<BufferIndex>().transform_error(mapGraphErrorToRenderGraphError);
+    return output<BufferIndex>();
 }
 
 auto canta::V2::TransferPass::copy(BufferIndex src, ImageIndex dst, ImageCopy info) -> std::expected<ImageIndex, RenderGraphError> {
@@ -776,7 +776,7 @@ auto canta::V2::TransferPass::copy(BufferIndex src, ImageIndex dst, ImageCopy in
         });
         return true;
     });
-    return output<ImageIndex>().transform_error(mapGraphErrorToRenderGraphError);
+    return output<ImageIndex>();
 }
 
 auto canta::V2::TransferPass::copy(ImageIndex src, BufferIndex dst, ImageCopy info) -> std::expected<BufferIndex, RenderGraphError> {
@@ -810,7 +810,7 @@ auto canta::V2::TransferPass::copy(ImageIndex src, BufferIndex dst, ImageCopy in
         });
         return true;
     });
-    return output<BufferIndex>().transform_error(mapGraphErrorToRenderGraphError);
+    return output<BufferIndex>();
 }
 
 auto canta::V2::TransferPass::clear(const ImageIndex index, const ClearValue &value) -> std::expected<ImageIndex, RenderGraphError> {
@@ -819,7 +819,7 @@ auto canta::V2::TransferPass::clear(const ImageIndex index, const ClearValue &va
         cmd.clearImage(TRY(graph.getImage(index)), ImageLayout::TRANSFER_DST, value);
         return true;
     });
-    return output<ImageIndex>().transform_error(mapGraphErrorToRenderGraphError);
+    return output<ImageIndex>();
 }
 
 auto canta::V2::TransferPass::clear(BufferIndex index, u32 value, u32 offset, u32 size) -> std::expected<BufferIndex, RenderGraphError> {
@@ -828,7 +828,7 @@ auto canta::V2::TransferPass::clear(BufferIndex index, u32 value, u32 offset, u3
         cmd.clearBuffer(TRY(graph.getBuffer(index)), value, offset, size);
         return true;
     });
-    return output<BufferIndex>().transform_error(mapGraphErrorToRenderGraphError);
+    return output<BufferIndex>();
 }
 
 canta::V2::HostPass::HostPass(RenderGraph *graph, const u32 index) : PassBuilder(graph, index) {}
@@ -870,7 +870,7 @@ auto canta::V2::HostPass::upload(BufferIndex dst, std::span<const u8> data) -> s
         auto buffer = *graph.getBuffer(dst);
         buffer->data(data);
     });
-    return output<BufferIndex>().transform_error(mapGraphErrorToRenderGraphError);
+    return output<BufferIndex>();
 }
 
 auto canta::V2::HostPass::readback(const BufferIndex src, std::span<u8> data) -> std::expected<BufferIndex, RenderGraphError> {
@@ -884,7 +884,7 @@ auto canta::V2::HostPass::readback(const BufferIndex src, std::span<u8> data) ->
         auto mapped = buffer->map();
         std::memcpy(data.data(), mapped.address(), data.size());
     });
-    return output<BufferIndex>().transform_error(mapGraphErrorToRenderGraphError);
+    return output<BufferIndex>();
 }
 
 canta::V2::PresentPass::PresentPass(RenderGraph *graph, const u32 index) : PassBuilder(graph, index) {}
@@ -908,7 +908,7 @@ auto canta::V2::PresentPass::acquire(Swapchain* swapchain) -> std::expected<Imag
         return true;
     });
 
-    return output<ImageIndex>().transform_error(mapGraphErrorToRenderGraphError);
+    return output<ImageIndex>();
 }
 
 //TODO: will need to handle special. chain timeline semaphore with acquire/present semaphores
@@ -941,7 +941,7 @@ auto canta::V2::PresentPass::present(Swapchain* swapchain, const ImageIndex inde
         }));
         return true;
     });
-    return output<ImageIndex>().transform_error(mapGraphErrorToRenderGraphError);
+    return output<ImageIndex>();
 }
 
 
@@ -1005,6 +1005,22 @@ auto canta::V2::RenderGraph::alias(ImageIndex index) -> ImageIndex {
             [index] (ImageIndex& image) { image.index = index.index; },
     }, edge);
     return std::get<ImageIndex>(edge);
+}
+
+auto canta::V2::RenderGraph::duplicate(const BufferIndex index) -> std::expected<BufferIndex, RenderGraphError> {
+    auto info = TRY(getBufferInfo(index));
+    info.buffer = {};
+    info.usage = BufferUsage::STORAGE;
+    info.type = MemoryType::DEVICE;
+    return addBuffer(info);
+}
+
+auto canta::V2::RenderGraph::duplicate(ImageIndex index) -> std::expected<ImageIndex, RenderGraphError> {
+    auto info = TRY(getImageInfo(index));
+    info.image = {};
+    info.usage = ImageUsage::STORAGE;
+    info.swapchainImage = false;
+    return addImage(info);
 }
 
 auto canta::V2::RenderGraph::getBuffer(const BufferIndex index) const -> std::expected<BufferHandle, RenderGraphError> {

@@ -25,6 +25,8 @@ namespace canta::V2 {
         DEVICE_ERROR,
     };
 
+    auto mapGraphErrorToRenderGraphError(ende::graph::Error error) -> RenderGraphError;
+
     struct ImageIndex : ende::graph::Edge {
         i32 index = -1;
     };
@@ -43,8 +45,8 @@ namespace canta::V2 {
 
     struct BufferInfo {
         u32 size = 0;
-        BufferUsage usage = BufferUsage::STORAGE; //TODO: can probably derive from usage in graph
-        MemoryType type = MemoryType::DEVICE; //TODO: can probably derive from usage in graph
+        BufferUsage usage = BufferUsage::STORAGE;
+        MemoryType type = MemoryType::DEVICE;
         bool external = false;
         BufferHandle buffer = {};
         std::string name = {};
@@ -274,8 +276,8 @@ namespace canta::V2 {
         }
 
         template <typename T>
-        auto output(const u32 index = 0) -> std::expected<T, ende::graph::Error> {
-            return pass().output<T>(index);
+        auto output(const u32 index = 0) -> std::expected<T, RenderGraphError> {
+            return pass().output<T>(index).transform_error(mapGraphErrorToRenderGraphError);
         }
 
         auto setCallback(const std::function<std::expected<bool, RenderGraphError>(CommandBuffer&, RenderGraph&, const RenderPass::PushData&)>& callback) -> PassBuilder&;
@@ -480,6 +482,9 @@ namespace canta::V2 {
 
         auto alias(BufferIndex index) -> BufferIndex;
         auto alias(ImageIndex index) -> ImageIndex;
+
+        auto duplicate(BufferIndex index) -> std::expected<BufferIndex, RenderGraphError>;
+        auto duplicate(ImageIndex index) -> std::expected<ImageIndex, RenderGraphError>;
 
         auto getBuffer(BufferIndex index) const -> std::expected<BufferHandle, RenderGraphError>;
         auto getImage(ImageIndex index) const -> std::expected<ImageHandle, RenderGraphError>;
