@@ -1,7 +1,6 @@
 #include <ranges>
 #include <Canta/RenderGraphV2.h>
-
-#include "Canta/ImGuiContext.h"
+#include <Canta/ImGuiContext.h>
 
 constexpr auto defaultPassStage(const canta::V2::RenderPass::Type type) -> canta::PipelineStage {
     switch (type) {
@@ -1078,6 +1077,15 @@ auto canta::V2::RenderGraph::create(const CreateInfo &info) -> std::expected<Ren
     return graph;
 }
 
+auto canta::V2::RenderGraph::addGroup(const std::string_view name, const std::array<f32, 4> &colour) -> RenderGroup {
+    auto group = RenderGroup{
+        .id = _groupId++,
+        .colour = colour,
+        .name = name.data(),
+    };
+    return group;
+}
+
 auto canta::V2::RenderGraph::addBuffer(BufferInfo info) -> BufferIndex {
     _resources.emplace_back(info);
     auto& edge = addEdge<BufferIndex>();
@@ -1197,37 +1205,41 @@ auto canta::V2::RenderGraph::updateImageInfo(const ImageIndex index, const Image
     return std::get<ImageInfo>(_resources[index.index]);
 }
 
-auto canta::V2::RenderGraph::pass(const std::string_view name, const RenderPass::Type type, const PipelineHandle &pipeline) -> PassBuilder {
+auto canta::V2::RenderGraph::pass(const std::string_view name, const RenderPass::Type type, const PipelineHandle &pipeline, const RenderGroup& group) -> PassBuilder {
     auto& pass = addVertex();
     pass._type = type;
     pass._name = name;
+    pass.setGroup(group);
     pass.setPipeline(pipeline);
     const auto builder = PassBuilder(this, vertexCount() - 1);
     return builder;
 }
 
-auto canta::V2::RenderGraph::compute(const std::string_view name, const PipelineHandle &pipeline) -> ComputePass {
+auto canta::V2::RenderGraph::compute(const std::string_view name, const PipelineHandle &pipeline, const RenderGroup& group) -> ComputePass {
     auto& pass = addVertex();
     pass._type = RenderPass::Type::COMPUTE;
     pass._name = name;
+    pass.setGroup(group);
     pass.setPipeline(pipeline);
     const auto builder = ComputePass(this, vertexCount() - 1);
     return builder;
 }
 
-auto canta::V2::RenderGraph::graphics(const std::string_view name, const PipelineHandle &pipeline) -> GraphicsPass {
+auto canta::V2::RenderGraph::graphics(const std::string_view name, const PipelineHandle &pipeline, const RenderGroup& group) -> GraphicsPass {
     auto& pass = addVertex();
     pass._type = RenderPass::Type::GRAPHICS;
     pass._name = name;
+    pass.setGroup(group);
     pass.setPipeline(pipeline);
     const auto builder = GraphicsPass(this, vertexCount() - 1);
     return builder;
 }
 
-auto canta::V2::RenderGraph::transfer(const std::string_view name, const PipelineHandle &pipeline) -> TransferPass {
+auto canta::V2::RenderGraph::transfer(const std::string_view name, const PipelineHandle &pipeline, const RenderGroup& group) -> TransferPass {
     auto& pass = addVertex();
     pass._type = RenderPass::Type::TRANSFER;
     pass._name = name;
+    pass.setGroup(group);
     pass.setPipeline(pipeline);
     const auto builder = TransferPass(this, vertexCount() - 1);
     return builder;
@@ -1343,21 +1355,10 @@ auto canta::V2::RenderGraph::run(std::span<SemaphorePair> waits, std::span<Semap
 
     CommandBuffer* currentCommandBuffer = nullptr;
     QueueType currentQueue = QueueType::NONE;
-
-    struct SubmissionInfo {
-        i32 commands;
-        std::size_t queueIndex;
-        std::size_t waitIndex;
-        i32 hostIndex;
-    };
-
-    std::vector<SubmissionInfo> submissions = {};
-    std::vector<std::vector<QueueType>> internalWaits = {};
+    RenderGroup currentGroup = {};
 
     std::vector<SemaphorePair> waitHandles = {};
     std::vector<SemaphorePair> signalHandles = {};
-
-    std::array<std::vector<CommandBuffer*>, 4> _queues = {};
 
     const auto submitCommands = [this, async] (CommandBuffer* commands, const QueueType queueType, std::span<SemaphorePair> waits, std::span<SemaphorePair> signals, const bool final) -> std::expected<bool, RenderGraphError> {
         const auto queue = _device->queue(queueType);
@@ -1392,6 +1393,10 @@ auto canta::V2::RenderGraph::run(std::span<SemaphorePair> waits, std::span<Semap
 
                 submitBarriers(*currentCommandBuffer, pass._barriers);
 
+                if (currentGroup.id > -1) {
+                    currentCommandBuffer->popDebugLabel();
+                    currentGroup = {};
+                }
                 currentCommandBuffer->end();
 
                 TRY(submitCommands(currentCommandBuffer, currentQueue, waitHandles, signalHandles, passIndex == _orderedPasses.size() - 1));
@@ -1412,6 +1417,11 @@ auto canta::V2::RenderGraph::run(std::span<SemaphorePair> waits, std::span<Semap
 
         if (pass._type == RenderPass::Type::HOST) {
             if (currentCommandBuffer) {
+                submitBarriers(*currentCommandBuffer, pass._barriers);
+                if (currentGroup.id > -1) {
+                    currentCommandBuffer->popDebugLabel();
+                    currentGroup = {};
+                }
                 currentCommandBuffer->end();
 
                 TRY(submitCommands(currentCommandBuffer, currentQueue, waitHandles, signalHandles, passIndex == _orderedPasses.size() - 1));
@@ -1446,6 +1456,10 @@ auto canta::V2::RenderGraph::run(std::span<SemaphorePair> waits, std::span<Semap
         }
 
         if (pass._queueType != currentQueue && currentCommandBuffer) {
+            if (currentGroup.id > -1) {
+                currentCommandBuffer->popDebugLabel();
+                currentGroup = {};
+            }
             currentCommandBuffer->end();
 
             TRY(submitCommands(currentCommandBuffer, currentQueue, waitHandles, signalHandles, passIndex == _orderedPasses.size() - 1));
@@ -1463,6 +1477,16 @@ auto canta::V2::RenderGraph::run(std::span<SemaphorePair> waits, std::span<Semap
             currentCommandBuffer->begin();
         }
 
+        if (currentGroup.id != pass.group().id) {
+            if (currentGroup.id > -1)
+                currentCommandBuffer->popDebugLabel();
+
+            currentGroup = pass.group();
+            if (currentGroup.id > -1)
+                currentCommandBuffer->pushDebugLabel(currentGroup.name, currentGroup.colour);
+        }
+
+        currentCommandBuffer->pushDebugLabel(pass._name, { 1, 1, 1, 1 });
         submitBarriers(*currentCommandBuffer, pass._barriers);
 
         if (pass._type == RenderPass::Type::GRAPHICS && (pass._pipeline || pass._manualPipeline)) {
@@ -1505,6 +1529,7 @@ auto canta::V2::RenderGraph::run(std::span<SemaphorePair> waits, std::span<Semap
 
         if (pass._type == RenderPass::Type::GRAPHICS && (pass._pipeline || pass._manualPipeline))
             currentCommandBuffer->endRendering();
+        currentCommandBuffer->popDebugLabel();
     }
     if (currentCommandBuffer) {
         currentCommandBuffer->end();

@@ -66,6 +66,12 @@ namespace canta::V2 {
         std::string name = {};
     };
 
+    struct RenderGroup {
+        i32 id = -1;
+        std::array<f32, 4> colour = { 0, 0, 0, 1 };
+        std::string name = {};
+    };
+
     class RenderGraph;
     class PassBuilder;
     class ComputePass;
@@ -110,6 +116,10 @@ namespace canta::V2 {
         auto queue() const -> QueueType { return _queueType; }
 
         auto name() const -> std::string_view { return _name; }
+
+        auto group() const -> RenderGroup { return _group; }
+
+        void setGroup(const RenderGroup &group) { _group = group; }
 
         auto clone() -> RenderPass;
 
@@ -215,6 +225,8 @@ namespace canta::V2 {
         std::vector<Barrier> _barriers = {};
         std::vector<std::pair<i32, QueueType>> _queueWaits = {};
 
+        RenderGroup _group = {};
+
         std::string _name = {};
 
     };
@@ -225,6 +237,10 @@ namespace canta::V2 {
         PassBuilder(RenderGraph* graph, u32 index);
 
         auto pass() const -> RenderPass&;
+
+        auto group() const -> RenderGroup { return pass().group(); }
+
+        void setGroup(const RenderGroup &group) const { pass().setGroup(group); }
 
         auto pipeline(const PipelineHandle &pipeline) -> PassBuilder&;
         auto setManualPipeline(bool state) -> PassBuilder&;
@@ -324,6 +340,8 @@ namespace canta::V2 {
 
     private:
         friend RenderGraph;
+        friend GraphicsPass;
+        friend ComputePass;
         friend HostPass;
         friend PresentPass;
 
@@ -482,6 +500,8 @@ namespace canta::V2 {
         static auto create(const CreateInfo &info) -> std::expected<RenderGraph, RenderGraphError>;
 
         // resource management
+        auto addGroup(std::string_view name, const std::array<f32, 4>& colour) -> RenderGroup;
+
         auto addBuffer(BufferInfo info) -> BufferIndex;
 
         auto addImage(ImageInfo info) -> ImageIndex;
@@ -506,13 +526,13 @@ namespace canta::V2 {
         auto updateImageInfo(ImageIndex index, ImageInfo info) -> std::expected<ImageInfo, RenderGraphError>;
 
         // pass management
-        auto pass(std::string_view name, RenderPass::Type type, const PipelineHandle& pipeline = {}) -> PassBuilder;
+        auto pass(std::string_view name, RenderPass::Type type, const PipelineHandle& pipeline = {}, const RenderGroup& group = {}) -> PassBuilder;
 
-        auto compute(std::string_view name, const PipelineHandle &pipeline = {}) -> ComputePass;
+        auto compute(std::string_view name, const PipelineHandle &pipeline = {}, const RenderGroup& group = {}) -> ComputePass;
 
-        auto graphics(std::string_view name, const PipelineHandle &pipeline = {}) -> GraphicsPass;
+        auto graphics(std::string_view name, const PipelineHandle &pipeline = {}, const RenderGroup& group = {}) -> GraphicsPass;
 
-        auto transfer(std::string_view name, const PipelineHandle &pipeline = {}) -> TransferPass;
+        auto transfer(std::string_view name, const PipelineHandle &pipeline = {}, const RenderGroup& group = {}) -> TransferPass;
 
         auto host(std::string_view name) -> HostPass;
 
@@ -576,6 +596,8 @@ namespace canta::V2 {
         // VmaPool _resourcePool = {};
         // u32 _poolSize = 0;
         std::vector<Resource> _resources = {};
+
+        i32 _groupId = 0;
 
         // 0 = graphics, 1 = compute, 2 = transfer
         std::array<std::array<CommandPool, 3>, FRAMES_IN_FLIGHT> _commandPools = {};

@@ -132,7 +132,7 @@ int main() {
 
     auto renderGraph = TRY_MAIN(canta::V2::RenderGraph::create({
         .device = device.get(),
-        .multiQueue = true,
+        .multiQueue = false,
     }));
 
     auto renderGraphDebugger = canta::V2::RenderGraphDebugger::create({
@@ -349,17 +349,18 @@ int main() {
 
         auto clearedImage = TRY_MAIN(renderGraph.transfer("clear_image").clear(imageIndex));
 
-        auto movedParticles = TRY_MAIN(renderGraph.compute("particles_move", pipeline)
+        const auto particlesGroup = renderGraph.addGroup("particles", { 0, 1, 0, 1 });
+
+        auto movedParticles = TRY_MAIN(renderGraph.compute("particles_move", pipeline, particlesGroup)
             .pushConstants(canta::V2::Write(particleBufferIndex), numParticles, static_cast<f32>(dt))
             .dispatchThreads(numParticles).output<canta::V2::BufferIndex>());
 
-        auto drawnParticles = TRY_MAIN(renderGraph.compute("particles_draw", pipelineDraw)
+        auto drawnParticles = TRY_MAIN(renderGraph.compute("particles_draw", pipelineDraw, particlesGroup)
             .addStorageImageWrite(clearedImage)
             .pushConstants(canta::V2::Read(movedParticles), canta::V2::Read(clearedImage), numParticles)
             .dispatchThreads(numParticles).output<canta::V2::ImageIndex>());
 
         auto blittedSwapchain = TRY_MAIN(renderGraph.graphics("blit_to_swapchain").blit(drawnParticles, swapchainIndex).output<canta::V2::ImageIndex>());
-
         auto uiSwapchain = TRY_MAIN(renderGraph.graphics("ui").imgui(imguiContext, blittedSwapchain));
 
         auto presentOutput = TRY_MAIN(renderGraph.present(&*swapchain, uiSwapchain));
