@@ -155,9 +155,9 @@ float4 main(
         }
 }).value();
 
-    auto graph = canta::V2::RenderGraph::create({
+    auto graph = TRY_MAIN(canta::V2::RenderGraph::create({
         .device = device.get(),
-    });
+    }));
 
     const auto buffer = graph.addBuffer({ .size = 1000, .name = "buffer_0" });
     const auto hostBuffer = graph.addBuffer({ .size = 1000, .name = "buffer_1" });
@@ -174,7 +174,7 @@ float4 main(
     const auto outputImage = TRY_MAIN(computePass.output<canta::V2::ImageIndex>(1));
 
 
-    auto geometryPass = [&] (canta::V2::RenderGraph& g, int index) -> std::expected<canta::V2::BufferIndex, ende::graph::Error> {
+    auto geometryPass = [&] (canta::V2::RenderGraph& g, int index) -> std::expected<canta::V2::BufferIndex, canta::V2::RenderGraphError> {
         auto p1 = g.compute(std::format("compute_pass_1_{}", index), computePipeline1)
             .addStorageBufferRead(outputBuffer)
             .addStorageBufferWrite(outputBuffer)
@@ -216,11 +216,15 @@ float4 main(
     auto transferPass = graph.graphics("pass_4").blit(TRY_MAIN(graphicsPass.output<canta::V2::ImageIndex>()), outputImage);
 
 
-    auto hostPass = graph.host("pass_3")
-        .read(TRY_MAIN(transferPass.output<canta::V2::ImageIndex>()))
-        .write(hostBuffer)
-        .setCallback([] (canta::V2::RenderGraph&) {
+    const auto l = TRY_MAIN(transferPass.output<canta::V2::ImageIndex>());
+    auto hostPass = graph.host<canta::V2::ImageIndex, canta::V2::BufferIndex, u32, std::string>("pass_3")
+        .pushConstants(canta::V2::Read(l), canta::V2::Write(hostBuffer), 100, "hello")
+        .setCallback([] (canta::V2::RenderGraph&, const canta::V2::ImageIndex& image, const canta::V2::BufferIndex& buffer, const u32& argA, const std::string& argB) {
             printf("Host pass\n");
+            printf("Image index: %d\n", image.index);
+            printf("Buffer index: %d\n", buffer.index);
+            printf("Arg a: %d\n", argA);
+            printf("Arg b: %s\n", argB.c_str());
         });
 
     const auto rootEdge = TRY_MAIN(hostPass.output<canta::V2::BufferIndex>());

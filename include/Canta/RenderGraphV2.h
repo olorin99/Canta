@@ -475,6 +475,78 @@ namespace canta::V2 {
         auto readback(BufferIndex src, std::span<u8> data) -> std::expected<BufferIndex, RenderGraphError>;
     };
 
+    template <typename... Args>
+    class Host : public HostPass {
+    public:
+
+        Host(RenderGraph* graph, const u32 index) : HostPass(graph, index) {}
+
+        auto read(const BufferIndex index) -> Host& {
+            PassBuilder::read(index, Access::HOST_READ, PipelineStage::HOST);
+            return *this;
+        }
+        auto read(const ImageIndex index) -> Host& {
+            PassBuilder::read(index, Access::HOST_READ, PipelineStage::HOST, ImageLayout::GENERAL);
+            return *this;
+        }
+
+        auto write(const BufferIndex index) -> Host& {
+            PassBuilder::write(index, Access::HOST_READ, PipelineStage::HOST);
+            return *this;
+        }
+        auto write(const ImageIndex index) -> Host& {
+            PassBuilder::write(index, Access::HOST_READ, PipelineStage::HOST, ImageLayout::GENERAL);
+            return *this;
+        }
+
+        template <typename T>
+        T unpack(T&& t) {
+            return std::forward<T>(t);
+        }
+
+        BufferIndex unpack(const Read<BufferIndex> index) {
+            read(index.resource);
+            return index.resource;
+        }
+
+        ImageIndex unpack(const Read<ImageIndex> index) {
+            read(index.resource);
+            return index.resource;
+        }
+
+        BufferIndex unpack(const Write<BufferIndex> index) {
+            write(index.resource);
+            return index.resource;
+        }
+
+        ImageIndex unpack(const Write<ImageIndex> index) {
+            write(index.resource);
+            return index.resource;
+        }
+
+        template <typename... Push>
+        auto pushConstants(Push&&... args) -> Host& {
+            _args = std::make_tuple(unpack(std::forward<Push>(args))...);
+            return *this;
+        }
+
+        auto setCallback(const std::function<void(RenderGraph&, const Args&...)>& callback) -> Host& {
+            HostPass::setCallback([this, callback] (RenderGraph& graph) {
+                const auto nestedCallback = [&graph, callback] (const Args&... args) {
+                    callback(graph, args...);
+                };
+
+                std::apply(nestedCallback, _args);
+            });
+            return *this;
+        }
+
+    private:
+
+        std::tuple<Args...> _args = {};
+
+    };
+
     class PresentPass : public PassBuilder {
     public:
 
@@ -535,6 +607,15 @@ namespace canta::V2 {
         auto transfer(std::string_view name, const PipelineHandle &pipeline = {}, const RenderGroup& group = {}) -> TransferPass;
 
         auto host(std::string_view name) -> HostPass;
+
+        template <typename... Args>
+        auto host(const std::string_view name) -> Host<Args...> {
+            auto& pass = addVertex();
+            pass._type = RenderPass::Type::HOST;
+            pass._name = name;
+            const auto builder = Host<Args...>(this, vertexCount() - 1);
+            return builder;
+        }
 
         auto acquire(Swapchain* swapchain) -> std::expected<ImageIndex, RenderGraphError>;
 
