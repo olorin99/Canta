@@ -562,24 +562,39 @@ namespace canta::V2 {
         auto getPass(std::string_view name) const -> std::expected<RenderPass, RenderGraphError>;
 
         struct TimerInfo {
-            std::string_view name = {};
+            std::string name = {};
             QueueType queue = QueueType::NONE;
             Timer timer = {};
         };
         auto timers() -> std::span<TimerInfo> {
-            if (_timers[_device->flyingIndex()].size() <= _queryCount) return {};
-            return std::span(_timers[_device->flyingIndex()].data(), _queryCount);
+            if (_timers[_device->flyingIndex()].size() < _timerCount) return {};
+            return {_timers[_device->flyingIndex()].data(), _timerCount};
         }
 
         struct StatisticInfo {
-            std::string_view name = {};
+            std::string name = {};
             QueueType queue = QueueType::NONE;
             PipelineStatistics statistics = {};
         };
         auto statistics() -> std::span<StatisticInfo> {
-            if (_statistics[_device->flyingIndex()].size() <= _queryCount) return {};
-            return std::span(_statistics[_device->flyingIndex()].data(), _queryCount);
+            if (_statistics[_device->flyingIndex()].size() < _statsCount) return {};
+            return {_statistics[_device->flyingIndex()].data(), _statsCount};
         }
+
+        enum class QueryMode {
+            DISABLED,
+            PER_PASS,
+            PER_GROUP,
+        };
+
+        void setTimingMode(const QueryMode mode) { _timingMode = mode; }
+        auto timingMode() const -> QueryMode { return _timingMode; }
+
+        void setStatsMode(const QueryMode mode) { _statsMode = mode; }
+        auto statsMode() const -> QueryMode { return _statsMode; }
+
+        void setMultiQueue(const bool state) { _multiQueue = state; }
+        auto multiQueue() const -> bool { return _multiQueue; }
 
         struct Access {
             i32 passIndex = -1;
@@ -600,6 +615,12 @@ namespace canta::V2 {
 
         void submitBarriers(CommandBuffer& commands, std::span<const RenderPass::Barrier> barriers) const;
 
+        void startTimer(CommandBuffer* commands, u32 index, std::string_view name, QueueType queue);
+        void endTimer(CommandBuffer* commands, u32 index);
+
+        void startStats(CommandBuffer* commands, u32 index, std::string_view name, QueueType queue);
+        void endStats(CommandBuffer* commands, u32 index);
+
         void buildBarriers();
         void buildResources();
         auto buildRenderAttachments() -> std::expected<bool, RenderGraphError> ;
@@ -619,8 +640,13 @@ namespace canta::V2 {
 
         i32 _groupId = 0;
 
-        u32 _queryCount = 0;
+        u32 _timerCount = 0;
+        bool _timerRunning = false;
+        QueryMode _timingMode = QueryMode::DISABLED;
         std::array<std::vector<TimerInfo>, FRAMES_IN_FLIGHT> _timers = {};
+        u32 _statsCount = 0;
+        bool _statsRunning = false;
+        QueryMode _statsMode = QueryMode::DISABLED;
         std::array<std::vector<StatisticInfo>, FRAMES_IN_FLIGHT> _statistics = {};
 
         // 0 = graphics, 1 = compute, 2 = transfer

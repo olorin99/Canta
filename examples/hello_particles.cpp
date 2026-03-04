@@ -14,6 +14,7 @@
 
 #include "Canta/RenderGraphV2.h"
 #include "Canta/debug/CommandQueueDebugger.h"
+#include "Canta/debug/ui.h"
 
 int main() {
 
@@ -200,31 +201,42 @@ int main() {
                 }
             }
 
-            // auto multiQueue = renderGraph.multiQueueEnabled();
-            // if (ImGui::Checkbox("MultiQueue", &multiQueue))
-            //     renderGraph.setMultiQueueEnabled(multiQueue);
-            //
-            // auto timingEnabled = renderGraph.timingEnabled();
-            // if (ImGui::Checkbox("RenderGraph Timing", &timingEnabled))
-            //     renderGraph.setTimingEnabled(timingEnabled);
-            // const char* modes[] = { "PER_PASS", "PER_GROUP", "SINGLE" };
-            // static int modeIndex = 0;
-            // if (ImGui::Combo("TimingMode", &modeIndex, modes, 3)) {
-            //     switch (modeIndex) {
-            //         case 0:
-            //             renderGraph.setTimingMode(canta::RenderGraph::TimingMode::PER_PASS);
-            //             break;
-            //         case 1:
-            //             renderGraph.setTimingMode(canta::RenderGraph::TimingMode::PER_GROUP);
-            //             break;
-            //         case 2:
-            //             renderGraph.setTimingMode(canta::RenderGraph::TimingMode::SINGLE);
-            //             break;
-            //     }
-            // }
+            auto multiQueue = renderGraph.multiQueue();
+            if (ImGui::Checkbox("MultiQueue", &multiQueue))
+                renderGraph.setMultiQueue(multiQueue);
+            const char* modes[] = { "DISABLED", "PER_PASS", "PER_GROUP" };
+            static int timingModeIndex = static_cast<int>(renderGraph.timingMode());
+            if (ImGui::Combo("Timing Mode", &timingModeIndex, modes, 3)) {
+                switch (timingModeIndex) {
+                    case 0:
+                        renderGraph.setTimingMode(canta::V2::RenderGraph::QueryMode::DISABLED);
+                        break;
+                    case 1:
+                        renderGraph.setTimingMode(canta::V2::RenderGraph::QueryMode::PER_PASS);
+                        break;
+                    case 2:
+                        renderGraph.setTimingMode(canta::V2::RenderGraph::QueryMode::PER_GROUP);
+                        break;
+                }
+            }
+            static int statsModeIndex = static_cast<int>(renderGraph.statsMode());
+            if (ImGui::Combo("Stats Mode", &statsModeIndex, modes, 3)) {
+                switch (statsModeIndex) {
+                    case 0:
+                        renderGraph.setStatsMode(canta::V2::RenderGraph::QueryMode::DISABLED);
+                        break;
+                    case 1:
+                        renderGraph.setStatsMode(canta::V2::RenderGraph::QueryMode::PER_PASS);
+                        break;
+                    case 2:
+                        renderGraph.setStatsMode(canta::V2::RenderGraph::QueryMode::PER_GROUP);
+                        break;
+                }
+            }
+
             // auto pipelineStatsEnabled = renderGraph.pipelineStatisticsEnabled();
             // if (ImGui::Checkbox("RenderGraph PiplelineStats", &pipelineStatsEnabled))
-            //     renderGraph.setPipelineStatisticsEnabled(pipelineStatsEnabled);
+            // renderGraph.setPipelineStatisticsEnabled(pipelineStatsEnabled);
             // auto individualPipelineStatistics = renderGraph.individualPipelineStatistics();
             // if (ImGui::Checkbox("RenderGraph Per Pass PiplelineStats", &individualPipelineStatistics))
             //     renderGraph.setIndividualPipelineStatistics(individualPipelineStatistics);
@@ -234,48 +246,23 @@ int main() {
                 ImGui::Text("%s: %f ms", timer.name.data(), TRY_MAIN(timer.timer.result()) / 1000000.f);
             }
             auto pipelineStatistics = renderGraph.statistics();
-            for (auto& pipelineStats : pipelineStatistics) {
+            for (u32 statIndex = 0; auto& pipelineStats : pipelineStatistics) {
+                ImGui::PushID(statIndex++);
                 if (ImGui::TreeNode(pipelineStats.name.data())) {
                     auto stats = TRY_MAIN(pipelineStats.statistics.result());
-                    ImGui::Text("Input Assembly Vertices: %lu", stats.inputAssemblyVertices);
-                    ImGui::Text("Input Assembly Primitives: %lu", stats.inputAssemblyPrimitives);
-                    ImGui::Text("Vertex Shader Invocations: %lu", stats.vertexShaderInvocations);
-                    ImGui::Text("Geometry Shader Invocations: %lu", stats.geometryShaderInvocations);
-                    ImGui::Text("Geometry Shader Primitives: %lu", stats.geometryShaderPrimitives);
-                    ImGui::Text("Clipping Invocations: %lu", stats.clippingInvocations);
-                    ImGui::Text("Clipping Primitives: %lu", stats.clippingPrimitives);
-                    ImGui::Text("Fragment Shader Invocations: %lu", stats.fragmentShaderInvocations);
-                    ImGui::Text("Tessellation Control Shader Patches: %lu", stats.tessellationControlShaderPatches);
-                    ImGui::Text("Tessellation Evaluation Shader Invocations: %lu", stats.tessellationEvaluationShaderInvocations);
-                    ImGui::Text("Compute Shader Invocations: %lu", stats.computeShaderInvocations);
+                    canta::drawPipelineStats(stats);
                     ImGui::TreePop();
                 }
+                ImGui::PopID();
             }
 
             auto memoryUsage = device->memoryUsage();
-            ImGui::Text("VRAM Budget: %lu mb", memoryUsage.budget / 1000000);
-            ImGui::Text("VRAM Usage: %lu mb", memoryUsage.usage / 1000000);
-            ImGui::Text("VRAM Usage: %f%%", static_cast<f64>(memoryUsage.usage) / static_cast<f64>(memoryUsage.budget));
-
             auto softMemoryUsage = device->softMemoryUsage();
-            ImGui::Text("VRAM Budget: %lu mb", softMemoryUsage.budget / 1000000);
-            ImGui::Text("VRAM Usage: %lu mb", softMemoryUsage.usage / 1000000);
-            ImGui::Text("VRAM Usage: %f%%", static_cast<f64>(softMemoryUsage.usage) / static_cast<f64>(softMemoryUsage.budget));
+            canta::drawMemoryUsage(memoryUsage);
+            canta::drawMemoryUsage(softMemoryUsage);
 
             auto resourceStats = device->resourceStats();
-            ImGui::Text("Resource timeline value %lu", device->resourceTimeline()->value());
-            ImGui::Text("Shader Count %d", resourceStats.shaderCount);
-            ImGui::Text("Shader Allocated %d", resourceStats.shaderAllocated);
-            ImGui::Text("Pipeline Count %d", resourceStats.pipelineCount);
-            ImGui::Text("Pipeline Allocated %d", resourceStats.pipelineAllocated);
-            ImGui::Text("Image Count %d", resourceStats.imageCount);
-            ImGui::Text("Image Allocated %d", resourceStats.imageAllocated);
-            ImGui::Text("Buffer Count %d", resourceStats.bufferCount);
-            ImGui::Text("Buffer Allocated %d", resourceStats.bufferAllocated);
-            ImGui::Text("Sampler Count %d", resourceStats.samplerCount);
-            ImGui::Text("Sampler Allocated %d", resourceStats.shaderAllocated);
-            ImGui::Text("Timestamp Query Pools %d", resourceStats.timestampQueryPools);
-            ImGui::Text("PipelineStats Pools %d", resourceStats.pipelineStatsPools);
+            canta::drawResourceStats(resourceStats);
 
             // auto renderGraphStats = renderGraph.statistics();
             // ImGui::Text("Passes: %d", renderGraphStats.passes);

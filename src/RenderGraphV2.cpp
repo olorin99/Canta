@@ -1356,7 +1356,8 @@ auto canta::V2::RenderGraph::run(std::span<SemaphorePair> waits, std::span<Semap
     CommandBuffer* currentCommandBuffer = nullptr;
     QueueType currentQueue = QueueType::NONE;
     RenderGroup currentGroup = {};
-    _queryCount = 0;
+    _timerCount = 0;
+    _statsCount = 0;
 
     std::vector<SemaphorePair> waitHandles = {};
     std::vector<SemaphorePair> signalHandles = {};
@@ -1393,6 +1394,10 @@ auto canta::V2::RenderGraph::run(std::span<SemaphorePair> waits, std::span<Semap
             if (currentCommandBuffer) {
 
                 submitBarriers(*currentCommandBuffer, pass._barriers);
+                if (_statsMode == QueryMode::PER_GROUP && _statsRunning)
+                    endStats(currentCommandBuffer, _statsCount++);
+                if (_timingMode == QueryMode::PER_GROUP && _timerRunning)
+                    endTimer(currentCommandBuffer, _timerCount++);
 
                 if (currentGroup.id > -1) {
                     currentCommandBuffer->popDebugLabel();
@@ -1419,6 +1424,10 @@ auto canta::V2::RenderGraph::run(std::span<SemaphorePair> waits, std::span<Semap
         if (pass._type == RenderPass::Type::HOST) {
             if (currentCommandBuffer) {
                 submitBarriers(*currentCommandBuffer, pass._barriers);
+                if (_statsMode == QueryMode::PER_GROUP && _statsRunning)
+                    endStats(currentCommandBuffer, _statsCount++);
+                if (_timingMode == QueryMode::PER_GROUP && _timerRunning)
+                    endTimer(currentCommandBuffer, _timerCount++);
                 if (currentGroup.id > -1) {
                     currentCommandBuffer->popDebugLabel();
                     currentGroup = {};
@@ -1457,6 +1466,10 @@ auto canta::V2::RenderGraph::run(std::span<SemaphorePair> waits, std::span<Semap
         }
 
         if (pass._queueType != currentQueue && currentCommandBuffer) {
+            if (_statsMode == QueryMode::PER_GROUP && _statsRunning)
+                endStats(currentCommandBuffer, _statsCount++);
+            if (_timingMode == QueryMode::PER_GROUP && _timerRunning)
+                endTimer(currentCommandBuffer, _timerCount++);
             if (currentGroup.id > -1) {
                 currentCommandBuffer->popDebugLabel();
                 currentGroup = {};
@@ -1476,37 +1489,38 @@ auto canta::V2::RenderGraph::run(std::span<SemaphorePair> waits, std::span<Semap
             waitHandles.clear();
 
             currentCommandBuffer->begin();
+
+            if (_timerCount == 0 && _timingMode == QueryMode::PER_GROUP)
+                startTimer(currentCommandBuffer, _timerCount, currentGroup.name.empty() ? pass.name() : currentGroup.name, currentQueue);
+            if (_statsCount == 0 && _statsMode == QueryMode::PER_GROUP)
+                startStats(currentCommandBuffer, _statsCount, currentGroup.name.empty() ? pass.name() : currentGroup.name, currentQueue);
         }
 
         if (currentGroup.id != pass.group().id) {
+            if (_statsMode == QueryMode::PER_GROUP && _statsRunning)
+                endStats(currentCommandBuffer, _statsCount++);
+            if (_timingMode == QueryMode::PER_GROUP && _timerRunning)
+                endTimer(currentCommandBuffer, _timerCount++);
+
             if (currentGroup.id > -1)
                 currentCommandBuffer->popDebugLabel();
 
             currentGroup = pass.group();
             if (currentGroup.id > -1)
                 currentCommandBuffer->pushDebugLabel(currentGroup.name, currentGroup.colour);
+
+            if (_timingMode == QueryMode::PER_GROUP)
+                startTimer(currentCommandBuffer, _timerCount, currentGroup.name.empty() ? pass.name() : currentGroup.name, currentQueue);
+            if (_statsMode == QueryMode::PER_GROUP)
+                startStats(currentCommandBuffer, _statsCount, currentGroup.name.empty() ? pass.name() : currentGroup.name, currentQueue);
         }
         currentCommandBuffer->pushDebugLabel(pass._name, { 1, 1, 1, 1 });
 
-        auto& frameTimers = _timers[_device->flyingIndex()];
-        while (frameTimers.size() <= passIndex)
-            frameTimers.emplace_back(TimerInfo{{}, QueueType::NONE, _device->createTimer()});
 
-        auto& timer = frameTimers[_queryCount];
-        timer.name = pass.name();
-        timer.queue = currentQueue;
-        timer.timer.begin(*currentCommandBuffer, PipelineStage::TOP);
-
-        auto& frameStatistics = _statistics[_device->flyingIndex()];
-        while (frameStatistics.size() <= passIndex)
-            frameStatistics.emplace_back(StatisticInfo{{}, QueueType::NONE, _device->createPipelineStatistics()});
-
-        auto& statistics = frameStatistics[_queryCount];
-        statistics.name = pass.name();
-        statistics.queue = currentQueue;
-        statistics.statistics.begin(*currentCommandBuffer);
-
-        _queryCount++;
+        if (_timingMode == QueryMode::PER_PASS)
+            startTimer(currentCommandBuffer, _timerCount, pass.name(), currentQueue);
+        if (_statsMode == QueryMode::PER_PASS)
+            startStats(currentCommandBuffer, _statsCount, pass.name(), currentQueue);
 
         submitBarriers(*currentCommandBuffer, pass._barriers);
 
@@ -1552,12 +1566,18 @@ auto canta::V2::RenderGraph::run(std::span<SemaphorePair> waits, std::span<Semap
             currentCommandBuffer->endRendering();
 
 
-        statistics.statistics.end(*currentCommandBuffer);
-        timer.timer.end(*currentCommandBuffer, PipelineStage::BOTTOM);
+        if (_statsMode == QueryMode::PER_PASS)
+            endStats(currentCommandBuffer, _statsCount++);
+        if (_timingMode == QueryMode::PER_PASS)
+            endTimer(currentCommandBuffer, _timerCount++);
 
         currentCommandBuffer->popDebugLabel();
     }
     if (currentCommandBuffer) {
+        if (_statsMode == QueryMode::PER_GROUP && _statsRunning)
+            endStats(currentCommandBuffer, _statsCount++);
+        if (_timingMode == QueryMode::PER_GROUP && _timerRunning)
+            endTimer(currentCommandBuffer, _timerCount++);
         currentCommandBuffer->end();
 
         TRY(submitCommands(currentCommandBuffer, currentQueue, waitHandles, signalHandles, true));
@@ -1708,6 +1728,44 @@ void canta::V2::RenderGraph::submitBarriers(CommandBuffer &commands, std::span<c
         commands.barrier(imageBarriers[barrier]);
     for (u32 barrier = 0; barrier < bufferBarrierCount; barrier++)
         commands.barrier(bufferBarriers[barrier]);
+}
+
+void canta::V2::RenderGraph::startTimer(CommandBuffer* commands, const u32 index, const std::string_view name, const QueueType queue) {
+    auto& frameTimers = _timers[_device->flyingIndex()];
+    while (frameTimers.size() <= index)
+        frameTimers.emplace_back(TimerInfo{{}, QueueType::NONE, _device->createTimer()});
+
+    auto& timer = frameTimers[index];
+    timer.name = name;
+    timer.queue = queue;
+    timer.timer.begin(*commands, PipelineStage::TOP);
+    _timerRunning = true;
+}
+
+void canta::V2::RenderGraph::endTimer(CommandBuffer* commands, const u32 index) {
+    auto& frameTimers = _timers[_device->flyingIndex()];
+    auto& timer = frameTimers[index];
+    timer.timer.end(*commands, PipelineStage::BOTTOM);
+    _timerRunning = false;
+}
+
+void canta::V2::RenderGraph::startStats(CommandBuffer* commands, const u32 index, const std::string_view name, const QueueType queue) {
+    auto& frameStatistics = _statistics[_device->flyingIndex()];
+    while (frameStatistics.size() <= index)
+        frameStatistics.emplace_back(StatisticInfo{{}, QueueType::NONE, _device->createPipelineStatistics()});
+
+    auto& statistics = frameStatistics[index];
+    statistics.name = name;
+    statistics.queue = queue;
+    statistics.statistics.begin(*commands);
+    _statsRunning = true;
+}
+
+void canta::V2::RenderGraph::endStats(CommandBuffer* commands, const u32 index) {
+    auto& frameStatistics = _statistics[_device->flyingIndex()];
+    auto& statistics = frameStatistics[index];
+    statistics.statistics.end(*commands);
+    _statsRunning = false;
 }
 
 void canta::V2::RenderGraph::buildBarriers() {

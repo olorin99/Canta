@@ -150,6 +150,8 @@ add_library(Canta
         include/Canta/util/random.h
         src/RenderGraphV2.cpp
         include/Canta/RenderGraphV2.h
+        src/debug/ui.cpp
+        include/Canta/debug/ui.h
 )
 
 target_include_directories(Canta
