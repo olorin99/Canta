@@ -170,17 +170,54 @@ auto canta::V2::RenderPass::resolvePushConstants(RenderGraph& graph, PushData da
 }
 
 void canta::V2::RenderPass::mergeAccesses() {
+    const auto hasRead = [] (const ResourceAccess &access) -> bool {
+        return (access.access & Access::INDIRECT) == Access::INDIRECT ||
+            (access.access & Access::INDEX_READ) == Access::INDEX_READ ||
+            (access.access & Access::VERTEX_ATTRIBUTE_READ) == Access::VERTEX_ATTRIBUTE_READ ||
+            (access.access & Access::UNIFORM) == Access::UNIFORM ||
+            (access.access & Access::INPUT_ATTACHMENT) == Access::INPUT_ATTACHMENT ||
+            (access.access & Access::SHADER_READ) == Access::SHADER_READ ||
+            (access.access & Access::COLOUR_READ) == Access::COLOUR_READ ||
+            (access.access & Access::DEPTH_STENCIL_READ) == Access::DEPTH_STENCIL_READ ||
+            (access.access & Access::TRANSFER_READ) == Access::TRANSFER_READ ||
+            (access.access & Access::HOST_READ) == Access::HOST_READ ||
+            (access.access & Access::MEMORY_READ) == Access::MEMORY_READ ||
+            (access.access & Access::TRANSFORM_FEEDBACK_COUNTER_READ) == Access::TRANSFORM_FEEDBACK_COUNTER_READ ||
+            (access.access & Access::CONDITIONAL_RENDERING_READ) == Access::CONDITIONAL_RENDERING_READ ||
+            (access.access & Access::COLOUR_READ_NONCOHERENT) == Access::COLOUR_READ_NONCOHERENT ||
+            (access.access & Access::ACCELERATION_STRUCTURE_READ) == Access::ACCELERATION_STRUCTURE_READ ||
+            (access.access & Access::FRAGMENT_DENSITY_MAP_READ) == Access::FRAGMENT_DENSITY_MAP_READ ||
+            (access.access & Access::FRAGMENT_SHADING_RATE_READ) == Access::FRAGMENT_SHADING_RATE_READ;
+    };
+
+    const auto hasWrite = [] (const ResourceAccess &access) -> bool {
+        return (access.access & Access::SHADER_WRITE) == Access::SHADER_WRITE ||
+            (access.access & Access::COLOUR_WRITE) == Access::COLOUR_WRITE ||
+            (access.access & Access::DEPTH_STENCIL_WRITE) == Access::DEPTH_STENCIL_WRITE ||
+            (access.access & Access::TRANSFER_WRITE) == Access::TRANSFER_WRITE ||
+            (access.access & Access::HOST_WRITE) == Access::HOST_WRITE ||
+            (access.access & Access::MEMORY_WRITE) == Access::MEMORY_WRITE ||
+            (access.access & Access::TRANSFORM_FEEDBACK_WRITE) == Access::TRANSFORM_FEEDBACK_WRITE ||
+            (access.access & Access::TRANSFORM_FEEDBACK_COUNTER_WRITE) == Access::TRANSFORM_FEEDBACK_COUNTER_WRITE ||
+            (access.access & Access::ACCELERATION_STRUCTURE_WRITE) == Access::ACCELERATION_STRUCTURE_WRITE;
+    };
+
+
     for (i32 accessIndex = 0; accessIndex < _accesses.size(); accessIndex++) {
         auto& access = _accesses[accessIndex];
+
+        const auto writer = hasWrite(access);
 
         for (i32 nextIndex = accessIndex + 1; nextIndex < _accesses.size(); nextIndex++) {
             auto& nextAccess = _accesses[nextIndex];
 
             if (access.index == nextAccess.index) {
 
+                const auto nextWriter = hasWrite(access);
+
                 access.access = access.access | nextAccess.access;
                 access.stage = std::min(access.stage, nextAccess.stage);
-                access.layout = nextAccess.layout;
+                access.layout = nextWriter ? nextAccess.layout : access.layout;
 
                 _accesses.erase(_accesses.begin() + nextIndex--);
             }
