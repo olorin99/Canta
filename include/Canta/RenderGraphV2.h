@@ -21,6 +21,7 @@ namespace canta::V2 {
         INVALID_PASS,
         INVALID_PASS_COUNT,
         INVALID_RESOURCE,
+        INVALID_RESOURCE_USE,
         PASS_RUN,
         DEVICE_ERROR,
     };
@@ -277,6 +278,7 @@ namespace canta::V2 {
 
         template <typename T>
         auto output(const u32 index = 0) -> std::expected<T, RenderGraphError> {
+            if (_error) return std::unexpected(_error.value());
             return pass().output<T>(index).transform_error(mapGraphErrorToRenderGraphError);
         }
 
@@ -321,6 +323,8 @@ namespace canta::V2 {
 
         RenderGraph* _graph = nullptr;
         u32 _vertexIndex = 0;
+
+        std::optional<RenderGraphError> _error = {};
 
     };
 

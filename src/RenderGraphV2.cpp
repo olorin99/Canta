@@ -347,8 +347,18 @@ auto canta::V2::PassBuilder::setCallback(const std::function<std::expected<bool,
     return *this;
 }
 
+// use in builder to store error to be returned at end of chain.
+#define STORE_ERROR(opt, expr)\
+    ({\
+    auto&& tmp = (expr);\
+    if (!tmp.has_value())\
+    opt = tmp.error();\
+    std::move(tmp.value());\
+    })
 
 auto canta::V2::PassBuilder::addColourRead(const ImageIndex index) -> PassBuilder& {
+    if (_error.has_value()) return *this;
+
     auto info = *read(index, Access::COLOUR_READ, PipelineStage::COLOUR_OUTPUT, ImageLayout::COLOUR_ATTACHMENT);
 
     auto dimensions = pass().dimensions();
@@ -358,11 +368,13 @@ auto canta::V2::PassBuilder::addColourRead(const ImageIndex index) -> PassBuilde
     };
 
     info.usage |= ImageUsage::COLOUR_ATTACHMENT;
-    _graph->updateImageInfo(index, info);
+    STORE_ERROR(_error, _graph->updateImageInfo(index, info));
     return *this;
 }
 
 auto canta::V2::PassBuilder::addColourWrite(const ImageIndex index, const ClearValue& clearColour) -> PassBuilder& {
+    if (_error.has_value()) return *this;
+
     auto info = *write(index, Access::COLOUR_READ | Access::COLOUR_WRITE, PipelineStage::COLOUR_OUTPUT, ImageLayout::COLOUR_ATTACHMENT);
     pass()._colourAttachments.push_back({
         .index = index.index,
@@ -376,11 +388,13 @@ auto canta::V2::PassBuilder::addColourWrite(const ImageIndex index, const ClearV
     };
 
     info.usage |= ImageUsage::COLOUR_ATTACHMENT;
-    _graph->updateImageInfo(index, info);
+    STORE_ERROR(_error, _graph->updateImageInfo(index, info));
     return *this;
 }
 
 auto canta::V2::PassBuilder::addDepthRead(const ImageIndex index) -> PassBuilder& {
+    if (_error.has_value()) return *this;
+
     auto info = *read(index, Access::DEPTH_STENCIL_READ, PipelineStage::EARLY_FRAGMENT_TEST | PipelineStage::LATE_FRAGMENT_TEST | PipelineStage::FRAGMENT_SHADER, ImageLayout::DEPTH_STENCIL_ATTACHMENT);
     pass()._depthAttachment = {
         .index = index.index,
@@ -393,11 +407,13 @@ auto canta::V2::PassBuilder::addDepthRead(const ImageIndex index) -> PassBuilder
     };
 
     info.usage |= ImageUsage::DEPTH_STENCIL_ATTACHMENT;
-    _graph->updateImageInfo(index, info);
+    STORE_ERROR(_error, _graph->updateImageInfo(index, info));
     return *this;
 }
 
 auto canta::V2::PassBuilder::addDepthWrite(const ImageIndex index, const ClearValue& clearColour) -> PassBuilder& {
+    if (_error.has_value()) return *this;
+
     auto info = *write(index, Access::DEPTH_STENCIL_READ | Access::DEPTH_STENCIL_WRITE, PipelineStage::EARLY_FRAGMENT_TEST | PipelineStage::LATE_FRAGMENT_TEST | PipelineStage::FRAGMENT_SHADER, ImageLayout::DEPTH_STENCIL_ATTACHMENT);
     pass()._depthAttachment = {
         .index = index.index,
@@ -406,133 +422,180 @@ auto canta::V2::PassBuilder::addDepthWrite(const ImageIndex index, const ClearVa
     };
 
     info.usage |= ImageUsage::DEPTH_STENCIL_ATTACHMENT;
-    _graph->updateImageInfo(index, info);
+    STORE_ERROR(_error, _graph->updateImageInfo(index, info));
     return *this;
 }
 
 auto canta::V2::PassBuilder::addStorageImageRead(const ImageIndex index, PipelineStage stage) -> PassBuilder & {
+    if (_error.has_value()) return *this;
+
     if (stage == PipelineStage::NONE)
         stage = defaultPassStage(pass()._type);
     auto info = *read(index, stage == PipelineStage::HOST ? Access::HOST_READ : Access::SHADER_READ, stage, ImageLayout::GENERAL);
+    // can only use swapchain images as colour attachments or transfer targets.
+    if (info.swapchainImage) {
+        _error = RenderGraphError::INVALID_RESOURCE_USE;
+        return *this;
+    }
 
     info.usage |= ImageUsage::STORAGE;
-    _graph->updateImageInfo(index, info);
+    STORE_ERROR(_error, _graph->updateImageInfo(index, info));
     return *this;
 }
 
 auto canta::V2::PassBuilder::addStorageImageWrite(const ImageIndex index, PipelineStage stage) -> PassBuilder & {
+    if (_error.has_value()) return *this;
+
     if (stage == PipelineStage::NONE)
         stage = defaultPassStage(pass()._type);
     auto info = *write(index, stage == PipelineStage::HOST ? Access::HOST_READ | Access::HOST_WRITE : Access::SHADER_READ | Access::SHADER_WRITE, stage, ImageLayout::GENERAL);
+    // can only use swapchain images as colour attachments or transfer targets.
+    if (info.swapchainImage) {
+        _error = RenderGraphError::INVALID_RESOURCE_USE;
+        return *this;
+    }
 
     info.usage |= ImageUsage::STORAGE;
-    _graph->updateImageInfo(index, info);
+    STORE_ERROR(_error, _graph->updateImageInfo(index, info));
     return *this;
 }
 
 auto canta::V2::PassBuilder::addStorageBufferRead(const BufferIndex index, PipelineStage stage) -> PassBuilder & {
+    if (_error.has_value()) return *this;
+
     if (stage == PipelineStage::NONE)
         stage = defaultPassStage(pass()._type);
     auto info = *read(index, stage == PipelineStage::HOST ? Access::HOST_READ : Access::SHADER_READ, stage);
 
     info.usage |= BufferUsage::STORAGE;
-    _graph->updateBufferInfo(index, info);
+    STORE_ERROR(_error, _graph->updateBufferInfo(index, info));
     return *this;
 }
 
 auto canta::V2::PassBuilder::addStorageBufferWrite(const BufferIndex index, PipelineStage stage) -> PassBuilder & {
+    if (_error.has_value()) return *this;
+
     if (stage == PipelineStage::NONE)
         stage = defaultPassStage(pass()._type);
     auto info = *write(index, stage == PipelineStage::HOST ? Access::HOST_READ | Access::HOST_WRITE : Access::SHADER_READ | Access::SHADER_WRITE, stage);
 
     info.usage |= BufferUsage::STORAGE;
-    _graph->updateBufferInfo(index, info);
+    STORE_ERROR(_error, _graph->updateBufferInfo(index, info));
     return *this;
 }
 
 auto canta::V2::PassBuilder::addSampledRead(const ImageIndex index, PipelineStage stage) -> PassBuilder& {
+    if (_error.has_value()) return *this;
+
     if (stage == PipelineStage::NONE)
         stage = defaultPassStage(pass()._type);
     auto info = *read(index, Access::SHADER_READ, stage, ImageLayout::SHADER_READ_ONLY);
+    // can only use swapchain images as colour attachments or transfer targets.
+    if (info.swapchainImage) {
+        _error = RenderGraphError::INVALID_RESOURCE_USE;
+        return *this;
+    }
 
     info.usage |= ImageUsage::SAMPLED;
-    _graph->updateImageInfo(index, info);
+    STORE_ERROR(_error, _graph->updateImageInfo(index, info));
     return *this;
 }
 
 auto canta::V2::PassBuilder::addBlitRead(const ImageIndex index) -> PassBuilder& {
+    if (_error.has_value()) return *this;
+
     auto info = *read(index, Access::TRANSFER_READ, PipelineStage::TRANSFER, ImageLayout::TRANSFER_SRC);
 
     info.usage |= ImageUsage::TRANSFER_SRC;
-    _graph->updateImageInfo(index, info);
+    STORE_ERROR(_error, _graph->updateImageInfo(index, info));
     return *this;
 }
 
 auto canta::V2::PassBuilder::addBlitWrite(const ImageIndex index) -> PassBuilder& {
+    if (_error.has_value()) return *this;
+
     auto info = *write(index, Access::TRANSFER_READ | Access::TRANSFER_WRITE, PipelineStage::TRANSFER, ImageLayout::TRANSFER_DST);
 
     info.usage |= ImageUsage::TRANSFER_DST;
-    _graph->updateImageInfo(index, info);
+    STORE_ERROR(_error, _graph->updateImageInfo(index, info));
     return *this;
 }
 
 auto canta::V2::PassBuilder::addTransferRead(const ImageIndex index) -> PassBuilder& {
+    if (_error.has_value()) return *this;
+
     auto info = *read(index, Access::TRANSFER_READ, PipelineStage::TRANSFER, ImageLayout::TRANSFER_SRC);
 
     info.usage |= ImageUsage::TRANSFER_SRC;
-    _graph->updateImageInfo(index, info);
+    STORE_ERROR(_error, _graph->updateImageInfo(index, info));
     return *this;
 }
 
 auto canta::V2::PassBuilder::addTransferWrite(const ImageIndex index) -> PassBuilder& {
+    if (_error.has_value()) return *this;
+
     auto info = *write(index, Access::TRANSFER_READ | Access::TRANSFER_WRITE, PipelineStage::TRANSFER, ImageLayout::TRANSFER_DST);
 
     info.usage |= ImageUsage::TRANSFER_DST;
-    _graph->updateImageInfo(index, info);
+    STORE_ERROR(_error, _graph->updateImageInfo(index, info));
     return *this;
 }
 
 auto canta::V2::PassBuilder::addTransferRead(const BufferIndex index) -> PassBuilder& {
+    if (_error.has_value()) return *this;
+
     auto info = *read(index, Access::TRANSFER_READ, PipelineStage::TRANSFER);
 
     info.usage |= BufferUsage::TRANSFER_SRC;
-    _graph->updateBufferInfo(index, info);
+    STORE_ERROR(_error, _graph->updateBufferInfo(index, info));
     return *this;
 }
 
 auto canta::V2::PassBuilder::addTransferWrite(const BufferIndex index) -> PassBuilder& {
+    if (_error.has_value()) return *this;
+
     auto info = *write(index, Access::TRANSFER_READ | Access::TRANSFER_WRITE, PipelineStage::TRANSFER);
 
     info.usage |= BufferUsage::TRANSFER_DST;
-    _graph->updateBufferInfo(index, info);
+    STORE_ERROR(_error, _graph->updateBufferInfo(index, info));
     return *this;
 }
 
 auto canta::V2::PassBuilder::addIndirectRead(const BufferIndex index) -> PassBuilder& {
+    if (_error.has_value()) return *this;
+
     auto info = *read(index, Access::INDIRECT, PipelineStage::DRAW_INDIRECT);
 
     info.usage |= BufferUsage::INDIRECT;
-    _graph->updateBufferInfo(index, info);
+    STORE_ERROR(_error, _graph->updateBufferInfo(index, info));
     return *this;
 }
 
 auto canta::V2::PassBuilder::addDummyRead(const ImageIndex index) -> PassBuilder& {
-    read(index, Access::NONE, PipelineStage::NONE, ImageLayout::GENERAL);
+    if (_error.has_value()) return *this;
+
+    STORE_ERROR(_error, read(index, Access::NONE, PipelineStage::NONE, ImageLayout::GENERAL));
     return *this;
 }
 
 auto canta::V2::PassBuilder::addDummyWrite(const ImageIndex index) -> PassBuilder& {
-    write(index, Access::NONE, PipelineStage::NONE, ImageLayout::GENERAL);
+    if (_error.has_value()) return *this;
+
+    STORE_ERROR(_error, write(index, Access::NONE, PipelineStage::NONE, ImageLayout::GENERAL));
     return *this;
 }
 
 auto canta::V2::PassBuilder::addDummyRead(const BufferIndex index) -> PassBuilder& {
-    read(index, Access::NONE, PipelineStage::NONE);
+    if (_error.has_value()) return *this;
+
+    STORE_ERROR(_error, read(index, Access::NONE, PipelineStage::NONE));
     return *this;
 }
 
 auto canta::V2::PassBuilder::addDummyWrite(const BufferIndex index) -> PassBuilder& {
-    write(index, Access::NONE, PipelineStage::NONE);
+    if (_error.has_value()) return *this;
+
+    STORE_ERROR(_error, write(index, Access::NONE, PipelineStage::NONE));
     return *this;
 }
 
