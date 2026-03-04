@@ -233,24 +233,24 @@ int main() {
             for (auto& timer : timers) {
                 ImGui::Text("%s: %f ms", timer.name.data(), TRY_MAIN(timer.timer.result()) / 1000000.f);
             }
-            // auto pipelineStatistics = renderGraph.pipelineStatistics();
-            // for (auto& pipelineStats : pipelineStatistics) {
-            //     if (ImGui::TreeNode(pipelineStats.first.c_str())) {
-            //         auto stats = TRY_MAIN(pipelineStats.second.result());
-            //         ImGui::Text("Input Assembly Vertices: %lu", stats.inputAssemblyVertices);
-            //         ImGui::Text("Input Assembly Primitives: %lu", stats.inputAssemblyPrimitives);
-            //         ImGui::Text("Vertex Shader Invocations: %lu", stats.vertexShaderInvocations);
-            //         ImGui::Text("Geometry Shader Invocations: %lu", stats.geometryShaderInvocations);
-            //         ImGui::Text("Geometry Shader Primitives: %lu", stats.geometryShaderPrimitives);
-            //         ImGui::Text("Clipping Invocations: %lu", stats.clippingInvocations);
-            //         ImGui::Text("Clipping Primitives: %lu", stats.clippingPrimitives);
-            //         ImGui::Text("Fragment Shader Invocations: %lu", stats.fragmentShaderInvocations);
-            //         ImGui::Text("Tessellation Control Shader Patches: %lu", stats.tessellationControlShaderPatches);
-            //         ImGui::Text("Tessellation Evaluation Shader Invocations: %lu", stats.tessellationEvaluationShaderInvocations);
-            //         ImGui::Text("Compute Shader Invocations: %lu", stats.computeShaderInvocations);
-            //         ImGui::TreePop();
-            //     }
-            // }
+            auto pipelineStatistics = renderGraph.statistics();
+            for (auto& pipelineStats : pipelineStatistics) {
+                if (ImGui::TreeNode(pipelineStats.name.data())) {
+                    auto stats = TRY_MAIN(pipelineStats.statistics.result());
+                    ImGui::Text("Input Assembly Vertices: %lu", stats.inputAssemblyVertices);
+                    ImGui::Text("Input Assembly Primitives: %lu", stats.inputAssemblyPrimitives);
+                    ImGui::Text("Vertex Shader Invocations: %lu", stats.vertexShaderInvocations);
+                    ImGui::Text("Geometry Shader Invocations: %lu", stats.geometryShaderInvocations);
+                    ImGui::Text("Geometry Shader Primitives: %lu", stats.geometryShaderPrimitives);
+                    ImGui::Text("Clipping Invocations: %lu", stats.clippingInvocations);
+                    ImGui::Text("Clipping Primitives: %lu", stats.clippingPrimitives);
+                    ImGui::Text("Fragment Shader Invocations: %lu", stats.fragmentShaderInvocations);
+                    ImGui::Text("Tessellation Control Shader Patches: %lu", stats.tessellationControlShaderPatches);
+                    ImGui::Text("Tessellation Evaluation Shader Invocations: %lu", stats.tessellationEvaluationShaderInvocations);
+                    ImGui::Text("Compute Shader Invocations: %lu", stats.computeShaderInvocations);
+                    ImGui::TreePop();
+                }
+            }
 
             auto memoryUsage = device->memoryUsage();
             ImGui::Text("VRAM Budget: %lu mb", memoryUsage.budget / 1000000);

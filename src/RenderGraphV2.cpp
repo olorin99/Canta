@@ -1356,6 +1356,7 @@ auto canta::V2::RenderGraph::run(std::span<SemaphorePair> waits, std::span<Semap
     CommandBuffer* currentCommandBuffer = nullptr;
     QueueType currentQueue = QueueType::NONE;
     RenderGroup currentGroup = {};
+    _queryCount = 0;
 
     std::vector<SemaphorePair> waitHandles = {};
     std::vector<SemaphorePair> signalHandles = {};
@@ -1491,10 +1492,21 @@ auto canta::V2::RenderGraph::run(std::span<SemaphorePair> waits, std::span<Semap
         while (frameTimers.size() <= passIndex)
             frameTimers.emplace_back(TimerInfo{{}, QueueType::NONE, _device->createTimer()});
 
-        auto& timer = frameTimers[passIndex];
+        auto& timer = frameTimers[_queryCount];
         timer.name = pass.name();
         timer.queue = currentQueue;
         timer.timer.begin(*currentCommandBuffer, PipelineStage::TOP);
+
+        auto& frameStatistics = _statistics[_device->flyingIndex()];
+        while (frameStatistics.size() <= passIndex)
+            frameStatistics.emplace_back(StatisticInfo{{}, QueueType::NONE, _device->createPipelineStatistics()});
+
+        auto& statistics = frameStatistics[_queryCount];
+        statistics.name = pass.name();
+        statistics.queue = currentQueue;
+        statistics.statistics.begin(*currentCommandBuffer);
+
+        _queryCount++;
 
         submitBarriers(*currentCommandBuffer, pass._barriers);
 
@@ -1540,6 +1552,7 @@ auto canta::V2::RenderGraph::run(std::span<SemaphorePair> waits, std::span<Semap
             currentCommandBuffer->endRendering();
 
 
+        statistics.statistics.end(*currentCommandBuffer);
         timer.timer.end(*currentCommandBuffer, PipelineStage::BOTTOM);
 
         currentCommandBuffer->popDebugLabel();

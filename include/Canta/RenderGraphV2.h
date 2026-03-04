@@ -566,7 +566,20 @@ namespace canta::V2 {
             QueueType queue = QueueType::NONE;
             Timer timer = {};
         };
-        auto timers() -> std::span<TimerInfo> { return _timers[_device->flyingIndex()]; }
+        auto timers() -> std::span<TimerInfo> {
+            if (_timers[_device->flyingIndex()].size() <= _queryCount) return {};
+            return std::span(_timers[_device->flyingIndex()].data(), _queryCount);
+        }
+
+        struct StatisticInfo {
+            std::string_view name = {};
+            QueueType queue = QueueType::NONE;
+            PipelineStatistics statistics = {};
+        };
+        auto statistics() -> std::span<StatisticInfo> {
+            if (_statistics[_device->flyingIndex()].size() <= _queryCount) return {};
+            return std::span(_statistics[_device->flyingIndex()].data(), _queryCount);
+        }
 
         struct Access {
             i32 passIndex = -1;
@@ -606,7 +619,9 @@ namespace canta::V2 {
 
         i32 _groupId = 0;
 
+        u32 _queryCount = 0;
         std::array<std::vector<TimerInfo>, FRAMES_IN_FLIGHT> _timers = {};
+        std::array<std::vector<StatisticInfo>, FRAMES_IN_FLIGHT> _statistics = {};
 
         // 0 = graphics, 1 = compute, 2 = transfer
         std::array<std::array<CommandPool, 3>, FRAMES_IN_FLIGHT> _commandPools = {};
