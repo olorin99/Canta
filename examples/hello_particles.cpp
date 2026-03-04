@@ -229,10 +229,10 @@ int main() {
             // if (ImGui::Checkbox("RenderGraph Per Pass PiplelineStats", &individualPipelineStatistics))
             //     renderGraph.setIndividualPipelineStatistics(individualPipelineStatistics);
             //
-            // auto timers = renderGraph.timers();
-            // for (auto& timer : timers) {
-            //     ImGui::Text("%s: %f ms", timer.first.data(), TRY_MAIN(timer.second.result()) / 1000000.f);
-            // }
+            auto timers = renderGraph.timers();
+            for (auto& timer : timers) {
+                ImGui::Text("%s: %f ms", timer.name.data(), TRY_MAIN(timer.timer.result()) / 1000000.f);
+            }
             // auto pipelineStatistics = renderGraph.pipelineStatistics();
             // for (auto& pipelineStats : pipelineStatistics) {
             //     if (ImGui::TreeNode(pipelineStats.first.c_str())) {

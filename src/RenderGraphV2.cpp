@@ -221,7 +221,7 @@ void canta::V2::RenderPass::mergeAccesses() {
 
             if (access.index == nextAccess.index) {
 
-                const auto nextWriter = hasWrite(access);
+                const auto nextWriter = hasWrite(nextAccess);
 
                 access.access = access.access | nextAccess.access;
                 access.stage = std::min(access.stage, nextAccess.stage);
@@ -1485,8 +1485,17 @@ auto canta::V2::RenderGraph::run(std::span<SemaphorePair> waits, std::span<Semap
             if (currentGroup.id > -1)
                 currentCommandBuffer->pushDebugLabel(currentGroup.name, currentGroup.colour);
         }
-
         currentCommandBuffer->pushDebugLabel(pass._name, { 1, 1, 1, 1 });
+
+        auto& frameTimers = _timers[_device->flyingIndex()];
+        while (frameTimers.size() <= passIndex)
+            frameTimers.emplace_back(TimerInfo{{}, QueueType::NONE, _device->createTimer()});
+
+        auto& timer = frameTimers[passIndex];
+        timer.name = pass.name();
+        timer.queue = currentQueue;
+        timer.timer.begin(*currentCommandBuffer, PipelineStage::TOP);
+
         submitBarriers(*currentCommandBuffer, pass._barriers);
 
         if (pass._type == RenderPass::Type::GRAPHICS && (pass._pipeline || pass._manualPipeline)) {
@@ -1529,6 +1538,10 @@ auto canta::V2::RenderGraph::run(std::span<SemaphorePair> waits, std::span<Semap
 
         if (pass._type == RenderPass::Type::GRAPHICS && (pass._pipeline || pass._manualPipeline))
             currentCommandBuffer->endRendering();
+
+
+        timer.timer.end(*currentCommandBuffer, PipelineStage::BOTTOM);
+
         currentCommandBuffer->popDebugLabel();
     }
     if (currentCommandBuffer) {

@@ -561,6 +561,13 @@ namespace canta::V2 {
 
         auto getPass(std::string_view name) const -> std::expected<RenderPass, RenderGraphError>;
 
+        struct TimerInfo {
+            std::string_view name = {};
+            QueueType queue = QueueType::NONE;
+            Timer timer = {};
+        };
+        auto timers() -> std::span<TimerInfo> { return _timers[_device->flyingIndex()]; }
+
         struct Access {
             i32 passIndex = -1;
             ResourceAccess access;
@@ -598,6 +605,8 @@ namespace canta::V2 {
         std::vector<Resource> _resources = {};
 
         i32 _groupId = 0;
+
+        std::array<std::vector<TimerInfo>, FRAMES_IN_FLIGHT> _timers = {};
 
         // 0 = graphics, 1 = compute, 2 = transfer
         std::array<std::array<CommandPool, 3>, FRAMES_IN_FLIGHT> _commandPools = {};
