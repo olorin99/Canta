@@ -145,7 +145,7 @@ namespace canta::V2 {
             return *this;
         }
 
-        auto setPipeline(PipelineHandle pipeline) -> RenderPass&;
+        auto setPipeline(const PipelineHandle &pipeline) -> RenderPass&;
         auto setManualPipeline(const bool state) -> RenderPass& { _manualPipeline = state; return *this; }
 
         // auto setCallback(const std::function<void(CommandBuffer&, RenderGraph&, const PushData&)>& callback) -> RenderPass&;
@@ -170,7 +170,7 @@ namespace canta::V2 {
             Edge value;
             i32 offset = 0;
         };
-        static auto resolvePushConstants(RenderGraph& graph, PushData data, std::span<const DeferredPushConstant> deferredConstants) -> std::expected<PushData, RenderGraphError>;
+        static auto resolvePushConstants(const RenderGraph& graph, PushData data, std::span<const DeferredPushConstant> deferredConstants) -> std::expected<PushData, RenderGraphError>;
 
         void mergeAccesses();
 
@@ -218,7 +218,7 @@ namespace canta::V2 {
 
         PassBuilder(RenderGraph* graph, u32 index);
 
-        auto pass() -> RenderPass&;
+        auto pass() const -> RenderPass&;
 
         auto pipeline(const PipelineHandle &pipeline) -> PassBuilder&;
         auto setManualPipeline(bool state) -> PassBuilder&;
@@ -416,7 +416,7 @@ namespace canta::V2 {
             u32 size = 0;
             u32 offset;
         };
-        auto copy(BufferIndex src, ImageIndex dst, ImageCopy info) -> std::expected<ImageIndex, RenderGraphError>;
+        auto copy(BufferIndex src, ImageIndex dst, const ImageCopy& info) -> std::expected<ImageIndex, RenderGraphError>;
         auto copy(ImageIndex src, BufferIndex dst, ImageCopy info) -> std::expected<BufferIndex, RenderGraphError>;
 
         auto clear(ImageIndex index, const ClearValue& value = std::to_array({0.f, 0.f, 0.f, 1.f})) -> std::expected<ImageIndex, RenderGraphError>;
@@ -477,7 +477,7 @@ namespace canta::V2 {
             bool multiQueue = false;
         };
 
-        static auto create(CreateInfo info) -> std::expected<RenderGraph, RenderGraphError>;
+        static auto create(const CreateInfo &info) -> std::expected<RenderGraph, RenderGraphError>;
 
         // resource management
         auto addBuffer(BufferInfo info) -> BufferIndex;
