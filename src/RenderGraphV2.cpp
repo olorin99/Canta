@@ -1168,6 +1168,21 @@ auto canta::V2::RenderGraph::getImageInfo(const ImageIndex index) const -> std::
     return std::get<ImageInfo>(_resources[index.index]);
 }
 
+auto canta::V2::RenderGraph::getResource(const u32 index) const -> std::expected<Resource, RenderGraphError> {
+    if (index >= _resources.size())
+        return std::unexpected(RenderGraphError::INVALID_RESOURCE);
+    return _resources[index];
+}
+
+auto canta::V2::RenderGraph::getResourceName(const u32 index) const -> std::expected<std::string_view, RenderGraphError> {
+    if (index >= _resources.size())
+        return std::unexpected(RenderGraphError::INVALID_RESOURCE);
+
+    if (std::holds_alternative<BufferInfo>(_resources[index]))
+        return std::get<BufferInfo>(_resources[index]).name;
+    return std::get<ImageInfo>(_resources[index]).name;
+}
+
 auto canta::V2::RenderGraph::updateBufferInfo(const BufferIndex index, const BufferInfo info) -> std::expected<BufferInfo, RenderGraphError> {
     if (index.index >= _resources.size() || !std::holds_alternative<BufferInfo>(_resources[index.index]))
         return std::unexpected(RenderGraphError::INVALID_RESOURCE);
@@ -1788,4 +1803,12 @@ auto canta::V2::RenderGraph::buildRenderAttachments() -> std::expected<bool, Ren
     }
 
     return true;
+}
+
+auto canta::V2::RenderGraph::getPass(const std::string_view name) const -> std::expected<RenderPass, RenderGraphError> {
+    for (auto& pass : _orderedPasses) {
+        if (pass.name() == name)
+            return pass;
+    }
+    return std::unexpected(RenderGraphError::INVALID_PASS);
 }

@@ -3,7 +3,7 @@
 
 #include "imnodes.h"
 
-auto canta::RenderGraphDebugger::create(const CreateInfo &info) -> RenderGraphDebugger {
+auto canta::V2::RenderGraphDebugger::create(const CreateInfo &info) -> RenderGraphDebugger {
     RenderGraphDebugger debugger;
     debugger.setRenderGraph(info.renderGraph);
     return debugger;
@@ -24,22 +24,29 @@ auto queueToColour(const canta::QueueType queue) -> ImColor {
     }
 }
 
-auto groupToColour(canta::RenderGroup group) -> ImColor {
-    f32 hue = std::abs(group.id) * 1.71f;
-    f32 tmp;
-    hue = std::modf(hue, &tmp);
-    f32 r = std::abs(hue * 6 - 3) - 1;
-    f32 g = 2 - std::abs(hue * 6 - 2);
-    f32 b = 2 - std::abs(hue * 6 - 4);
-    return IM_COL32(
-        std::clamp(r * 255, 0.0f, 255.0f),
-        std::clamp(g * 255, 0.0f, 255.0f),
-        std::clamp(b * 255, 0.0f, 255.0f),
-        255
-    );
-}
+// auto groupToColour(canta::V2::RenderGroup group) -> ImColor {
+//     f32 hue = std::abs(group.id) * 1.71f;
+//     f32 tmp;
+//     hue = std::modf(hue, &tmp);
+//     f32 r = std::abs(hue * 6 - 3) - 1;
+//     f32 g = 2 - std::abs(hue * 6 - 2);
+//     f32 b = 2 - std::abs(hue * 6 - 4);
+//     return IM_COL32(
+//         std::clamp(r * 255, 0.0f, 255.0f),
+//         std::clamp(g * 255, 0.0f, 255.0f),
+//         std::clamp(b * 255, 0.0f, 255.0f),
+//         255
+//     );
+// }
 
-void canta::RenderGraphDebugger::drawRenderGraph() {
+struct GetResourceIndex {
+
+    auto operator()(canta::V2::BufferIndex index) const -> i32 { return index.index; }
+    auto operator()(canta::V2::ImageIndex index) const -> i32 { return index.index; }
+
+};
+
+void canta::V2::RenderGraphDebugger::drawRenderGraph() {
     static i32 frame = 0;
     if (ImGui::Begin("Render Graph", nullptr, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse)) {
         if (ImGui::Button("Reload Graph")) {
@@ -53,7 +60,7 @@ void canta::RenderGraphDebugger::drawRenderGraph() {
         ImVec2 pos = ImGui::GetCursorScreenPos();
         ImVec2 originalPos = pos;
 
-        for (i32 i = 0; const auto& pass : _renderGraph->orderedPasses()) {
+        for (i32 i = 0; const auto& pass : _renderGraph->passes()) {
             const i32 passId = 100 * i;
 
             if (frame < 10) {
@@ -63,39 +70,44 @@ void canta::RenderGraphDebugger::drawRenderGraph() {
 
             ImNodes::BeginNode(passId);
             ImNodes::BeginNodeTitleBar();
-            ImGui::Text("%s: %d, %d", pass->name().data(), i, passId);
+            ImGui::Text("%s: %d, %d", pass.name().data(), i, passId);
             ImNodes::EndNodeTitleBar();
 
-            pos.x += ImGui::CalcTextSize(std::format("{}", pass->name().data()).c_str()).x * 1.5;
+            pos.x += ImGui::CalcTextSize(std::format("{}", pass.name().data()).c_str()).x * 1.5;
             pos.y = (i % 2 == 0) ? originalPos.y : 100;
 
 
-            ImNodes::PushColorStyle(ImNodesCol_TitleBar, queueToColour(pass->getQueue()));
-            ImNodes::PushColorStyle(ImNodesCol_NodeBackground, groupToColour(pass->getGroup()));
+            // ImNodes::PushColorStyle(ImNodesCol_TitleBar, queueToColour(pass.getQueue()));
+            // ImNodes::PushColorStyle(ImNodesCol_NodeBackground, groupToColour(pass.getGroup()));
 
-            for (auto& input : pass->inputs()) {
-                const auto resource = _renderGraph->resources()[input.index].get();
+            for (auto& input : pass.inputs) {
+                auto index = std::visit(GetResourceIndex{}, input);
+                const auto resource = *_renderGraph->getResourceName(index);
 
-                ImNodes::BeginInputAttribute(passId + input.id);
-                ImGui::Text("%s: %d, %d", resource->name.data(), input.id, passId + input.id);
+                const auto id = *ende::graph::EdgeHelper<RenderGraph::Edge>::getId(input);
+                ImNodes::BeginInputAttribute(passId + id);
+                ImGui::Text("%s: %d, %d", resource.data(), id, passId + id);
                 ImNodes::EndInputAttribute();
             }
 
-            for (auto& output : pass->outputs()) {
-                const auto resource = _renderGraph->resources()[output.index].get();
-                ImNodes::BeginOutputAttribute(passId + output.id);
-                ImGui::Text("%s: %d, %d", resource->name.data(), output.id, passId + output.id);
+            for (auto& output : pass.outputs) {
+                auto index = std::visit(GetResourceIndex{}, output);
+                const auto resource = *_renderGraph->getResourceName(index);
+
+                const auto id = *ende::graph::EdgeHelper<RenderGraph::Edge>::getId(output);
+                ImNodes::BeginOutputAttribute(passId + id);
+                ImGui::Text("%s: %d, %d", resource.data(), id, passId + id);
                 ImNodes::EndOutputAttribute();
 
-                auto [accessPassIndex, accessIndex, nextAccess] = _renderGraph->findNextAccess(i, output.index, true);
-                if (accessPassIndex < 0)
+                auto nextAccess = _renderGraph->getNextAccess(_renderGraph->passes(), i, index);
+                if (nextAccess.passIndex < 0)
                     continue;
-                links.push_back({ passId + output.id, accessPassIndex * 100 + nextAccess.id });
+                links.push_back({ passId + id, nextAccess.passIndex * 100 + nextAccess.access.id });
             }
 
             ImNodes::EndNode();
-            ImNodes::PopColorStyle();
-            ImNodes::PopColorStyle();
+            // ImNodes::PopColorStyle();
+            // ImNodes::PopColorStyle();
             i++;
         }
 
@@ -112,22 +124,22 @@ void canta::RenderGraphDebugger::drawRenderGraph() {
 }
 
 
-void canta::RenderGraphDebugger::render() {
+void canta::V2::RenderGraphDebugger::render() {
 
     if (ImGui::Begin("Render Graph Debug")) {
         {
             ImGui::BeginChild("Passes", ImVec2(ImGui::GetContentRegionAvail().x * 0.5f, 150), ImGuiChildFlags_None, ImGuiWindowFlags_HorizontalScrollbar);
             ImGui::Text("Passes");
             ImGui::Separator();
-            for (u32 i = 0; i < _renderGraph->orderedPasses().size(); i++) {
-                const auto pass = _renderGraph->orderedPasses()[i];
+            for (u32 i = 0; i < _renderGraph->passes().size(); i++) {
+                const auto pass = _renderGraph->passes()[i];
 
-                const bool isBase = pass->name() == _basePass;
+                const bool isBase = pass.name() == _basePass;
                 if (isBase) {
                     ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(255, 0, 0, 1));
                 }
 
-                switch (pass->getQueue()) {
+                switch (pass.queue()) {
                     case QueueType::GRAPHICS:
                         ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1, 0, 0, 1));
                         break;
@@ -141,8 +153,8 @@ void canta::RenderGraphDebugger::render() {
                         ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0, 0, 0, 1));
                         break;
                 }
-                if (ImGui::Selectable(pass->name().data(), _selectedPass == pass->name())) {
-                    _selectedPass = pass->name();
+                if (ImGui::Selectable(pass.name().data(), _selectedPass == pass.name())) {
+                    _selectedPass = pass.name();
                     _copyResource = false;
                 }
                 ImGui::PopStyleColor();
@@ -165,34 +177,39 @@ void canta::RenderGraphDebugger::render() {
                 return;
             };
             ImGui::Text("Inputs:");
-            for (auto& input : (*pass)->inputs()) {
-                if (const auto resource = _renderGraph->resources()[input.index].get(); ImGui::Selectable(std::format("\t{}_input", resource->name).c_str(), _selectedResource.index == input.index)) {
+            for (auto& input : pass->inputs) {
+                auto index = std::visit(GetResourceIndex{}, input);
+                if (const auto resource = _renderGraph->getResourceName(index); ImGui::Selectable(std::format("\t{}_input", resource->data()).c_str(), std::visit(GetResourceIndex{}, _selectedResource) == index)) {
                     _selectedResource = input;
                 }
             }
             ImGui::Text("Outputs:");
-            for (auto& output : (*pass)->outputs()) {
-                if (const auto resource = _renderGraph->resources()[output.index].get(); ImGui::Selectable(std::format("\t{}_output", resource->name).c_str(), _selectedResource.index == output.index)) {
+            for (auto& output : pass->outputs) {
+                auto index = std::visit(GetResourceIndex{}, output);
+                if (const auto resource = _renderGraph->getResourceName(index); ImGui::Selectable(std::format("\t{}_output", resource->data()).c_str(), std::visit(GetResourceIndex{}, _selectedResource) == index)) {
                     _selectedResource = output;
                 }
             }
             ImGui::EndChild();
         }
-        if (_selectedResource.id > -1) {
+        const auto id = *ende::graph::EdgeHelper<RenderGraph::Edge>::getId(_selectedResource);
+        auto index = std::visit(GetResourceIndex{}, _selectedResource);
+        if (id > -1) {
             ImGui::BeginChild("Info");
             ImGui::Text("Resource Info");
             ImGui::Separator();
-            const auto resource = _renderGraph->resources()[_selectedResource.index].get();
-            ImGui::Text("Name: %s", resource->name.c_str());
-            if (resource->type == ResourceType::IMAGE) {
-                const auto& image = dynamic_cast<ImageResource*>(resource);
+            const auto resource = *_renderGraph->getResource(index);
+            const auto resourceName = *_renderGraph->getResourceName(index);
+            ImGui::Text("Name: %s", resourceName.data());
+            if (std::holds_alternative<ImageInfo>(resource)) {
+                const auto image = _renderGraph->getImageInfo({ .index = index });
                 ImGui::Text("Image");
-                ImGui::Text("Id: %u, Index: %u", _selectedResource.id, _selectedResource.index);
-                ImGui::Text("Matches Backbuffer: %b", image->matchesBackbuffer);
+                ImGui::Text("Id: %u, Index: %u", id, index);
+                ImGui::Text("Is swapchain: %b", image->swapchainImage);
                 ImGui::Text("Width: %u", image->width);
                 ImGui::Text("Height: %u", image->height);
                 ImGui::Text("Depth: %u", image->depth);
-                ImGui::Text("Mips: %u", image->mipLevels);
+                ImGui::Text("Mips: %u", image->mips);
                 ImGui::Text("Format: %s", formatString(image->format));
                 ImGui::Text("Usage: %s", "Unimplemented");
                 ImGui::Text("Initial Layout: %s", "Unimplemented");
@@ -208,12 +225,12 @@ void canta::RenderGraphDebugger::render() {
                 ImGui::SliderInt("Height Y", &_viewportSize[1], 0, 1080);
 
             } else {
-                const auto& buffer = dynamic_cast<BufferResource*>(resource);
+                const auto buffer = _renderGraph->getBufferInfo({ .index = index });
                 ImGui::Text("Buffer");
-                ImGui::Text("Id: %u, Index: %u", _selectedResource.id, _selectedResource.index);
+                ImGui::Text("Id: %u, Index: %u", id, index);
                 ImGui::Text("Size: %u b", buffer->size);
                 ImGui::Text("Usage: %u", buffer->usage);
-                ImGui::Text("Memory Type: %u", buffer->memoryType);
+                ImGui::Text("Memory Type: %u", buffer->type);
             }
 
             ImGui::EndChild();
@@ -224,88 +241,89 @@ void canta::RenderGraphDebugger::render() {
 
 }
 
-void canta::RenderGraphDebugger::debug() {
-    if (!_copyResource) return;
-
-    const auto pass = _renderGraph->getPass(_selectedPass);
-    if (!pass) return;
-
-    const auto index = ImageIndex{.id = _selectedResource.id, .index = _selectedResource.index};
-    if (!(*pass)->isOutput(index)) return;
-
-    const auto alias = (*pass)->aliasImageOutput(index).value();
-    auto resource = dynamic_cast<ImageResource*>(_renderGraph->resources()[index.index].get());
-    auto transientImage = _renderGraph->addImage({
-        .matchesBackbuffer = resource->matchesBackbuffer,
-        .width = resource->width,
-        .height = resource->height,
-        .format = resource->format,
-        .name = "transient"
-    });
-
-    _renderGraph->addPass({.name = "dummy", .type = canta::PassType::TRANSFER, .manualPipeline = true})
-        .addTransferRead(alias)
-        .addDummyWrite(index)
-        .addTransferWrite(transientImage)
-        .setExecuteFunction([alias, transientImage] (auto& cmd, auto& graph) {
-            auto src = graph.getImage(alias);
-            auto dst = graph.getImage(transientImage);
-
-            auto blitInfo = CommandBuffer::BlitInfo{
-                .src = src,
-                .dst = dst,
-                .srcLayout = ImageLayout::TRANSFER_SRC,
-                .dstLayout = ImageLayout::TRANSFER_DST,
-                .filter = Filter::LINEAR,
-            };
-            cmd.blit(blitInfo);
-        });
-
-    if (_basePass.empty() || _baseResourceId < 0 || _basePass == _selectedPass) return;
-
-    const auto basePass = _renderGraph->getPass(_basePass);
-    if (!basePass) return;
-
-    const auto baseResource = ImageIndex{ .id = _baseResourceId, .index = _baseResourceIndex };
-    if (!(*basePass)->isOutput(baseResource)) return;
-
-    const auto baseAlias = (*basePass)->aliasImageOutput(baseResource).value();
-
-    auto topLeft = _viewportOffset;
-    auto bottomRight = topLeft + _viewportSize;
-
-    _renderGraph->addPass({.name = "composite", .type = canta::PassType::TRANSFER, .manualPipeline = true})
-        .addDummyRead(baseAlias)
-        .addTransferRead(transientImage)
-        .addTransferWrite(baseResource)
-        .setExecuteFunction([transientImage, baseResource, topLeft, bottomRight] (auto& cmd, auto& graph) {
-            auto src = graph.getImage(transientImage);
-            auto dst = graph.getImage(baseResource);
-
-            auto width = topLeft.x();
-            auto height = topLeft.y();
-            auto x = bottomRight.x();
-            auto y = bottomRight.y();
-
-            auto blitInfo = CommandBuffer::BlitInfo{
-                .src = src,
-                .srcSize = {
-                    width, height, 1
-                },
-                .srcOffset = {
-                    x, y, 0
-                },
-                .dst = dst,
-                .dstSize = {
-                    width, height, 1
-                },
-                .dstOffset = {
-                    x, y, 0
-                },
-                .srcLayout = ImageLayout::TRANSFER_SRC,
-                .dstLayout = ImageLayout::TRANSFER_DST,
-                .filter = Filter::LINEAR,
-            };
-            cmd.blit(blitInfo);
-        });
-}
+// void canta::V2::RenderGraphDebugger::debug() {
+//     if (!_copyResource) return;
+//
+//     const auto pass = _renderGraph->passes()[_selectedPass];
+//     if (!pass) return;
+//
+//     const auto index = ImageIndex{.id = _selectedResource.id, .index = _selectedResource.index};
+//     if (!(*pass)->isOutput(index)) return;
+//
+//     const auto alias = (*pass)->aliasImageOutput(index).value();
+//     auto resource = _renderGraph->duplicate(index);
+//     // auto resource = dynamic_cast<ImageResource*>(_renderGraph->resources()[index.index].get());
+//     // auto transientImage = _renderGraph->addImage({
+//         // .matchesBackbuffer = resource->matchesBackbuffer,
+//         // .width = resource->width,
+//         // .height = resource->height,
+//         // .format = resource->format,
+//         // .name = "transient"
+//     // });
+//
+//     _renderGraph->addPass({.name = "dummy", .type = canta::PassType::TRANSFER, .manualPipeline = true})
+//         .addTransferRead(alias)
+//         .addDummyWrite(index)
+//         .addTransferWrite(transientImage)
+//         .setExecuteFunction([alias, transientImage] (auto& cmd, auto& graph) {
+//             auto src = graph.getImage(alias);
+//             auto dst = graph.getImage(transientImage);
+//
+//             auto blitInfo = CommandBuffer::BlitInfo{
+//                 .src = src,
+//                 .dst = dst,
+//                 .srcLayout = ImageLayout::TRANSFER_SRC,
+//                 .dstLayout = ImageLayout::TRANSFER_DST,
+//                 .filter = Filter::LINEAR,
+//             };
+//             cmd.blit(blitInfo);
+//         });
+//
+//     if (_basePass.empty() || _baseResourceId < 0 || _basePass == _selectedPass) return;
+//
+//     const auto basePass = _renderGraph->getPass(_basePass);
+//     if (!basePass) return;
+//
+//     const auto baseResource = ImageIndex{ .id = _baseResourceId, .index = _baseResourceIndex };
+//     if (!(*basePass)->isOutput(baseResource)) return;
+//
+//     const auto baseAlias = (*basePass)->aliasImageOutput(baseResource).value();
+//
+//     auto topLeft = _viewportOffset;
+//     auto bottomRight = topLeft + _viewportSize;
+//
+//     _renderGraph->addPass({.name = "composite", .type = canta::V2::RenderPass::Type::TRANSFER, .manualPipeline = true})
+//         .addDummyRead(baseAlias)
+//         .addTransferRead(transientImage)
+//         .addTransferWrite(baseResource)
+//         .setExecuteFunction([transientImage, baseResource, topLeft, bottomRight] (auto& cmd, auto& graph) {
+//             auto src = graph.getImage(transientImage);
+//             auto dst = graph.getImage(baseResource);
+//
+//             auto width = topLeft.x();
+//             auto height = topLeft.y();
+//             auto x = bottomRight.x();
+//             auto y = bottomRight.y();
+//
+//             auto blitInfo = CommandBuffer::BlitInfo{
+//                 .src = src,
+//                 .srcSize = {
+//                     width, height, 1
+//                 },
+//                 .srcOffset = {
+//                     x, y, 0
+//                 },
+//                 .dst = dst,
+//                 .dstSize = {
+//                     width, height, 1
+//                 },
+//                 .dstOffset = {
+//                     x, y, 0
+//                 },
+//                 .srcLayout = ImageLayout::TRANSFER_SRC,
+//                 .dstLayout = ImageLayout::TRANSFER_DST,
+//                 .filter = Filter::LINEAR,
+//             };
+//             cmd.blit(blitInfo);
+//         });
+// }

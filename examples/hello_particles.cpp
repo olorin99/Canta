@@ -130,14 +130,14 @@ int main() {
     //     .name = "Renderer"
     // }));
 
-    // auto renderGraphDebugger = canta::RenderGraphDebugger::create({
-        // .renderGraph = &renderGraph,
-    // });
-
     auto renderGraph = TRY_MAIN(canta::V2::RenderGraph::create({
         .device = device.get(),
         .multiQueue = true,
     }));
+
+    auto renderGraphDebugger = canta::V2::RenderGraphDebugger::create({
+        .renderGraph = &renderGraph,
+    });
 
     auto pipelineManagerDebugger = canta::PipelineManagerDebugger::create({
         .pipelineManager = &pipelineManager,
@@ -322,8 +322,8 @@ int main() {
         }
         ImGui::End();
 
-        // renderGraphDebugger.render();
-        // renderGraphDebugger.drawRenderGraph();
+        renderGraphDebugger.render();
+        renderGraphDebugger.drawRenderGraph();
 
         pipelineManagerDebugger.render();
 
@@ -367,8 +367,8 @@ int main() {
         // renderGraph.setRoot(uiSwapchain);
         renderGraph.setRoot(presentOutput);
 
-        // renderGraphDebugger.setBasePass(particlesDrawPass);
-        // renderGraphDebugger.setBaseResource(imageIndex);
+        // renderGraphDebugger.setRoot(particlesDrawPass);
+        renderGraphDebugger.setBaseResource(imageIndex);
 
 
         // renderGraphDebugger.debug();

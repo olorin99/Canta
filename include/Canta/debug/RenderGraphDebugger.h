@@ -2,9 +2,9 @@
 #define CANTA_RENDERGRAPHDEBUGGER_H
 
 #include <string_view>
-#include <Canta/RenderGraph.h>
+#include <Canta/RenderGraphV2.h>
 
-namespace canta {
+namespace canta::V2 {
 
     class RenderGraphDebugger {
     public:
@@ -18,11 +18,11 @@ namespace canta {
 
         void drawRenderGraph();
 
-        void debug();
+        // void debug();
 
         void setRenderGraph(RenderGraph *renderGraph) { _renderGraph = renderGraph; }
 
-        void setBasePass(const RenderPass& basePass) { _basePass = basePass.name(); }
+        void setRoot(const RenderPass& basePass) { _basePass = basePass.name(); }
 
         void setBaseResource(const ImageIndex baseResource) {
             _baseResourceId = baseResource.id;
@@ -42,7 +42,7 @@ namespace canta {
         u32 _baseResourceIndex = 0;
 
         std::string_view _selectedPass;
-        ResourceAccess _selectedResource = {};
+        RenderGraph::Edge _selectedResource = {};
 
         bool _copyResource = false;
 

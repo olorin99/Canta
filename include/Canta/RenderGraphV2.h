@@ -105,6 +105,12 @@ namespace canta::V2 {
 
         auto dimensions() const -> ende::math::Vec<2, u32> { return _dimensions; }
 
+        auto type() const -> Type { return _type; }
+
+        auto queue() const -> QueueType { return _queueType; }
+
+        auto name() const -> std::string_view { return _name; }
+
         auto clone() -> RenderPass;
 
         template <typename T, typename U, typename... Args>
@@ -462,14 +468,10 @@ namespace canta::V2 {
 
     };
 
-
-    struct Resource {
-
-    };
-
-
     class RenderGraph : public ende::graph::Graph<RenderPass> {
     public:
+
+        using Resource = std::variant<BufferInfo, ImageInfo>;
 
         struct CreateInfo {
             Device* device;
@@ -495,6 +497,10 @@ namespace canta::V2 {
 
         auto getBufferInfo(BufferIndex index) const -> std::expected<BufferInfo, RenderGraphError>;
         auto getImageInfo(ImageIndex index) const -> std::expected<ImageInfo, RenderGraphError>;
+
+        auto getResource(u32 index) const -> std::expected<Resource, RenderGraphError>;
+
+        auto getResourceName(u32 index) const -> std::expected<std::string_view, RenderGraphError>;
 
         auto updateBufferInfo(BufferIndex index, BufferInfo info) -> std::expected<BufferInfo, RenderGraphError>;
         auto updateImageInfo(ImageIndex index, ImageInfo info) -> std::expected<ImageInfo, RenderGraphError>;
@@ -531,11 +537,9 @@ namespace canta::V2 {
 
         auto timeline() -> SemaphoreHandle { return _cpuTimeline; }
 
-    private:
+        auto passes() -> std::span<RenderPass> { return _orderedPasses; }
 
-        RenderGraph() = default;
-
-        [[nodiscard]] auto getResourceIndices(std::span<const RenderPass> passes) const -> std::vector<std::pair<u32, u32>>;
+        auto getPass(std::string_view name) const -> std::expected<RenderPass, RenderGraphError>;
 
         struct Access {
             i32 passIndex = -1;
@@ -544,6 +548,12 @@ namespace canta::V2 {
         [[nodiscard]] static auto getNextAccess(std::span<const RenderPass> passes, i32 startIndex, i32 resource) -> Access;
         [[nodiscard]] static auto getCurrAccess(std::span<const RenderPass> passes, i32 startIndex, i32 resource) -> Access;
         [[nodiscard]] static auto getPrevAccess(std::span<const RenderPass> passes, i32 startIndex, i32 resource) -> Access;
+
+    private:
+
+        RenderGraph() = default;
+
+        [[nodiscard]] auto getResourceIndices(std::span<const RenderPass> passes) const -> std::vector<std::pair<u32, u32>>;
 
 
         [[nodiscard]] auto buildDependencyLevels(std::span<const RenderPass> passes) const -> std::expected<std::vector<std::vector<u32>>, RenderGraphError>;
@@ -565,7 +575,7 @@ namespace canta::V2 {
 
         // VmaPool _resourcePool = {};
         // u32 _poolSize = 0;
-        std::vector<std::variant<BufferInfo, ImageInfo>> _resources = {};
+        std::vector<Resource> _resources = {};
 
         // 0 = graphics, 1 = compute, 2 = transfer
         std::array<std::array<CommandPool, 3>, FRAMES_IN_FLIGHT> _commandPools = {};
