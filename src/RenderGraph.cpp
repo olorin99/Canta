@@ -1248,6 +1248,7 @@ auto canta::RenderGraph::transfer(const std::string_view name, const PipelineHan
 auto canta::RenderGraph::host(const std::string_view name) -> HostPass {
     auto& pass = addVertex();
     pass._type = RenderPass::Type::HOST;
+    pass._queueType = QueueType::NONE;
     pass._name = name;
     const auto builder = HostPass(this, vertexCount() - 1);
     return builder;
@@ -1437,6 +1438,15 @@ auto canta::RenderGraph::run(std::span<SemaphorePair> waits, std::span<Semaphore
                 TRY(submitCommands(currentCommandBuffer, currentQueue, waitHandles, signalHandles, passIndex == _orderedPasses.size() - 1));
             }
 
+            waitHandles.clear();
+            for (auto& wait : pass._queueWaits) {
+                if (wait.second == QueueType::NONE) {
+                    waitHandles.emplace_back(_cpuTimeline);
+                    continue;
+                }
+                auto waitedQueue = _device->queue(wait.second);
+                waitHandles.emplace_back(waitedQueue->timeline());
+            }
             auto semaphores = waitHandles;
 
             auto cpuValue = _cpuTimeline->increment();
@@ -1583,8 +1593,12 @@ auto canta::RenderGraph::run(std::span<SemaphorePair> waits, std::span<Semaphore
         TRY(submitCommands(currentCommandBuffer, currentQueue, waitHandles, signalHandles, true));
     }
 
-    if (async)
-        TRY(_cpuTimeline->wait(_cpuTimeline->value()).transform_error([] (VulkanError error) { return RenderGraphError::DEVICE_ERROR; }));
+    if (!async) {
+        bool success = false;
+        do {
+            success = TRY(_cpuTimeline->wait(_cpuTimeline->value()).transform_error([] (VulkanError error) { return RenderGraphError::DEVICE_ERROR; }));
+        } while (!success);
+    }
 
     return true;
 }

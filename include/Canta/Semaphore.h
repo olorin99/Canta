@@ -34,7 +34,7 @@ namespace canta {
 
         [[nodiscard]] auto value() const -> u64 { return _value; }
 
-        [[nodiscard]] auto gpuValue() const -> u64;
+        [[nodiscard]] auto gpuValue() -> u64;
 
         [[nodiscard]] auto increment() -> u64 { return ++_value; }
 
@@ -48,6 +48,7 @@ namespace canta {
         Device* _device = nullptr;
         VkSemaphore _semaphore = VK_NULL_HANDLE;
         u64 _value = 0;
+        u64 _gpuValue = 0;
         bool _isTimeline = false;
 
     };

@@ -106,10 +106,12 @@ int main() {
 
     bool totalSorted = true;
     bool sorted = true;
+    bool hasData = false;
     u32 prevValue = 0;
     for (i32 i = 0; i < N; ++i) {
         const auto& d = data[i];
         const auto& o = outputData[i];
+        hasData = hasData || o != 0;
         // printf("(%d, %d), ", d, o);
         sorted = prevValue <= o;
         prevValue = o;
@@ -120,6 +122,7 @@ int main() {
     }
     printf("\n");
     printf("%s\n", totalSorted ? "Sorted" : "Unsorted");
+    printf("%s\n", hasData ? "Has data" : "no data");
 
     // for (u32 i = 0; i < N; ++i) {
     //     auto& d = data[i];
