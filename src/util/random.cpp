@@ -54,7 +54,7 @@ auto canta::generateRandomNoise(RenderGraph &graph, const u32 width, const u32 h
         seed = ende::math::rand<u32>(0, 1e9);
     }
     auto output = graph.compute("generate_random_noise", graph.device()->generateRandomNoise())
-        .pushConstants(Write(image), seed, seed)
+        .pushConstants(Write(image), seed)
         .dispatchThreads(width, height)
         .output<ImageIndex>();
 

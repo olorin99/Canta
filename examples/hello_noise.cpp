@@ -13,7 +13,8 @@ int main() {
     auto device = TRY_MAIN(canta::Device::create({
         .applicationName = "hello_noise",
         .enableMeshShading = false,
-        .instanceExtensions = window.requiredExtensions()
+        .instanceExtensions = window.requiredExtensions(),
+        .logLevel = spdlog::level::warn,
     }));
 
     auto swapchain = device->createSwapchain({
@@ -126,5 +127,6 @@ int main() {
     }
 
 
+    TRY_MAIN(device->waitIdle());
     return 0;
 }
