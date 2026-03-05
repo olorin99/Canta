@@ -3,6 +3,7 @@
 
 #include <Canta/CommandBuffer.h>
 #include <imgui.h>
+#include <Canta/CommandPool.h>
 
 namespace canta {
 
@@ -27,15 +28,15 @@ namespace canta {
 
         void beginFrame();
 
-        void render(ImDrawData* drawData, CommandBuffer& commandBuffer, Format format);
+        void render(ImDrawData* drawData, CommandHandle commandBuffer, Format format);
 
-        bool createFontsTexture(CommandBuffer& commandBuffer);
+        bool createFontsTexture(CommandHandle commandBuffer);
 
         void processEvent(void* event);
 
     private:
 
-        void setupRenderState(ImDrawData* drawData, CommandBuffer& commandBuffer, i32 width, i32 height, Format format);
+        void setupRenderState(ImDrawData* drawData, CommandHandle commandBuffer, i32 width, i32 height, Format format);
 
         auto createPipeline(Format format) -> PipelineHandle;
 

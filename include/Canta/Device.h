@@ -164,10 +164,10 @@ namespace canta {
 
         template <typename Func>
         void immediate(Func func, QueueType queueType = QueueType::GRAPHICS) {
-            auto& cmd = _immediatePool.getBuffer(); //TODO: allocate from pool associated with queueType
-            cmd.begin();
+            auto cmd = _immediatePool.getBuffer(); //TODO: allocate from pool associated with queueType
+            cmd->begin();
             func(cmd);
-            cmd.end();
+            cmd->end();
             auto wait = std::to_array({
                 SemaphorePair(_immediateTimeline)
             });
@@ -385,7 +385,7 @@ namespace canta {
         ResourceList<Sampler> _samplerList = {};
         ResourceList<Semaphore> _semaphoreList = {};
 
-        std::vector<std::function<void(CommandBuffer&)>> _deferredCommands = {};
+        std::vector<std::function<void(CommandHandle)>> _deferredCommands = {};
 
         PipelineHandle _singleSort = {};
         PipelineHandle _multiSort = {};

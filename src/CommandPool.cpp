@@ -1,6 +1,8 @@
 #include "Canta/CommandPool.h"
 #include <Canta/Device.h>
 
+template<> u32 canta::CommandHandle ::s_hash = 0;
+
 canta::CommandPool::~CommandPool() {
     if (!_device)
         return;
@@ -34,12 +36,13 @@ auto canta::CommandPool::operator=(canta::CommandPool &&rhs) noexcept -> Command
 void canta::CommandPool::reset() {
     VK_TRY(vkResetCommandPool(_device->logicalDevice(), _pool, 0));
     _index = 0;
+    _commandBuffers.clearQueue([this] (auto& buffer) {
+        auto b = buffer.buffer();
+        vkFreeCommandBuffers(_device->logicalDevice(), _pool, 1, &b);
+    });
 }
 
-auto canta::CommandPool::getBuffer() -> CommandBuffer & {
-    if (_index < _buffers.size())
-        return _buffers[_index++];
-
+auto canta::CommandPool::getBuffer() -> CommandHandle {
     VkCommandBufferAllocateInfo allocInfo{};
     allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
     allocInfo.commandPool = _pool;
@@ -53,7 +56,7 @@ auto canta::CommandPool::getBuffer() -> CommandBuffer & {
     buffer._buffer = commandBuffer;
     buffer._queueType = _queueType;
 
-    _buffers.push_back(std::move(buffer));
-    _index++;
-    return _buffers.back();
+    auto handle = _commandBuffers.allocate();
+    *handle = std::move(buffer);
+    return handle;
 }

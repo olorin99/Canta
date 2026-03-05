@@ -11,6 +11,8 @@ namespace canta {
 
     class Device;
 
+    using CommandHandle = Handle<CommandBuffer, ResourceList<CommandBuffer>>;
+
     class CommandPool {
     public:
 
@@ -28,13 +30,9 @@ namespace canta {
 
         void reset();
 
-        [[nodiscard]] auto getBuffer() -> CommandBuffer&;
+        [[nodiscard]] auto getBuffer() -> CommandHandle;
 
-        [[nodiscard]] auto buffers() -> std::span<CommandBuffer> { return _buffers; }
-
-        auto bufferCount() const -> u32 { return _buffers.size(); }
-
-        auto index() const -> u32 { return _index; }
+        auto bufferCount() const -> u32 { return _commandBuffers.used(); }
 
     private:
         friend Device;
@@ -44,6 +42,7 @@ namespace canta {
         std::vector<CommandBuffer> _buffers = {};
         QueueType _queueType = QueueType::NONE;
         u32 _index = 0;
+        ResourceList<CommandBuffer> _commandBuffers = {};
 
     };
 

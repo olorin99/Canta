@@ -6,6 +6,7 @@
 #include <Canta/CommandBuffer.h>
 #include <Canta/Semaphore.h>
 #include <expected>
+#include <Canta/CommandPool.h>
 
 namespace canta {
 
@@ -22,8 +23,7 @@ namespace canta {
         auto queueIndex() const -> u32 { return _queueIndex; }
         auto timeline() const -> SemaphoreHandle { return _timeline; }
 
-        [[nodiscard]] auto submit(CommandPool& commandPool, std::span<SemaphorePair> waits = {}, std::span<SemaphorePair> signals = {}, VkFence fence = VK_NULL_HANDLE) -> std::expected<bool, VulkanError>;
-        [[nodiscard]] auto submit(std::span<CommandBuffer> commandBuffers, std::span<SemaphorePair> waits = {}, std::span<SemaphorePair> signals = {}, VkFence fence = VK_NULL_HANDLE) -> std::expected<bool, VulkanError>;
+        [[nodiscard]] auto submit(std::span<CommandHandle> commandBuffers, std::span<SemaphorePair> waits = {}, std::span<SemaphorePair> signals = {}, VkFence fence = VK_NULL_HANDLE) -> std::expected<bool, VulkanError>;
 
     private:
         friend Device;

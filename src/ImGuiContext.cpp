@@ -122,7 +122,7 @@ void canta::ImGuiContext::beginFrame() {
     ImGui::NewFrame();
 }
 
-void canta::ImGuiContext::render(ImDrawData *drawData, canta::CommandBuffer &commandBuffer, Format format) {
+void canta::ImGuiContext::render(ImDrawData *drawData, CommandHandle commandBuffer, Format format) {
     if (!drawData)
         return;
     i32 width = drawData->DisplaySize.x * drawData->FramebufferScale.x;
@@ -189,18 +189,18 @@ void canta::ImGuiContext::render(ImDrawData *drawData, canta::CommandBuffer &com
                 if (clipMax.x <= clipMin.x || clipMax.y <= clipMin.y)
                     continue;
 
-                commandBuffer.setScissor({ static_cast<u32>(clipMax.x - clipMin.x), static_cast<u32>(clipMax.y - clipMin.y) }, { static_cast<i32>(clipMin.x), static_cast<i32>(clipMin.y) });
+                commandBuffer->setScissor({ static_cast<u32>(clipMax.x - clipMin.x), static_cast<u32>(clipMax.y - clipMin.y) }, { static_cast<i32>(clipMin.x), static_cast<i32>(clipMin.y) });
 
                 struct Push {
                     i32 samplerIndex;
                     i32 sampledIndex;
                 };
-                commandBuffer.pushConstants(ShaderStage::FRAGMENT, Push{
+                commandBuffer->pushConstants(ShaderStage::FRAGMENT, Push{
                     .samplerIndex = _sampler.index(),
                     .sampledIndex = (i32)(u64)cmd->TextureId
                 }, sizeof(f32) * 4);
 
-                commandBuffer.draw(cmd->ElemCount, 1, cmd->IdxOffset + indexOffset, cmd->VtxOffset + vertexOffset, 0, true);
+                commandBuffer->draw(cmd->ElemCount, 1, cmd->IdxOffset + indexOffset, cmd->VtxOffset + vertexOffset, 0, true);
             }
         }
         vertexOffset += drawList->VtxBuffer.Size;
@@ -208,7 +208,7 @@ void canta::ImGuiContext::render(ImDrawData *drawData, canta::CommandBuffer &com
     }
 }
 
-bool canta::ImGuiContext::createFontsTexture(canta::CommandBuffer &commandBuffer) {
+bool canta::ImGuiContext::createFontsTexture(CommandHandle commandBuffer) {
     ImGuiIO& io = ImGui::GetIO();
 
     unsigned char* pixels;
@@ -247,8 +247,8 @@ bool canta::ImGuiContext::createFontsTexture(canta::CommandBuffer &commandBuffer
         .srcLayout = ImageLayout::UNDEFINED,
         .dstLayout = ImageLayout::TRANSFER_DST
     };
-    commandBuffer.barrier(copyBarrier);
-    commandBuffer.copyBufferToImage({
+    commandBuffer->barrier(copyBarrier);
+    commandBuffer->copyBufferToImage({
         .buffer = _uploadBuffer,
         .image = _fontImage,
         .dstLayout = ImageLayout::TRANSFER_DST
@@ -262,7 +262,7 @@ bool canta::ImGuiContext::createFontsTexture(canta::CommandBuffer &commandBuffer
         .srcLayout = ImageLayout::TRANSFER_DST,
         .dstLayout = ImageLayout::SHADER_READ_ONLY
     };
-    commandBuffer.barrier(copyBarrier);
+    commandBuffer->barrier(copyBarrier);
 
     // Store our identifier
     io.Fonts->SetTexID((ImTextureID)(u64)_fontImage->defaultView().index());
@@ -275,19 +275,19 @@ void canta::ImGuiContext::processEvent(void *event) {
         ImGui_ImplSDL2_ProcessEvent(static_cast<SDL_Event*>(event));
 }
 
-void canta::ImGuiContext::setupRenderState(ImDrawData *drawData, canta::CommandBuffer &commandBuffer, i32 width, i32 height, Format format) {
+void canta::ImGuiContext::setupRenderState(ImDrawData *drawData, CommandHandle commandBuffer, i32 width, i32 height, Format format) {
     if (!_pipeline || _pipelineFormat != format) {
         _pipeline = createPipeline(format);
         _pipelineFormat = format;
     }
 
-    commandBuffer.bindPipeline(_pipeline);
+    commandBuffer->bindPipeline(_pipeline);
     if (drawData->TotalVtxCount > 0) {
-        commandBuffer.bindVertexBuffer(_vertexBuffer);
-        commandBuffer.bindIndexBuffer(_indexBuffer, 0, sizeof(ImDrawIdx) == 2 ? VK_INDEX_TYPE_UINT16 : VK_INDEX_TYPE_UINT32);
+        commandBuffer->bindVertexBuffer(_vertexBuffer);
+        commandBuffer->bindIndexBuffer(_indexBuffer, 0, sizeof(ImDrawIdx) == 2 ? VK_INDEX_TYPE_UINT16 : VK_INDEX_TYPE_UINT32);
     }
 
-    commandBuffer.setViewport({ static_cast<f32>(width), static_cast<f32>(height) }, { 0, 0 }, false);
+    commandBuffer->setViewport({ static_cast<f32>(width), static_cast<f32>(height) }, { 0, 0 }, false);
 
     struct Push {
         f32 scale[2] = {};
@@ -297,7 +297,7 @@ void canta::ImGuiContext::setupRenderState(ImDrawData *drawData, canta::CommandB
     push.scale[1] = 2.f / drawData->DisplaySize.y;
     push.translate[0] = -1 - drawData->DisplayPos.x * push.scale[0];
     push.translate[1] = -1 - drawData->DisplayPos.y * push.scale[1];
-    commandBuffer.pushConstants(ShaderStage::VERTEX, push);
+    commandBuffer->pushConstants(ShaderStage::VERTEX, push);
 }
 
 auto canta::ImGuiContext::createPipeline(canta::Format format) -> PipelineHandle {

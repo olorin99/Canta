@@ -195,11 +195,11 @@ auto canta::UploadBuffer::upload(canta::ImageHandle dstHandle, std::span<const u
 auto canta::UploadBuffer::flushStagedData() -> UploadBuffer& {
     std::unique_lock lock(*_mutex);
     if (!_pendingStagedBufferCopies.empty() || !_pendingStagedImageCopies.empty()) {
-        auto& commandBuffer = _commandPool.getBuffer();
-        commandBuffer.begin();
+        auto commandBuffer = _commandPool.getBuffer();
+        commandBuffer->begin();
         if (!_pendingStagedBufferCopies.empty()) {
             for (auto& staged : _pendingStagedBufferCopies) {
-                commandBuffer.copyBuffer({
+                commandBuffer->copyBuffer({
                     .src = _buffer,
                     .dst = staged.dst,
                     .srcOffset = staged.srcOffset,
@@ -211,7 +211,7 @@ auto canta::UploadBuffer::flushStagedData() -> UploadBuffer& {
         if (!_pendingStagedImageCopies.empty()) {
             for (auto& staged : _pendingStagedImageCopies) {
                 //TODO: manager barriers
-                commandBuffer.barrier({
+                commandBuffer->barrier({
                     .image = staged.dst,
                     .srcStage = PipelineStage::TOP,
                     .dstStage = PipelineStage::TRANSFER,
@@ -220,7 +220,7 @@ auto canta::UploadBuffer::flushStagedData() -> UploadBuffer& {
                     .srcLayout = ImageLayout::UNDEFINED,
                     .dstLayout = ImageLayout::TRANSFER_DST
                 });
-                commandBuffer.copyBufferToImage({
+                commandBuffer->copyBufferToImage({
                     .buffer = _buffer,
                     .image = staged.dst,
                     .dstLayout = ImageLayout::TRANSFER_DST,
@@ -244,12 +244,12 @@ auto canta::UploadBuffer::flushStagedData() -> UploadBuffer& {
                             .srcQueue = _device->queue(QueueType::TRANSFER)->familyIndex(),
                             .dstQueue = _device->queue(QueueType::GRAPHICS)->familyIndex()
                     };
-                    commandBuffer.barrier(barrier);
+                    commandBuffer->barrier(barrier);
                     _releasedFromQueue.push_back(barrier);
                 }
             }
         }
-        commandBuffer.end();
+        commandBuffer->end();
         auto waits = std::to_array({
             SemaphorePair(_timelineSemaphore)
         });

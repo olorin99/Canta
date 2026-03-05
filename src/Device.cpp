@@ -557,10 +557,12 @@ auto canta::Device::create(CreateInfo info) noexcept -> std::expected<std::uniqu
         .initialValue = 0,
         .name = "immediateTimelineSemaphore"
     }));
-    device->_resourceTimeline = TRY(device->createSemaphore({
-        .initialValue = 0,
-        .name = "resourceTimelineSemaphore"
-    }));
+    if (!info.frameBasedResourceLifetime) {
+        device->_resourceTimeline = TRY(device->createSemaphore({
+            .initialValue = 0,
+            .name = "resourceTimelineSemaphore"
+        }));
+    }
 
     VkDescriptorPoolSize poolSizes[] = {
             { VK_DESCRIPTOR_TYPE_SAMPLER, device->limits().maxBindlessSamplers * FRAMES_IN_FLIGHT },
@@ -998,6 +1000,18 @@ auto canta::Device::createSemaphore(Semaphore::CreateInfo info) -> std::expected
 auto canta::Device::createCommandPool(CommandPool::CreateInfo info) -> std::expected<CommandPool, VulkanError> {
     CommandPool pool = {};
     pool._device = this;
+    pool._commandBuffers.setLogger(&_logger);
+
+    const auto getResourceTimelineValue = [this] () -> u64 {
+        SemaphoreHandle timeline = resourceTimeline();
+        if (!timeline)
+            timeline = frameSemaphore();
+        if (timeline) {
+            return timeline->gpuValue();
+        }
+        return 0;
+    };
+    pool._commandBuffers.setGetTimelineValue(getResourceTimelineValue);
 
     VkCommandPoolCreateInfo createInfo = {};
     createInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;

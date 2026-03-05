@@ -171,9 +171,9 @@ namespace canta {
         auto setManualPipeline(const bool state) -> RenderPass& { _manualPipeline = state; return *this; }
 
         // auto setCallback(const std::function<void(CommandBuffer&, RenderGraph&, const PushData&)>& callback) -> RenderPass&;
-        auto setCallback(const std::function<std::expected<bool, RenderGraphError>(CommandBuffer&, RenderGraph&, const PushData&)>& callback) -> RenderPass&;
+        auto setCallback(const std::function<std::expected<bool, RenderGraphError>(CommandHandle, RenderGraph&, const PushData&)>& callback) -> RenderPass&;
 
-        auto run(RenderGraph& graph, CommandBuffer& commands) const -> std::expected<bool, RenderGraphError>;
+        auto run(RenderGraph& graph, CommandHandle commands) const -> std::expected<bool, RenderGraphError>;
 
     protected:
         friend RenderGraph;
@@ -201,7 +201,7 @@ namespace canta {
 
         std::vector<DeferredPushConstant> _deferredPushConstants;
         PushData _pushData = {};
-        std::function<std::expected<bool, RenderGraphError>(CommandBuffer&, RenderGraph&, const PushData&)> _callback = {};
+        std::function<std::expected<bool, RenderGraphError>(CommandHandle, RenderGraph&, const PushData&)> _callback = {};
         std::vector<ResourceAccess> _accesses = {};
 
         ende::math::Vec<2, u32> _dimensions = { 0, 0 };
@@ -314,7 +314,7 @@ namespace canta {
             return pass().output<T>(index).transform_error(mapGraphErrorToRenderGraphError);
         }
 
-        auto setCallback(const std::function<std::expected<bool, RenderGraphError>(CommandBuffer&, RenderGraph&, const RenderPass::PushData&)>& callback) -> PassBuilder&;
+        auto setCallback(const std::function<std::expected<bool, RenderGraphError>(CommandHandle, RenderGraph&, const RenderPass::PushData&)>& callback) -> PassBuilder&;
 
 
     // protected:
@@ -384,7 +384,7 @@ namespace canta {
 
         auto dispatchThreads(u32 x = 1, u32 y = 1, u32 z = 1) -> ComputePass&;
         auto dispatchWorkgroups(u32 x = 1, u32 y = 1, u32 z = 1) -> ComputePass&;
-        auto dispatchIndirect(BufferHandle commandBuffer, u32 offset) -> ComputePass&;
+        auto dispatchIndirect(BufferHandle commands, u32 offset) -> ComputePass&;
 
     };
 
@@ -716,13 +716,13 @@ namespace canta {
 
         [[nodiscard]] auto buildDependencyLevels(std::span<const RenderPass> passes) const -> std::expected<std::vector<std::vector<u32>>, RenderGraphError>;
 
-        void submitBarriers(CommandBuffer& commands, std::span<const RenderPass::Barrier> barriers) const;
+        void submitBarriers(CommandHandle commands, std::span<const RenderPass::Barrier> barriers) const;
 
-        void startTimer(CommandBuffer* commands, u32 index, std::string_view name, QueueType queue);
-        void endTimer(CommandBuffer* commands, u32 index);
+        void startTimer(CommandHandle commands, u32 index, std::string_view name, QueueType queue);
+        void endTimer(CommandHandle commands, u32 index);
 
-        void startStats(CommandBuffer* commands, u32 index, std::string_view name, QueueType queue);
-        void endStats(CommandBuffer* commands, u32 index);
+        void startStats(CommandHandle commands, u32 index, std::string_view name, QueueType queue);
+        void endStats(CommandHandle commands, u32 index);
 
         void buildBarriers();
         void buildResources();
