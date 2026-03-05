@@ -380,6 +380,18 @@ void canta::PassBuilder::unpack(RenderPass::PushData& dst, i32& i, const Write<B
     unpack(dst, i, buffer.resource);
 }
 
+void canta::PassBuilder::unpack(RenderPass::PushData& dst, i32& i, const ReadWrite<ImageIndex>& image) {
+    addStorageImageRead(image.resource);
+    addStorageImageWrite(image.resource);
+    unpack(dst, i, image.resource);
+}
+
+void canta::PassBuilder::unpack(RenderPass::PushData& dst, i32& i, const ReadWrite<BufferIndex>& buffer) {
+    addStorageBufferRead(buffer.resource);
+    addStorageBufferWrite(buffer.resource);
+    unpack(dst, i, buffer.resource);
+}
+
 auto canta::PassBuilder::setCallback(const std::function<std::expected<bool, RenderGraphError>(CommandBuffer &, RenderGraph &, const RenderPass::PushData &)> &callback) -> PassBuilder& {
     pass().setCallback(callback);
     return *this;

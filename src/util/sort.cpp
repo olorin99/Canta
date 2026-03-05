@@ -14,13 +14,7 @@ auto canta::singleSort(RenderGraph &renderGraph, const BufferIndex keys, const B
     const auto pipeline = renderGraph.device()->singleSortPipeline();
 
     auto pass = renderGraph.compute("sort", pipeline)
-        .addStorageBufferRead(keys)
-        .addStorageBufferRead(values)
-        .addStorageBufferWrite(keys)
-        .addStorageBufferWrite(tmpKeys)
-        .addStorageBufferWrite(values)
-        .addStorageBufferWrite(tmpValues)
-        .pushConstants(keys, tmpKeys, values, tmpValues, count, typeSize)
+        .pushConstants(ReadWrite(keys), Write(tmpKeys), ReadWrite(values), Write(tmpValues), count, typeSize)
         .dispatchWorkgroups(1);
 
     return SortOutput{
@@ -57,7 +51,7 @@ auto canta::multiSort(RenderGraph& graph, const BufferIndex keys, const BufferIn
         .name = "histogram",
     });
 
-    // auto sortGroup = graph.getGroup("sort");
+    auto sortGroup = graph.addGroup("sort", { 0, 0, 1, 1 });
 
     auto histogramsPipeline = graph.device()->multiSortHistogramsPipeline();
     auto sortPipeline = graph.device()->multiSortPipeline();
@@ -71,26 +65,15 @@ auto canta::multiSort(RenderGraph& graph, const BufferIndex keys, const BufferIn
         const auto iterationValues = iteration % 2 == 0 ? values : tmpValues;
         const auto iterationTmpValues = iteration % 2 == 0 ? tmpValues : values;
 
-        auto histogramOutput = TRY(graph.compute("histogram_pass", histogramsPipeline)
+        auto histogramOutput = TRY(graph.compute("histogram_pass", histogramsPipeline, sortGroup)
             .addStorageBufferRead(index)
             .addStorageBufferRead(values)
-            .addStorageBufferRead(iterationKeys)
-            .addStorageBufferWrite(histogram)
-            .pushConstants(iterationKeys, histogram, count, shift, numWorkgroups, numBlocksPerWorkgroup)
+            .pushConstants(Read(iterationKeys), Write(histogram), count, shift, numWorkgroups, numBlocksPerWorkgroup)
             .dispatchThreads(totalThreads)
             .output<BufferIndex>());
 
-        auto sortPass = graph.compute("sort_pass", sortPipeline)
-            .addStorageBufferRead(iterationKeys)
-            .addStorageBufferRead(iterationValues)
-            .addStorageBufferRead(iterationTmpKeys)
-            .addStorageBufferRead(iterationTmpValues)
-            .addStorageBufferRead(histogramOutput)
-            .addStorageBufferWrite(iterationKeys)
-            .addStorageBufferWrite(iterationValues)
-            .addStorageBufferWrite(iterationTmpKeys)
-            .addStorageBufferWrite(iterationTmpValues)
-            .pushConstants(iterationKeys, iterationTmpKeys, iterationValues, iterationTmpValues, histogramOutput, count, shift, numWorkgroups, numBlocksPerWorkgroup, typeSize)
+        auto sortPass = graph.compute("sort_pass", sortPipeline, sortGroup)
+            .pushConstants(ReadWrite(iterationKeys), ReadWrite(iterationTmpKeys), ReadWrite(iterationValues), ReadWrite(iterationTmpValues), Read(histogramOutput), count, shift, numWorkgroups, numBlocksPerWorkgroup, typeSize)
             .dispatchThreads(totalThreads);
 
         index = TRY(sortPass.output<BufferIndex>());

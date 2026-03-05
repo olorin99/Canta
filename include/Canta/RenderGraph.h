@@ -91,6 +91,12 @@ namespace canta {
         T resource;
     };
 
+    template <typename T>
+    struct ReadWrite {
+        explicit ReadWrite(T r) : resource(std::move(r)) {}
+        T resource;
+    };
+
     class RenderPass : public ende::graph::Vertex<BufferIndex, ImageIndex> {
     public:
 
@@ -290,6 +296,10 @@ namespace canta {
         void unpack(RenderPass::PushData& dst, i32&, const Write<ImageIndex>& image);
 
         void unpack(RenderPass::PushData& dst, i32&, const Write<BufferIndex>& buffer);
+
+        void unpack(RenderPass::PushData& dst, i32&, const ReadWrite<ImageIndex>& image);
+
+        void unpack(RenderPass::PushData& dst, i32&, const ReadWrite<BufferIndex>& buffer);
 
         template <typename... Args>
         auto pushConstants(Args&&... args) -> PassBuilder& {
@@ -520,6 +530,18 @@ namespace canta {
         }
 
         ImageIndex unpack(const Write<ImageIndex> index) {
+            write(index.resource);
+            return index.resource;
+        }
+
+        BufferIndex unpack(const ReadWrite<BufferIndex> index) {
+            read(index.resource);
+            write(index.resource);
+            return index.resource;
+        }
+
+        ImageIndex unpack(const ReadWrite<ImageIndex> index) {
+            read(index.resource);
             write(index.resource);
             return index.resource;
         }
