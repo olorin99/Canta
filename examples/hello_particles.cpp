@@ -148,17 +148,10 @@ int main() {
     });
 
     f64 dt = 1.f / 60;
-    bool running = true;
-    SDL_Event event;
-    while (running) {
-        while (SDL_PollEvent(&event)) {
-            switch (event.type) {
-                case SDL_QUIT:
-                    running = false;
-                    break;
-            }
-            imguiContext.processEvent(&event);
-        }
+
+    while (!window.shouldClose()) {
+        window.processEvents(&imguiContext);
+
         // device->startFrameCapture();
         device->beginFrame();
         device->gc();

@@ -4,9 +4,13 @@
 #include <Canta/Window.h>
 #include <SDL2/SDL.h>
 
+#include <tsl/robin_hash.h>
+#include <tsl/robin_map.h>
+
 namespace canta {
 
     class Device;
+    class ImGuiContext;
 
     class SDLWindow : public Window {
     public:
@@ -21,13 +25,22 @@ namespace canta {
 
         [[nodiscard]] auto extent() -> ende::math::Vec<2, u32> override;
 
-        [[nodiscard]] auto window() -> SDL_Window* { return _window; }
+        [[nodiscard]] auto window() const -> SDL_Window* { return _window; }
+
+        auto shouldClose() const -> bool { return _shouldClose; }
+
+        void registerEvent(u32 event, const std::function<void()>& callback);
+
+        void processEvents(ImGuiContext* imguiContext = nullptr);
 
     private:
 
         SDL_Window* _window = nullptr;
         VkSurfaceKHR _surface = VK_NULL_HANDLE;
         u32 _width = 0, _height = 0;
+
+        bool _shouldClose = false;
+        tsl::robin_map<u32, std::function<void()>> _eventCallbacks = {};
 
     };
 

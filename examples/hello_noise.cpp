@@ -46,17 +46,8 @@ int main() {
     auto clock = ende::time::SystemTime::now();
 
     f64 dt = 1.f / 60;
-    bool running = true;
-    SDL_Event e;
-    while (running) {
-        while (SDL_PollEvent(&e)) {
-            switch (e.type) {
-                case SDL_QUIT:
-                    running = false;
-                    break;
-            }
-            imgui.processEvent(&e);
-        }
+    while (!window.shouldClose()) {
+        window.processEvents(&imgui);
 
         device->beginFrame();
         device->gc();

@@ -2,8 +2,11 @@
 #include <SDL2/SDL_vulkan.h>
 #include <Canta/Device.h>
 
-canta::SDLWindow::SDLWindow(const char *title, u32 width, u32 height, u32 flags) {
+#include "Canta/ImGuiContext.h"
+
+canta::SDLWindow::SDLWindow(const char *title, const u32 width, const u32 height, const u32 flags) {
     _window = SDL_CreateWindow(title, SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, width, height, flags | SDL_WINDOW_VULKAN | SDL_WINDOW_SHOWN);
+    registerEvent(SDL_QUIT, [this] () { _shouldClose = true; });
 }
 
 canta::SDLWindow::~SDLWindow() {
@@ -30,4 +33,18 @@ auto canta::SDLWindow::extent() -> ende::math::Vec<2, u32> {
     i32 width, height;
     SDL_GetWindowSize(_window, &width, &height);
     return { static_cast<u32>(width), static_cast<u32>(height) };
+}
+
+void canta::SDLWindow::registerEvent(const u32 event, const std::function<void()> &callback) {
+    _eventCallbacks[event] = callback;
+}
+
+void canta::SDLWindow::processEvents(ImGuiContext* imguiContext) {
+    SDL_Event event;
+    while (SDL_PollEvent(&event)) {
+        if (auto e = _eventCallbacks.find(event.type); e != _eventCallbacks.end()) {
+            e.value()();
+        }
+        imguiContext->processEvent(&event);
+    }
 }
