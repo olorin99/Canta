@@ -669,7 +669,7 @@ auto canta::Device::create(CreateInfo info) noexcept -> std::expected<std::uniqu
         else
             timeline = rawDevicePtr->resourceTimeline();
         if (timeline) {
-            return timeline->value();
+            return timeline->gpuValue();
         }
         return 0;
     };
