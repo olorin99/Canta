@@ -125,8 +125,6 @@ add_library(Canta
         include/Canta/Queue.h
         src/PipelineManager.cpp
         include/Canta/PipelineManager.h
-        src/RenderGraph.cpp
-        include/Canta/RenderGraph.h
         src/ImGuiContext.cpp
         include/Canta/ImGuiContext.h
         src/PipelineStatistics.cpp
@@ -148,8 +146,8 @@ add_library(Canta
         include/Canta/util/prefixSum.h
         src/util/random.cpp
         include/Canta/util/random.h
-        src/RenderGraphV2.cpp
-        include/Canta/RenderGraphV2.h
+        src/RenderGraph.cpp
+        include/Canta/RenderGraph.h
         src/debug/ui.cpp
         include/Canta/debug/ui.h
 )

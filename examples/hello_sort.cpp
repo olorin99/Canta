@@ -1,5 +1,5 @@
 #include <Canta/Device.h>
-#include <Canta/RenderGraphV2.h>
+#include <Canta/RenderGraph.h>
 #include <Canta/PipelineManager.h>
 #include <Canta/util/sort.h>
 #include <Ende/math/random.h>
@@ -29,7 +29,7 @@ int main() {
         .rootPath = CANTA_SRC_DIR"/examples",
     });
 
-    auto renderGraph = TRY_MAIN(canta::V2::RenderGraph::create({
+    auto renderGraph = TRY_MAIN(canta::RenderGraph::create({
         .device = device.get(),
         .multiQueue = false,
         // .name = "graph"
@@ -67,7 +67,7 @@ int main() {
 
     // const auto sortOutputs = canta::sort<Value>(renderGraph, keys, values);
 
-    const auto sortOutputs = TRY_MAIN(canta::V2::multiSort<Value>(renderGraph, keys, values));
+    const auto sortOutputs = TRY_MAIN(canta::multiSort<Value>(renderGraph, keys, values));
 
     // auto index = keys;
     // for (u32 iteration = 0; iteration < 4; iteration++) {

@@ -1,9 +1,9 @@
 #ifndef CANTA_SORT_H
 #define CANTA_SORT_H
 
-#include <Canta/RenderGraphV2.h>
+#include <Canta/RenderGraph.h>
 
-namespace canta::V2 {
+namespace canta {
 
     struct SortOutput {
         BufferIndex keys;

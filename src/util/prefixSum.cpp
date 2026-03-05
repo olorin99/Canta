@@ -1,6 +1,6 @@
 #include <Canta/util/prefixSum.h>
 
-auto canta::prefixSumExclusive(V2::RenderGraph &graph, V2::BufferIndex values, const u32 count) -> V2::BufferIndex {
+auto canta::prefixSumExclusive(RenderGraph &graph, BufferIndex values, const u32 count) -> BufferIndex {
 
     const auto vectorizedSize = ((count + 4) / 4 * 4) / 4;
     constexpr auto partitionSize = 3072;
@@ -28,13 +28,13 @@ auto canta::prefixSumExclusive(V2::RenderGraph &graph, V2::BufferIndex values, c
     const auto summed = graph.compute("sum", graph.device()->prefixSumExclusive())
         .addStorageBufferRead(*clearedScanBump)
         .addStorageBufferRead(*clearedThreadBlockReductions)
-        .pushConstants(V2::Read(values), V2::Write(sums), V2::Write(*clearedScanBump), V2::Write(*clearedThreadBlockReductions), vectorizedSize, partitions)
-        .dispatchThreads(count).output<V2::BufferIndex>();
+        .pushConstants(Read(values), Write(sums), Write(*clearedScanBump), Write(*clearedThreadBlockReductions), vectorizedSize, partitions)
+        .dispatchThreads(count).output<BufferIndex>();
 
     return *summed;
 }
 
-auto canta::prefixSumInclusive(V2::RenderGraph &graph, V2::BufferIndex values, const u32 count) -> V2::BufferIndex {
+auto canta::prefixSumInclusive(RenderGraph &graph, BufferIndex values, const u32 count) -> BufferIndex {
 
     const auto vectorizedSize = ((count + 4) / 4 * 4) / 4;
     constexpr auto partitionSize = 3072;
@@ -62,8 +62,8 @@ auto canta::prefixSumInclusive(V2::RenderGraph &graph, V2::BufferIndex values, c
     const auto summed = graph.compute("sum", graph.device()->prefixSumInclusive())
         .addStorageBufferRead(*clearedScanBump)
         .addStorageBufferRead(*clearedThreadBlockReductions)
-        .pushConstants(V2::Read(values), V2::Write(sums), V2::Write(*clearedScanBump), V2::Write(*clearedThreadBlockReductions), vectorizedSize, partitions)
-        .dispatchThreads(count).output<V2::BufferIndex>();
+        .pushConstants(Read(values), Write(sums), Write(*clearedScanBump), Write(*clearedThreadBlockReductions), vectorizedSize, partitions)
+        .dispatchThreads(count).output<BufferIndex>();
 
     return *summed;
 }

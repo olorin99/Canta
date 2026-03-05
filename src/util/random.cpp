@@ -1,9 +1,9 @@
 #include <Ende/math/random.h>
 #include <Canta/util/random.h>
 
-#include "Canta/RenderGraphV2.h"
+#include "Canta/RenderGraph.h"
 
-auto canta::randomListUint(V2::RenderGraph &graph, const u32 min, const u32 max, const u32 count, const u32 offset, V2::BufferIndex buffer) -> V2::BufferIndex {
+auto canta::randomListUint(RenderGraph &graph, const u32 min, const u32 max, const u32 count, const u32 offset, BufferIndex buffer) -> BufferIndex {
     if (buffer.id < 0) {
         buffer = graph.addBuffer({
             .size = static_cast<u32>(count * sizeof(f32)),
@@ -16,13 +16,13 @@ auto canta::randomListUint(V2::RenderGraph &graph, const u32 min, const u32 max,
     assert(max > min);
 
     const auto output = graph.compute("generate_random_list", graph.device()->randomListGenerator())
-        .pushConstants(V2::Write(buffer), count, offset, max, min, seed)
-        .dispatchThreads(count).output<V2::BufferIndex>();
+        .pushConstants(Write(buffer), count, offset, max, min, seed)
+        .dispatchThreads(count).output<BufferIndex>();
 
     return *output;
 }
 
-auto canta::randomListFloat(V2::RenderGraph &graph, const f32 min, const f32 max, const u32 count, const u32 offset, V2::BufferIndex buffer) -> V2::BufferIndex {
+auto canta::randomListFloat(RenderGraph &graph, const f32 min, const f32 max, const u32 count, const u32 offset, BufferIndex buffer) -> BufferIndex {
     if (buffer.id < 0) {
         buffer = graph.addBuffer({
             .size = static_cast<u32>(count * sizeof(f32)),
@@ -35,13 +35,13 @@ auto canta::randomListFloat(V2::RenderGraph &graph, const f32 min, const f32 max
     assert(max > min);
 
     const auto output = graph.compute("generate_random_list", graph.device()->randomListGeneratorFloat())
-        .pushConstants(V2::Write(buffer), count, offset, max, min, seed)
-        .dispatchThreads(count).output<V2::BufferIndex>();
+        .pushConstants(Write(buffer), count, offset, max, min, seed)
+        .dispatchThreads(count).output<BufferIndex>();
 
     return *output;
 }
 
-auto canta::generateRandomNoise(V2::RenderGraph &graph, const u32 width, const u32 height, u32 seed, V2::ImageIndex image) -> V2::ImageIndex {
+auto canta::generateRandomNoise(RenderGraph &graph, const u32 width, const u32 height, u32 seed, ImageIndex image) -> ImageIndex {
     if (image.id < 0) {
         image = graph.addImage({
             .width = width,
@@ -54,14 +54,14 @@ auto canta::generateRandomNoise(V2::RenderGraph &graph, const u32 width, const u
         seed = ende::math::rand<u32>(0, 1e9);
     }
     auto output = graph.compute("generate_random_noise", graph.device()->generateRandomNoise())
-        .pushConstants(V2::Write(image), seed, seed)
+        .pushConstants(Write(image), seed, seed)
         .dispatchThreads(width, height)
-        .output<V2::ImageIndex>();
+        .output<ImageIndex>();
 
     return *output;
 }
 
-auto canta::generatePerlinNoise(V2::RenderGraph &graph, const u32 width, const u32 height, const PerlinOptions options, V2::ImageIndex image) -> V2::ImageIndex {
+auto canta::generatePerlinNoise(RenderGraph &graph, const u32 width, const u32 height, const PerlinOptions options, ImageIndex image) -> ImageIndex {
     if (image.id < 0) {
         image = graph.addImage({
             .width = width,
@@ -74,9 +74,9 @@ auto canta::generatePerlinNoise(V2::RenderGraph &graph, const u32 width, const u
     const auto seed = options.seed == 0 ? ende::math::rand<u32>(0, 100) : options.seed;
 
     auto output = graph.compute("generate_perlin_noise", graph.device()->generatePerlinNoise())
-        .pushConstants(V2::Write(image), options.time, options.octaves, options.persistence, options.lacunarity, seed)
+        .pushConstants(Write(image), options.time, options.octaves, options.persistence, options.lacunarity, seed)
         .dispatchThreads(width, height)
-        .output<V2::ImageIndex>();
+        .output<ImageIndex>();
 
     return *output;
 }

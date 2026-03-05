@@ -1,6 +1,6 @@
 #include <Canta/util/sort.h>
 
-auto canta::V2::singleSort(RenderGraph &renderGraph, const BufferIndex keys, const BufferIndex values, u32 count, const u32 typeSize) -> std::expected<SortOutput, RenderGraphError> {
+auto canta::singleSort(RenderGraph &renderGraph, const BufferIndex keys, const BufferIndex values, u32 count, const u32 typeSize) -> std::expected<SortOutput, RenderGraphError> {
     assert(typeSize % sizeof(u32) == 0);
 
     if (count == 0) {
@@ -29,7 +29,7 @@ auto canta::V2::singleSort(RenderGraph &renderGraph, const BufferIndex keys, con
     };
 }
 
-auto canta::V2::multiSort(RenderGraph& graph, const BufferIndex keys, const BufferIndex values, u32 count, u32 numBlocksPerWorkgroup, const u32 typeSize) -> std::expected<SortOutput, RenderGraphError> {
+auto canta::multiSort(RenderGraph& graph, const BufferIndex keys, const BufferIndex values, u32 count, u32 numBlocksPerWorkgroup, const u32 typeSize) -> std::expected<SortOutput, RenderGraphError> {
     assert(typeSize % sizeof(u32) == 0);
 
     if (count == 0) {

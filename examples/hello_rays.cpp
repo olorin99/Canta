@@ -1,5 +1,5 @@
 #include <Canta/Device.h>
-#include <Canta/RenderGraphV2.h>
+#include <Canta/RenderGraph.h>
 #include <Canta/SDLWindow.h>
 #include <Ende/filesystem/File.h>
 
@@ -49,7 +49,7 @@ int main() {
         .rootPath = CANTA_SRC_DIR
     });
 
-    auto renderGraph = TRY_MAIN(canta::V2::RenderGraph::create({
+    auto renderGraph = TRY_MAIN(canta::RenderGraph::create({
         .device = device.get(),
         .multiQueue = false,
         // .name = "graph"
@@ -95,8 +95,8 @@ int main() {
                 .entryPoint = "traceMain"
             }
         }).value())
-        .pushConstants(canta::V2::Read(uploadedData), canta::V2::Write(outputImage), static_cast<u32>(spheres.size()), camera, imageWidth, imageHeight)
-        .dispatchThreads(imageWidth, imageHeight).output<canta::V2::ImageIndex>());
+        .pushConstants(canta::Read(uploadedData), canta::Write(outputImage), static_cast<u32>(spheres.size()), camera, imageWidth, imageHeight)
+        .dispatchThreads(imageWidth, imageHeight).output<canta::ImageIndex>());
 
     auto output = TRY_MAIN(renderGraph.transfer("copy_to_buffer").copy(image, outputBufferIndex, {}));
 

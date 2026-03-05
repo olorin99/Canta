@@ -2,6 +2,7 @@
 #define CANTA_KERNELHELPER_H
 
 #include <Canta/RenderGraph.h>
+#include <Canta/PipelineManager.h>
 
 namespace canta::util {
 
@@ -64,13 +65,12 @@ namespace canta::util {
         }
 
         template <typename... Args>
-        auto operator()(RenderGraph& graph, Args&&... args) -> canta::RenderPass& {
+        auto operator()(RenderGraph& graph, Args&&... args) -> std::expected<ComputePass, RenderGraphError> {
             if (!_pipeline) {
                 return pipeline(graph.device())(graph, std::forward<Args>(args)...);
             }
 
-            return graph.addPass({.name = _name})
-                .setPipeline(_pipeline)
+            return graph.compute(_name, _pipeline)
                 .pushConstants(std::forward<Args>(args)...)
                 .dispatchThreads(_x, _y, _z);
         }

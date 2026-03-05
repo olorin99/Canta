@@ -2,9 +2,9 @@
 #define CANTA_RENDERGRAPHDEBUGGER_H
 
 #include <string_view>
-#include <Canta/RenderGraphV2.h>
+#include <Canta/RenderGraph.h>
 
-namespace canta::V2 {
+namespace canta {
 
     class RenderGraphDebugger {
     public:

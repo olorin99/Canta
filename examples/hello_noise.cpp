@@ -1,5 +1,5 @@
 
-#include <Canta/RenderGraphV2.h>
+#include <Canta/RenderGraph.h>
 #include <Canta/PipelineManager.h>
 #include <Ende/time/time.h>
 #include "Canta/ImGuiContext.h"
@@ -31,7 +31,7 @@ int main() {
         .pipelineManager = &pipelineManger,
     });
 
-    auto renderGraph = TRY_MAIN(canta::V2::RenderGraph::create({
+    auto renderGraph = TRY_MAIN(canta::RenderGraph::create({
         .device = device.get(),
         .multiQueue = false,
         // .name = "render_graph"
@@ -81,7 +81,7 @@ int main() {
 
         renderGraph.reset();
 
-        canta::V2::ImageIndex noiseImage = {};
+        canta::ImageIndex noiseImage = {};
         assert(noiseTypeIndex <= 1);
         switch (noiseTypeIndex) {
             case 0:
@@ -103,7 +103,7 @@ int main() {
 
         auto swapIndex = TRY_MAIN(renderGraph.acquire(&*swapchain));
 
-        auto uiSwapImage = TRY_MAIN(renderGraph.graphics("blit_to_swapchain").blit(noiseImage, swapIndex).output<canta::V2::ImageIndex>());
+        auto uiSwapImage = TRY_MAIN(renderGraph.graphics("blit_to_swapchain").blit(noiseImage, swapIndex).output<canta::ImageIndex>());
 
         auto uiImage = TRY_MAIN(renderGraph.graphics("ui").imgui(imgui, uiSwapImage));
 

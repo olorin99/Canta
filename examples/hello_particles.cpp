@@ -12,7 +12,6 @@
 #include <Canta/debug/PipelineManagerDebugger.h>
 #include <Canta/debug/RenderGraphDebugger.h>
 
-#include "Canta/RenderGraphV2.h"
 #include "Canta/debug/CommandQueueDebugger.h"
 #include "Canta/debug/ui.h"
 
@@ -131,12 +130,12 @@ int main() {
     //     .name = "Renderer"
     // }));
 
-    auto renderGraph = TRY_MAIN(canta::V2::RenderGraph::create({
+    auto renderGraph = TRY_MAIN(canta::RenderGraph::create({
         .device = device.get(),
         .multiQueue = false,
     }));
 
-    auto renderGraphDebugger = canta::V2::RenderGraphDebugger::create({
+    auto renderGraphDebugger = canta::RenderGraphDebugger::create({
         .renderGraph = &renderGraph,
     });
 
@@ -209,13 +208,13 @@ int main() {
             if (ImGui::Combo("Timing Mode", &timingModeIndex, modes, 3)) {
                 switch (timingModeIndex) {
                     case 0:
-                        renderGraph.setTimingMode(canta::V2::RenderGraph::QueryMode::DISABLED);
+                        renderGraph.setTimingMode(canta::RenderGraph::QueryMode::DISABLED);
                         break;
                     case 1:
-                        renderGraph.setTimingMode(canta::V2::RenderGraph::QueryMode::PER_PASS);
+                        renderGraph.setTimingMode(canta::RenderGraph::QueryMode::PER_PASS);
                         break;
                     case 2:
-                        renderGraph.setTimingMode(canta::V2::RenderGraph::QueryMode::PER_GROUP);
+                        renderGraph.setTimingMode(canta::RenderGraph::QueryMode::PER_GROUP);
                         break;
                 }
             }
@@ -223,13 +222,13 @@ int main() {
             if (ImGui::Combo("Stats Mode", &statsModeIndex, modes, 3)) {
                 switch (statsModeIndex) {
                     case 0:
-                        renderGraph.setStatsMode(canta::V2::RenderGraph::QueryMode::DISABLED);
+                        renderGraph.setStatsMode(canta::RenderGraph::QueryMode::DISABLED);
                         break;
                     case 1:
-                        renderGraph.setStatsMode(canta::V2::RenderGraph::QueryMode::PER_PASS);
+                        renderGraph.setStatsMode(canta::RenderGraph::QueryMode::PER_PASS);
                         break;
                     case 2:
-                        renderGraph.setStatsMode(canta::V2::RenderGraph::QueryMode::PER_GROUP);
+                        renderGraph.setStatsMode(canta::RenderGraph::QueryMode::PER_GROUP);
                         break;
                 }
             }
@@ -339,15 +338,15 @@ int main() {
         const auto particlesGroup = renderGraph.addGroup("particles", { 0, 1, 0, 1 });
 
         auto movedParticles = TRY_MAIN(renderGraph.compute("particles_move", pipeline, particlesGroup)
-            .pushConstants(canta::V2::Write(particleBufferIndex), numParticles, static_cast<f32>(dt))
-            .dispatchThreads(numParticles).output<canta::V2::BufferIndex>());
+            .pushConstants(canta::Write(particleBufferIndex), numParticles, static_cast<f32>(dt))
+            .dispatchThreads(numParticles).output<canta::BufferIndex>());
 
         auto drawnParticles = TRY_MAIN(renderGraph.compute("particles_draw", pipelineDraw, particlesGroup)
             .addStorageImageWrite(clearedImage)
-            .pushConstants(canta::V2::Read(movedParticles), canta::V2::Read(clearedImage), numParticles)
-            .dispatchThreads(numParticles).output<canta::V2::ImageIndex>());
+            .pushConstants(canta::Read(movedParticles), canta::Read(clearedImage), numParticles)
+            .dispatchThreads(numParticles).output<canta::ImageIndex>());
 
-        auto blittedSwapchain = TRY_MAIN(renderGraph.graphics("blit_to_swapchain").blit(drawnParticles, swapchainIndex).output<canta::V2::ImageIndex>());
+        auto blittedSwapchain = TRY_MAIN(renderGraph.graphics("blit_to_swapchain").blit(drawnParticles, swapchainIndex).output<canta::ImageIndex>());
         auto uiSwapchain = TRY_MAIN(renderGraph.graphics("ui").imgui(imguiContext, blittedSwapchain));
 
         auto presentOutput = TRY_MAIN(renderGraph.present(&*swapchain, uiSwapchain));

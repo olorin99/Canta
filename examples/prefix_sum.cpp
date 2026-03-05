@@ -1,5 +1,5 @@
 
-#include <Canta/RenderGraphV2.h>
+#include <Canta/RenderGraph.h>
 #include <Canta/PipelineManager.h>
 #include <Ende/math/random.h>
 
@@ -25,7 +25,7 @@ int main() {
         .rootPath = CANTA_SRC_DIR"/examples",
     });
 
-    auto renderGraph = TRY_MAIN(canta::V2::RenderGraph::create({
+    auto renderGraph = TRY_MAIN(canta::RenderGraph::create({
         .device = device.get(),
         .multiQueue = true,
         // .name = "graph"

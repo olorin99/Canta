@@ -3,7 +3,7 @@
 
 #include "imnodes.h"
 
-auto canta::V2::RenderGraphDebugger::create(const CreateInfo &info) -> RenderGraphDebugger {
+auto canta::RenderGraphDebugger::create(const CreateInfo &info) -> RenderGraphDebugger {
     RenderGraphDebugger debugger;
     debugger.setRenderGraph(info.renderGraph);
     return debugger;
@@ -24,7 +24,7 @@ auto queueToColour(const canta::QueueType queue) -> ImColor {
     }
 }
 
-// auto groupToColour(canta::V2::RenderGroup group) -> ImColor {
+// auto groupToColour(canta::RenderGroup group) -> ImColor {
 //     f32 hue = std::abs(group.id) * 1.71f;
 //     f32 tmp;
 //     hue = std::modf(hue, &tmp);
@@ -41,12 +41,12 @@ auto queueToColour(const canta::QueueType queue) -> ImColor {
 
 struct GetResourceIndex {
 
-    auto operator()(canta::V2::BufferIndex index) const -> i32 { return index.index; }
-    auto operator()(canta::V2::ImageIndex index) const -> i32 { return index.index; }
+    auto operator()(canta::BufferIndex index) const -> i32 { return index.index; }
+    auto operator()(canta::ImageIndex index) const -> i32 { return index.index; }
 
 };
 
-void canta::V2::RenderGraphDebugger::drawRenderGraph() {
+void canta::RenderGraphDebugger::drawRenderGraph() {
     static i32 frame = 0;
     if (ImGui::Begin("Render Graph", nullptr, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse)) {
         if (ImGui::Button("Reload Graph")) {
@@ -124,7 +124,7 @@ void canta::V2::RenderGraphDebugger::drawRenderGraph() {
 }
 
 
-void canta::V2::RenderGraphDebugger::render() {
+void canta::RenderGraphDebugger::render() {
 
     if (ImGui::Begin("Render Graph Debug")) {
         {
@@ -241,7 +241,7 @@ void canta::V2::RenderGraphDebugger::render() {
 
 }
 
-// void canta::V2::RenderGraphDebugger::debug() {
+// void canta::RenderGraphDebugger::debug() {
 //     if (!_copyResource) return;
 //
 //     const auto pass = _renderGraph->passes()[_selectedPass];
@@ -292,7 +292,7 @@ void canta::V2::RenderGraphDebugger::render() {
 //     auto topLeft = _viewportOffset;
 //     auto bottomRight = topLeft + _viewportSize;
 //
-//     _renderGraph->addPass({.name = "composite", .type = canta::V2::RenderPass::Type::TRANSFER, .manualPipeline = true})
+//     _renderGraph->addPass({.name = "composite", .type = canta::RenderPass::Type::TRANSFER, .manualPipeline = true})
 //         .addDummyRead(baseAlias)
 //         .addTransferRead(transientImage)
 //         .addTransferWrite(baseResource)

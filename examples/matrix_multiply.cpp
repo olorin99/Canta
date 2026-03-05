@@ -1,8 +1,7 @@
 
 #include <random>
 #include <Canta/Device.h>
-// #include <Canta/RenderGraph.h>
-#include <Canta/RenderGraphV2.h>
+#include <Canta/RenderGraph.h>
 #include <Canta/PipelineManager.h>
 
 #include "embedded_shaders_Matrix.h"
@@ -155,7 +154,7 @@ float4 main(
         }
 }).value();
 
-    auto graph = TRY_MAIN(canta::V2::RenderGraph::create({
+    auto graph = TRY_MAIN(canta::RenderGraph::create({
         .device = device.get(),
     }));
 
@@ -170,11 +169,11 @@ float4 main(
         .pushConstants(buffer, image)
         .dispatchThreads(1, 1, 1);
 
-    const auto outputBuffer = TRY_MAIN(computePass.output<canta::V2::BufferIndex>());
-    const auto outputImage = TRY_MAIN(computePass.output<canta::V2::ImageIndex>(1));
+    const auto outputBuffer = TRY_MAIN(computePass.output<canta::BufferIndex>());
+    const auto outputImage = TRY_MAIN(computePass.output<canta::ImageIndex>(1));
 
 
-    auto geometryPass = [&] (canta::V2::RenderGraph& g, int index) -> std::expected<canta::V2::BufferIndex, canta::V2::RenderGraphError> {
+    auto geometryPass = [&] (canta::RenderGraph& g, int index) -> std::expected<canta::BufferIndex, canta::RenderGraphError> {
         auto p1 = g.compute(std::format("compute_pass_1_{}", index), computePipeline1)
             .addStorageBufferRead(outputBuffer)
             .addStorageBufferWrite(outputBuffer)
@@ -182,18 +181,18 @@ float4 main(
             .dispatchThreads(1, 1, 1);
 
         auto p2 = g.compute(std::format("compute_pass_2_{}", index), computePipeline1)
-            .addStorageBufferRead(TRY(p1.output<canta::V2::BufferIndex>()))
+            .addStorageBufferRead(TRY(p1.output<canta::BufferIndex>()))
             .addStorageBufferWrite(outputBuffer)
             .pushConstants(outputBuffer)
             .dispatchThreads(1, 1, 1);
 
         auto p3 = g.compute(std::format("compute_pass_3_{}", index), computePipeline1)
-            .addStorageBufferRead(TRY(p2.output<canta::V2::BufferIndex>()))
+            .addStorageBufferRead(TRY(p2.output<canta::BufferIndex>()))
             .addStorageBufferWrite(outputBuffer)
             .pushConstants(outputBuffer)
             .dispatchThreads(1, 1, 1);
 
-        return p3.output<canta::V2::BufferIndex>();
+        return p3.output<canta::BufferIndex>();
     };
 
     const auto b = TRY_MAIN(geometryPass(graph, 0));
@@ -208,18 +207,18 @@ float4 main(
     computePass2.dispatchThreads();
 
     auto graphicsPass = graph.graphics("pass_2", graphicsPipeline)
-        .addSampledRead(TRY_MAIN(computePass2.output<canta::V2::ImageIndex>()), canta::PipelineStage::FRAGMENT_SHADER)
+        .addSampledRead(TRY_MAIN(computePass2.output<canta::ImageIndex>()), canta::PipelineStage::FRAGMENT_SHADER)
         .addColourWrite(swapImage)
         .pushConstants(outputImage)
         .draw(10);
 
-    auto transferPass = graph.graphics("pass_4").blit(TRY_MAIN(graphicsPass.output<canta::V2::ImageIndex>()), outputImage);
+    auto transferPass = graph.graphics("pass_4").blit(TRY_MAIN(graphicsPass.output<canta::ImageIndex>()), outputImage);
 
 
-    const auto l = TRY_MAIN(transferPass.output<canta::V2::ImageIndex>());
-    auto hostPass = graph.host<canta::V2::ImageIndex, canta::V2::BufferIndex, u32, std::string>("pass_3")
-        .pushConstants(canta::V2::Read(l), canta::V2::Write(hostBuffer), 100, "hello")
-        .setCallback([] (canta::V2::RenderGraph&, const canta::V2::ImageIndex& image, const canta::V2::BufferIndex& buffer, const u32& argA, const std::string& argB) {
+    const auto l = TRY_MAIN(transferPass.output<canta::ImageIndex>());
+    auto hostPass = graph.host<canta::ImageIndex, canta::BufferIndex, u32, std::string>("pass_3")
+        .pushConstants(canta::Read(l), canta::Write(hostBuffer), 100, "hello")
+        .setCallback([] (canta::RenderGraph&, const canta::ImageIndex& image, const canta::BufferIndex& buffer, const u32& argA, const std::string& argB) {
             printf("Host pass\n");
             printf("Image index: %d\n", image.index);
             printf("Buffer index: %d\n", buffer.index);
@@ -227,7 +226,7 @@ float4 main(
             printf("Arg b: %s\n", argB.c_str());
         });
 
-    const auto rootEdge = TRY_MAIN(hostPass.output<canta::V2::BufferIndex>());
+    const auto rootEdge = TRY_MAIN(hostPass.output<canta::BufferIndex>());
 
     printf("Pass count: %d\n", graph.vertexCount());
     printf("Edge count: %d\n", graph.edgeCount());
