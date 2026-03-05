@@ -138,6 +138,34 @@ auto canta::RenderPass::setCallback(const std::function<std::expected<bool, Rend
 }
 
 auto canta::RenderPass::run(RenderGraph &graph, CommandBuffer &commands) const -> std::expected<bool, RenderGraphError> {
+    if (_type == Type::GRAPHICS && (_pipeline || _manualPipeline)) {
+        auto beginInfo = RenderingInfo{};
+
+        beginInfo.size = dimensions();
+
+        auto colourAttachments = _renderingColourAttachments;
+        auto depthAttachment = _renderingDepthAttachment;
+
+        for (u32 attachmentIndex = 0; attachmentIndex < colourAttachments.size(); attachmentIndex++) {
+            auto& attachment = _colourAttachments[attachmentIndex];
+            auto& renderingAttachment = colourAttachments[attachmentIndex];
+
+            if (!renderingAttachment.image) {
+                const auto image = TRY(graph.getImage({ .index = attachment.index }));
+
+                renderingAttachment.image = image;
+            }
+        }
+
+        beginInfo.colourAttachments = colourAttachments;
+        if (_depthAttachment.index >= 0) {
+            beginInfo.depthAttachment = depthAttachment;
+        }
+
+        commands.beginRendering(beginInfo);
+    }
+
+
     const auto pushData = TRY(resolvePushConstants(graph, _pushData, _deferredPushConstants));
     if (_pipeline)
         commands.bindPipeline(_pipeline);
@@ -146,6 +174,8 @@ auto canta::RenderPass::run(RenderGraph &graph, CommandBuffer &commands) const -
     } catch (std::exception& e) {
         return std::unexpected(RenderGraphError::PASS_RUN);
     }
+    if (_type == Type::GRAPHICS && (_pipeline || _manualPipeline))
+        commands.endRendering();
     return true;
 }
 
@@ -1538,33 +1568,6 @@ auto canta::RenderGraph::run(std::span<SemaphorePair> waits, std::span<Semaphore
 
         submitBarriers(*currentCommandBuffer, pass._barriers);
 
-        if (pass._type == RenderPass::Type::GRAPHICS && (pass._pipeline || pass._manualPipeline)) {
-            auto beginInfo = RenderingInfo{};
-
-            beginInfo.size = pass.dimensions();
-
-            for (u32 attachmentIndex = 0; attachmentIndex < pass._colourAttachments.size(); attachmentIndex++) {
-                auto& attachment = pass._colourAttachments[attachmentIndex];
-                auto& renderingAttachment = pass._renderingColourAttachments[attachmentIndex];
-
-                if (!renderingAttachment.image) {
-                    auto resource = _resources[attachment.index];
-                    if (!std::holds_alternative<ImageInfo>(resource))
-                        return std::unexpected(RenderGraphError::INVALID_RESOURCE);
-                    auto image = std::get<ImageInfo>(resource).image;
-
-                    renderingAttachment.image = image;
-                }
-            }
-
-            beginInfo.colourAttachments = pass._renderingColourAttachments;
-            if (pass._depthAttachment.index >= 0) {
-                beginInfo.depthAttachment = pass._renderingDepthAttachment;
-            }
-
-            currentCommandBuffer->beginRendering(beginInfo);
-        }
-
         for (auto& wait : pass._queueWaits) {
             if (wait.second == QueueType::NONE) {
                 waitHandles.emplace_back(_cpuTimeline);
@@ -1575,10 +1578,6 @@ auto canta::RenderGraph::run(std::span<SemaphorePair> waits, std::span<Semaphore
         }
 
         TRY(pass.run(*this, *currentCommandBuffer));
-
-        if (pass._type == RenderPass::Type::GRAPHICS && (pass._pipeline || pass._manualPipeline))
-            currentCommandBuffer->endRendering();
-
 
         if (_statsMode == QueryMode::PER_PASS)
             endStats(currentCommandBuffer, _statsCount++);
