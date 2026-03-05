@@ -1312,6 +1312,10 @@ auto canta::RenderGraph::compile() -> std::expected<bool, RenderGraphError> {
                         pass._queueType = QueueType::GRAPHICS;
                         break;
                 }
+
+                // if queue disabled reset to graphics
+                if (pass._queueType != QueueType::NONE && !_device->queueEnabled(pass._queueType))
+                    pass._queueType = QueueType::GRAPHICS;
             }
         }
     }

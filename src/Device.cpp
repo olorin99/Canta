@@ -172,7 +172,7 @@ canta::Properties getPhysicalDeviceProperties(VkPhysicalDevice deviceProperties)
 
 
 
-auto canta::Device::create(canta::Device::CreateInfo info) noexcept -> std::expected<std::unique_ptr<Device>, VulkanError> {
+auto canta::Device::create(CreateInfo info) noexcept -> std::expected<std::unique_ptr<Device>, VulkanError> {
 
     std::unique_ptr<Device> device(new Device());
 
@@ -916,7 +916,7 @@ auto canta::Device::isExtensionEnabled(std::string_view extensionName) -> bool {
     return false;
 }
 
-auto canta::Device::queue(canta::QueueType type) -> std::shared_ptr<Queue> {
+auto canta::Device::queue(const QueueType type) -> std::shared_ptr<Queue> {
     switch (type) {
         case QueueType::GRAPHICS:
             return _graphicsQueue;
@@ -924,8 +924,15 @@ auto canta::Device::queue(canta::QueueType type) -> std::shared_ptr<Queue> {
             return _computeQueue;
         case QueueType::TRANSFER:
             return _transferQueue;
+        default:;
     }
     return _graphicsQueue;
+}
+
+auto canta::Device::queueEnabled(const QueueType type) -> bool {
+    if (type == QueueType::GRAPHICS) return true;
+    const auto q = queue(type);
+    return q->familyIndex() != _graphicsQueue->familyIndex() || q->queueIndex() != _graphicsQueue->queueIndex();
 }
 
 auto canta::Device::waitIdle() const -> std::expected<bool, VulkanError> {

@@ -208,6 +208,8 @@ namespace canta {
 
         [[nodiscard]] auto queue(QueueType type) -> std::shared_ptr<Queue>;
 
+        [[nodiscard]] auto queueEnabled(QueueType type) -> bool;
+
         [[nodiscard]] auto waitIdle() const -> std::expected<bool, VulkanError>;
 
 
