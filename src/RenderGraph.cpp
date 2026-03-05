@@ -1611,7 +1611,7 @@ auto canta::RenderGraph::run(std::span<SemaphorePair> waits, std::span<Semaphore
     if (!async) {
         bool success = false;
         do {
-            success = TRY(_cpuTimeline->wait(_cpuTimeline->value()).transform_error([] (VulkanError error) { return RenderGraphError::DEVICE_ERROR; }));
+            success = TRY(_cpuTimeline->wait(_cpuTimeline->value(), std::numeric_limits<u64>::max()).transform_error([] (VulkanError error) { return RenderGraphError::DEVICE_ERROR; }));
         } while (!success);
     }
 
