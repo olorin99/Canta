@@ -16,30 +16,32 @@ canta::CommandPool::~CommandPool() {
     vkDestroyCommandPool(_device->logicalDevice(), _pool, nullptr);
 }
 
-canta::CommandPool::CommandPool(canta::CommandPool &&rhs) noexcept {
+canta::CommandPool::CommandPool(CommandPool &&rhs) noexcept {
     std::swap(_device, rhs._device);
     std::swap(_pool, rhs._pool);
     std::swap(_buffers, rhs._buffers);
     std::swap(_index, rhs._index);
     std::swap(_queueType, rhs._queueType);
+    std::swap(_commandBuffers, rhs._commandBuffers);
 }
 
-auto canta::CommandPool::operator=(canta::CommandPool &&rhs) noexcept -> CommandPool & {
+auto canta::CommandPool::operator=(CommandPool &&rhs) noexcept -> CommandPool & {
     std::swap(_device, rhs._device);
     std::swap(_pool, rhs._pool);
     std::swap(_buffers, rhs._buffers);
     std::swap(_index, rhs._index);
     std::swap(_queueType, rhs._queueType);
+    std::swap(_commandBuffers, rhs._commandBuffers);
     return *this;
 }
 
 void canta::CommandPool::reset() {
-    VK_TRY(vkResetCommandPool(_device->logicalDevice(), _pool, 0));
-    _index = 0;
     _commandBuffers.clearQueue([this] (auto& buffer) {
         auto b = buffer.buffer();
         vkFreeCommandBuffers(_device->logicalDevice(), _pool, 1, &b);
     });
+    VK_TRY(vkResetCommandPool(_device->logicalDevice(), _pool, 0));
+    _index = 0;
 }
 
 auto canta::CommandPool::getBuffer() -> CommandHandle {

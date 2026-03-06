@@ -256,12 +256,12 @@ int main() {
             auto resourceStats = device->resourceStats();
             canta::drawResourceStats(resourceStats);
 
-            // auto renderGraphStats = renderGraph.statistics();
-            // ImGui::Text("Passes: %d", renderGraphStats.passes);
-            // ImGui::Text("Resource: %d", renderGraphStats.resources);
-            // ImGui::Text("Image: %d", renderGraphStats.images);
-            // ImGui::Text("Buffers: %d", renderGraphStats.buffers);
-            // ImGui::Text("Command Buffers: %d", renderGraphStats.commandBuffers);
+            const auto renderGraphStats = renderGraph.stats();
+            ImGui::Text("Passes: %d", renderGraphStats.passes);
+            ImGui::Text("Resource: %d", renderGraphStats.resources);
+            ImGui::Text("Image: %d", renderGraphStats.images);
+            ImGui::Text("Buffers: %d", renderGraphStats.buffers);
+            ImGui::Text("Command Buffers: %d", renderGraphStats.commandBuffers);
 
             if (ImGui::TreeNode("markers")) {
                 auto& markers = device->getFrameDebugMarkers(device->framePrevValue() % canta::FRAMES_IN_FLIGHT);

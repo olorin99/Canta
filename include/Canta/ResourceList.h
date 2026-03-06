@@ -152,6 +152,27 @@ namespace canta {
         using ResourceHandle =  Handle<T, ResourceList<T>>;
         using ResourceData = ResourceHandle::Data;
 
+        ResourceList() = default;
+
+        ResourceList(ResourceList&& rhs) noexcept {
+            std::swap(_resources, rhs._resources);
+            std::swap(_freeResources, rhs._freeResources);
+            std::swap(_destroyQueue, rhs._destroyQueue);
+            std::swap(_destructionDelay, rhs._destructionDelay);
+            std::swap(_getTimelineValue, rhs._getTimelineValue);
+            std::swap(_logger, rhs._logger);
+        }
+
+        auto operator=(ResourceList&& rhs) noexcept -> ResourceList& {
+            std::swap(_resources, rhs._resources);
+            std::swap(_freeResources, rhs._freeResources);
+            std::swap(_destroyQueue, rhs._destroyQueue);
+            std::swap(_destructionDelay, rhs._destructionDelay);
+            std::swap(_getTimelineValue, rhs._getTimelineValue);
+            std::swap(_logger, rhs._logger);
+            return *this;
+        }
+
         [[nodiscard]] static auto create(i32 destructionDelay = 3, spdlog::logger* logger = nullptr, std::function<u64()> getTimelineValue = [] { return 0; }) -> ResourceList<T> {
             ResourceList<T> list = {};
             list._destructionDelay = destructionDelay;

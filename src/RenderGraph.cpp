@@ -1948,3 +1948,30 @@ auto canta::RenderGraph::getPass(const std::string_view name) const -> std::expe
     }
     return std::unexpected(RenderGraphError::INVALID_PASS);
 }
+
+auto canta::RenderGraph::stats() const -> Stats {
+    const auto& poolGroup = _commandPools[_device->flyingIndex()];
+    const auto graphicsCommandsCount = poolGroup[0].bufferCount();
+    const auto computeCommandsCount = poolGroup[1].bufferCount();
+    const auto transferCommandsCount=  poolGroup[2].bufferCount();
+
+    const u32 bufferCount = std::accumulate(_resources.begin(), _resources.end(), 0, [] (const u32& lhs, const Resource& rhs) {
+        if (std::holds_alternative<BufferInfo>(rhs))
+            return lhs + 1;
+        return lhs + 0;
+    });
+
+    const u32 imageCount = std::accumulate(_resources.begin(), _resources.end(), 0, [] (const u32& lhs, const Resource& rhs) {
+        if (std::holds_alternative<ImageInfo>(rhs))
+            return lhs + 1;
+        return lhs + 0;
+    });
+
+    return {
+        .passes = static_cast<u32>(_orderedPasses.size()),
+        .commandBuffers = graphicsCommandsCount + computeCommandsCount + transferCommandsCount,
+        .resources = static_cast<u32>(_resources.size()),
+        .images = imageCount,
+        .buffers = bufferCount,
+    };
+}

@@ -699,6 +699,15 @@ namespace canta {
         void setMultiQueue(const bool state) { _multiQueue = state; }
         auto multiQueue() const -> bool { return _multiQueue; }
 
+        struct Stats {
+            u32 passes = 0;
+            u32 commandBuffers = 0;
+            u32 resources = 0;
+            u32 images = 0;
+            u32 buffers = 0;
+        };
+        auto stats() const -> Stats;
+
         struct Access {
             i32 passIndex = -1;
             ResourceAccess access;
