@@ -320,6 +320,17 @@ public float3 rand3(uint3 v) {
             return uintToNormalizedFloat(rand(uint4(x))) * diff + min;
         }
 
+        public float4 noise(uint3 seed) {
+            let hash = rand(seed.xy + uint2(seed.z));
+
+            let r = canta.random.rand(float4(seed.xy, hash, canta.random.rand(hash)));
+            let g = canta.random.rand(float4(hash, seed.xy, canta.random.rand(hash)));
+            let b = canta.random.rand(float4(canta.random.rand(hash), seed.xy, hash));
+            let a = canta.random.rand(float4(hash, canta.random.rand(hash), seed.yx));
+
+            return float4(r, g, b, a);
+        }
+
     }
 
 }
