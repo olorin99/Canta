@@ -1616,8 +1616,9 @@ auto canta::RenderGraph::run(std::span<SemaphorePair> waits, std::span<Semaphore
     return true;
 }
 
-void canta::RenderGraph::reset() {
-    _resources.clear();
+void canta::RenderGraph::reset(const bool keepResources) {
+    if (!keepResources)
+        _resources.clear();
     Graph::reset();
 }
 

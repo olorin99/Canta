@@ -652,7 +652,7 @@ namespace canta {
 
         auto run(std::span<SemaphorePair> waits = {}, std::span<SemaphorePair> signals = {}, bool async = true) -> std::expected<bool, RenderGraphError>;
 
-        void reset();
+        void reset(bool keepResources = false);
 
 
         auto device() const -> Device* { return _device; }
