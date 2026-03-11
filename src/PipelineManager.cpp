@@ -547,7 +547,7 @@ auto canta::PipelineManager::createSlangSession(std::span<const Macro> macros) -
     const auto rootPath = _rootPath.string();
     const char* searchPaths[] = { CANTA_SRC_DIR"/src", rootPath.c_str() };
     sessionDesc.searchPaths = searchPaths;
-    sessionDesc.searchPathCount = 1;
+    sessionDesc.searchPathCount = 2;
     std::vector<slang::PreprocessorMacroDesc> slangMacros = {};
     for (auto& macro : macros) {
         slang::PreprocessorMacroDesc macroDesc = {};
