@@ -16,6 +16,7 @@ if (${CANTA_ENABLE_RENDERDOC})
 endif ()
 
 add_compile_definitions(CANTA_SRC_DIR="${CMAKE_CURRENT_SOURCE_DIR}")
+set(CANTA_SRC_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 
 find_package(SDL2 REQUIRED)
 find_package(Threads REQUIRED)
@@ -39,7 +40,7 @@ function(compile_shaders)
         add_custom_command(
                 OUTPUT ${OUTPUT_FILE}
                 DEPENDS slang ${SHADER_PATH}
-                COMMAND ${SLANG_BINARY} -I${CMAKE_SOURCE_DIR}/src ${SHADER_PATH} -o ${OUTPUT_FILE}
+                COMMAND ${SLANG_BINARY} -I${CANTA_SRC_DIR}/src ${SHADER_PATH} -o ${OUTPUT_FILE}
         )
     endforeach ()
     set(COMPILED_SHADER_OUTPUTS ${SHADER_OUTPUTS} PARENT_SCOPE)
