@@ -1699,7 +1699,7 @@ auto canta::RenderGraph::getCurrAccess(const std::span<const RenderPass> passes,
 }
 
 auto canta::RenderGraph::getPrevAccess(const std::span<const RenderPass> passes, const i32 startIndex, const i32 resource) -> Access {
-    for (i32 passIndex = startIndex - 1; passIndex > 0; passIndex--) {
+    for (i32 passIndex = startIndex - 1; passIndex >= 0; passIndex--) {
         const auto& pass = passes[passIndex];
 
         for (auto& access : pass._accesses) {
