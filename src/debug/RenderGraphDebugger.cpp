@@ -9,6 +9,21 @@ auto canta::RenderGraphDebugger::create(const CreateInfo &info) -> RenderGraphDe
     return debugger;
 }
 
+auto idToColour(const i32 id) -> ImColor {
+    f32 hue = std::abs(id) * 1.71f;
+    f32 tmp;
+    hue = std::modf(hue, &tmp);
+    f32 r = std::abs(hue * 6 - 3) - 1;
+    f32 g = 2 - std::abs(hue * 6 - 2);
+    f32 b = 2 - std::abs(hue * 6 - 4);
+    return IM_COL32(
+        std::clamp(r * 255, 0.0f, 255.0f),
+        std::clamp(g * 255, 0.0f, 255.0f),
+        std::clamp(b * 255, 0.0f, 255.0f),
+        255
+    );
+}
+
 auto queueToColour(const canta::QueueType queue) -> ImColor {
     switch (queue) {
         case canta::QueueType::NONE:
@@ -24,20 +39,9 @@ auto queueToColour(const canta::QueueType queue) -> ImColor {
     }
 }
 
-// auto groupToColour(canta::RenderGroup group) -> ImColor {
-//     f32 hue = std::abs(group.id) * 1.71f;
-//     f32 tmp;
-//     hue = std::modf(hue, &tmp);
-//     f32 r = std::abs(hue * 6 - 3) - 1;
-//     f32 g = 2 - std::abs(hue * 6 - 2);
-//     f32 b = 2 - std::abs(hue * 6 - 4);
-//     return IM_COL32(
-//         std::clamp(r * 255, 0.0f, 255.0f),
-//         std::clamp(g * 255, 0.0f, 255.0f),
-//         std::clamp(b * 255, 0.0f, 255.0f),
-//         255
-//     );
-// }
+auto groupToColour(const canta::RenderGroup& group) -> ImColor {
+    return idToColour(group.id);
+}
 
 struct GetResourceIndex {
 
@@ -77,8 +81,8 @@ void canta::RenderGraphDebugger::drawRenderGraph() {
             pos.y = (i % 2 == 0) ? originalPos.y : 100;
 
 
-            // ImNodes::PushColorStyle(ImNodesCol_TitleBar, queueToColour(pass.getQueue()));
-            // ImNodes::PushColorStyle(ImNodesCol_NodeBackground, groupToColour(pass.getGroup()));
+            ImNodes::PushColorStyle(ImNodesCol_TitleBar, queueToColour(pass.queue()));
+            ImNodes::PushColorStyle(ImNodesCol_NodeBackground, groupToColour(pass.group()));
 
             for (auto& input : pass.inputs) {
                 auto index = std::visit(GetResourceIndex{}, input);
@@ -106,8 +110,8 @@ void canta::RenderGraphDebugger::drawRenderGraph() {
             }
 
             ImNodes::EndNode();
-            // ImNodes::PopColorStyle();
-            // ImNodes::PopColorStyle();
+            ImNodes::PopColorStyle();
+            ImNodes::PopColorStyle();
             i++;
         }
 
@@ -238,7 +242,44 @@ void canta::RenderGraphDebugger::render() {
 
         ImGui::End();
     }
+}
 
+void canta::RenderGraphDebugger::drawResourceUsage() {
+    auto passes = _renderGraph->passes();
+    auto& resources = _renderGraph->_resources;
+    auto indices = _renderGraph->getResourceIndices(passes);
+
+    if (passes.size() == 0 || resources.size() == 0) return;
+
+    if (ImGui::Begin("Render Graph Resource Usage")) {
+
+        if (ImGui::BeginTable("Resource Layout", passes.size() + 1)) {
+            ImGui::TableNextRow();
+            ImGui::TableSetColumnIndex(0);
+            for (u32 passIndex = 0; passIndex < passes.size(); passIndex++) {
+                ImGui::TableSetColumnIndex(passIndex + 1);
+                ImGui::Text("%s", passes[passIndex].name().data());
+            }
+            for (u32 resourceIndex = 0; resourceIndex < resources.size(); resourceIndex++) {
+                ImGui::TableNextRow();
+                ImGui::TableSetColumnIndex(0);
+
+                auto resourceName = *_renderGraph->getResourceName(resourceIndex);
+
+                ImGui::Text("%s", resourceName.data());
+
+                auto& resourceIndices = indices[resourceIndex];
+
+                for (i32 i = resourceIndices.first; i <= resourceIndices.second; i++) {
+                    ImGui::TableSetColumnIndex(i + 1);
+                    ImGui::TableSetBgColor(ImGuiTableBgTarget_CellBg, static_cast<ImU32>(idToColour(resourceIndex)));
+                }
+            }
+        }
+        ImGui::EndTable();
+
+    }
+    ImGui::End();
 }
 
 // void canta::RenderGraphDebugger::debug() {

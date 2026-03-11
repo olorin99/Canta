@@ -18,6 +18,8 @@ namespace canta {
 
         void drawRenderGraph();
 
+        void drawResourceUsage();
+
         // void debug();
 
         void setRenderGraph(RenderGraph *renderGraph) { _renderGraph = renderGraph; }
@@ -37,11 +39,11 @@ namespace canta {
     private:
         RenderGraph *_renderGraph = nullptr;
 
-        std::string_view _basePass;
+        std::string _basePass;
         i32 _baseResourceId = -1;
         u32 _baseResourceIndex = 0;
 
-        std::string_view _selectedPass;
+        std::string _selectedPass;
         RenderGraph::Edge _selectedResource = {};
 
         bool _copyResource = false;

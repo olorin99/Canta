@@ -303,6 +303,7 @@ int main() {
 
         renderGraphDebugger.render();
         renderGraphDebugger.drawRenderGraph();
+        renderGraphDebugger.drawResourceUsage();
 
         pipelineManagerDebugger.render();
 

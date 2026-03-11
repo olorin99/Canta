@@ -9,10 +9,9 @@
 #include <Ende/thread/ThreadPool.h>
 
 namespace canta {
-    class ImGuiContext;
-}
 
-namespace canta {
+    class ImGuiContext;
+    class RenderGraphDebugger;
 
     enum class RenderGraphError {
         NONE,
@@ -717,6 +716,7 @@ namespace canta {
         [[nodiscard]] static auto getPrevAccess(std::span<const RenderPass> passes, i32 startIndex, i32 resource) -> Access;
 
     private:
+        friend RenderGraphDebugger;
 
         RenderGraph() = default;
 
