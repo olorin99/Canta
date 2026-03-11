@@ -105,7 +105,7 @@ int main() {
     TRY_MAIN(renderGraph.compile());
     TRY_MAIN(renderGraph.run({}, {}, false));
 
-    auto mapped = (*renderGraph.getBuffer(outputBufferIndex))->map();
+    auto mapped = canta::Ptr<ende::math::Vec4f>(*renderGraph.getBuffer(outputBufferIndex));
 
     auto outFile = ende::fs::File::open("image.ppm", ende::fs::out).value();
 
@@ -114,7 +114,7 @@ int main() {
     for (i32 y = imageHeight - 1; y >= 0; --y) {
         for (i32 x = 0; x < imageWidth; ++x) {
             auto index = y * imageWidth + x;
-            auto colour = mapped.as<ende::math::Vec4f>()[index];
+            auto colour = mapped[index];
 
             auto r = colour.x();
             auto g = colour.y();

@@ -8,6 +8,7 @@
 #include <functional>
 #include <span>
 #include <memory>
+#include <utility>
 #include <Canta/Enums.h>
 #include <Canta/Swapchain.h>
 #include <Canta/Semaphore.h>
@@ -118,13 +119,32 @@ namespace canta {
             value(handle->value())
         {}
 
-        SemaphorePair(SemaphoreHandle handle, u64 val)
-            : semaphore(handle),
+        SemaphorePair(SemaphoreHandle handle, const u64 val)
+            : semaphore(std::move(handle)),
             value(val)
         {}
 
         SemaphoreHandle semaphore = {};
         u64 value = 0;
+    };
+
+    template <typename T>
+    class Ptr {
+    public:
+        explicit Ptr(BufferHandle buffer) : _buffer(std::move(buffer)) {}
+
+        auto operator[](const std::size_t index) -> T& {
+            assert(index < (_buffer->size() / sizeof(T)));
+            return _buffer->mapped().as<T>()[index];
+        }
+
+        auto operator->() -> T* {
+            return _buffer->mapped().as<T>();
+        }
+
+    private:
+        friend Device;
+        BufferHandle _buffer = {};
     };
 
     constexpr const u32 FRAMES_IN_FLIGHT = 2;
@@ -231,6 +251,17 @@ namespace canta {
         [[nodiscard]] auto resizeBuffer(BufferHandle handle, u32 newSize) -> BufferHandle;
 
         [[nodiscard]] auto swapImageBindings(ImageHandle oldHandle, ImageHandle newHandle) -> ImageHandle;
+
+        template <typename T = u8>
+        [[nodiscard]] auto alloc(const std::size_t count, const BufferUsage usage = BufferUsage::STORAGE | BufferUsage::TRANSFER_DST | BufferUsage::TRANSFER_SRC) -> Ptr<T> {
+            const auto buffer = createBuffer({
+                .size = static_cast<u32>(count * sizeof(T)),
+                .usage = usage,
+                .type = MemoryType::STAGING,
+                .persistentlyMapped = true,
+            });
+            return Ptr<T>(buffer);
+        }
 
         void setDebugName(u32 type, u64 object, std::string_view name) const;
 
