@@ -39,8 +39,9 @@ def main():
         if shader[0].endswith(".spv"):
             count = len(shader[2].split(","))
             output += "constexpr std::array<const u32, {}> {}_embedded = {{{}}};\n".format(count, var_name, shader[2])
-            output += "inline canta::util::kernel_helper {}(const u32 x = 1, const u32 y = 1, const u32 z = 1) {{\n".format(var_name.replace("_spv", ""))
-            output += "return canta::util::kernel_helper(\"{}\", {}_embedded)(x, y, z);\n".format(var_name, var_name)
+            output += "inline canta::util::kernel_helper& {}(const u32 x = 1, const u32 y = 1, const u32 z = 1) {{\n".format(var_name.replace("_spv", ""))
+            output += "static auto kernel = canta::util::kernel_helper(\"{}\", {}_embedded)(x, y, z);\n".format(var_name, var_name)
+            output += "return kernel;\n"
             output += "}\n"
         else:
             output += "constexpr const char* {}_embedded = R\"({})\";\n".format(var_name, shader[2])

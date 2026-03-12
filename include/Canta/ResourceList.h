@@ -173,7 +173,7 @@ namespace canta {
             return *this;
         }
 
-        [[nodiscard]] static auto create(i32 destructionDelay = 3, spdlog::logger* logger = nullptr, std::function<u64()> getTimelineValue = [] { return 0; }) -> ResourceList<T> {
+        [[nodiscard]] static auto create(i32 destructionDelay = 3, std::weak_ptr<spdlog::logger> logger = {}, std::function<u64()> getTimelineValue = [] { return 0; }) -> ResourceList<T> {
             ResourceList<T> list = {};
             list._destructionDelay = destructionDelay;
             list._logger = logger;
@@ -181,7 +181,7 @@ namespace canta {
             return list;
         }
 
-        void setLogger(spdlog::logger* logger) {
+        void setLogger(const std::weak_ptr<spdlog::logger> &logger) {
             _logger = logger;
         }
 
@@ -205,7 +205,7 @@ namespace canta {
                     std::unique_lock lock(_mutex);
                     const auto timelineValue = _getTimelineValue();
                     _destroyQueue.emplace_back(timelineValue, index);
-                    if (_logger) _logger->info("Resource {} at index {} destroyed", typeid(T).name(), index);
+                    if (const auto logger = _logger.lock()) logger->info("Resource {} at index {} destroyed", typeid(T).name(), index);
                 };
             } else {
                 index = _resources.size();
@@ -215,7 +215,7 @@ namespace canta {
                     std::unique_lock lock(_mutex);
                     const auto timelineValue = _getTimelineValue();
                     _destroyQueue.emplace_back(timelineValue, index);
-                    if (_logger) _logger->info("Resource {} at index {} destroyed", typeid(T).name(), index);
+                    if (const auto logger = _logger.lock()) logger->info("Resource {} at index {} destroyed", typeid(T).name(), index);
                 };
             }
             return getHandle(index);
@@ -248,7 +248,7 @@ namespace canta {
             for (auto it = _destroyQueue.begin(); it != _destroyQueue.end(); ++it) {
                 if ((it->first + _destructionDelay) < timelineValue) {
                     func(_resources[it->second]->first);
-                    if (_logger) _logger->info("GPU Resource {} at index {} destroyed. Timeline({} <= {})", typeid(T).name(), it->second, it->first, timelineValue);
+                    if (const auto logger = _logger.lock()) logger->info("GPU Resource {} at index {} destroyed. Timeline({} <= {})", typeid(T).name(), it->second, it->first, timelineValue);
                     _freeResources.push_back(it->second);
                     _destroyQueue.erase(it--);
                 }
@@ -298,7 +298,7 @@ namespace canta {
         i32 _destructionDelay = 3;
         std::function<u64()> _getTimelineValue = [] { return 0; };
         std::mutex _mutex = {};
-        spdlog::logger* _logger = nullptr;
+        std::weak_ptr<spdlog::logger> _logger = {};
 
     };
 

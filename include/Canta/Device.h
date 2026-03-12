@@ -308,7 +308,7 @@ namespace canta {
             return _markerCommands[frame];
         }
 
-        [[nodiscard]] auto logger() -> spdlog::logger& { return _logger; }
+        [[nodiscard]] auto logger() -> spdlog::logger& { return *_logger; }
 
         void startFrameCapture() const;;
 
@@ -317,16 +317,6 @@ namespace canta {
         void triggerCapture() const;
 
         void updateBindlessDescriptors();
-
-        auto singleSortPipeline() -> PipelineHandle { return _singleSort; }
-        auto multiSortPipeline() -> PipelineHandle { return _multiSort; }
-        auto multiSortHistogramsPipeline() -> PipelineHandle { return _multiSortHistograms; }
-        auto prefixSumExclusive() -> PipelineHandle { return _prefixSumExclusive; }
-        auto prefixSumInclusive() -> PipelineHandle { return _prefixSumInclusive; }
-        auto randomListGenerator() -> PipelineHandle { return _randomListGenerator; }
-        auto randomListGeneratorFloat() -> PipelineHandle { return _randomListGeneratorFloat; }
-        auto generateRandomNoise() -> PipelineHandle { return _generateRandomNoise; }
-        auto generatePerlinNoise() -> PipelineHandle { return _generatePerlinNoise; }
 
     private:
         friend CommandBuffer;
@@ -343,7 +333,7 @@ namespace canta {
 
         VkDebugUtilsMessengerEXT _debugMessenger = VK_NULL_HANDLE;
 
-        spdlog::logger _logger = spdlog::logger("logger");
+        std::shared_ptr<spdlog::logger> _logger = std::make_shared<spdlog::logger>("logger");
         void* _renderDocAPI = nullptr;
 
         Properties _properties = {};
@@ -417,16 +407,6 @@ namespace canta {
         ResourceList<Semaphore> _semaphoreList = {};
 
         std::vector<std::function<void(CommandHandle)>> _deferredCommands = {};
-
-        PipelineHandle _singleSort = {};
-        PipelineHandle _multiSort = {};
-        PipelineHandle _multiSortHistograms = {};
-        PipelineHandle _prefixSumExclusive = {};
-        PipelineHandle _prefixSumInclusive = {};
-        PipelineHandle _randomListGenerator = {};
-        PipelineHandle _randomListGeneratorFloat = {};
-        PipelineHandle _generateRandomNoise = {};
-        PipelineHandle _generatePerlinNoise = {};
 
     };
 

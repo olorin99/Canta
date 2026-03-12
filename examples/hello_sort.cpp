@@ -66,6 +66,8 @@ int main() {
     const auto values = TRY_MAIN(renderGraph.host("data_upload_second").upload(buffer1, valueData));
 
     // const auto sortOutputs = TRY_MAIN(canta::sort<Value>(renderGraph, keys, values));
+    // const auto sortOutputs = TRY_MAIN(canta::singleSort<Value>(renderGraph, keys, values));
+    // const auto sortOutputs1 = TRY_MAIN(canta::singleSort<Value>(renderGraph, keys, values));
 
     const auto sortOutputs = TRY_MAIN(canta::multiSort<Value>(renderGraph, keys, values));
 

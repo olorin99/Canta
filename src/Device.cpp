@@ -179,7 +179,7 @@ auto canta::Device::create(CreateInfo info) noexcept -> std::expected<std::uniqu
     auto consoleSink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
     auto fileSink = std::make_shared<spdlog::sinks::basic_file_sink_mt>("logs/canta.log");
     std::vector<spdlog::sink_ptr> sinks{ consoleSink, fileSink };
-    device->_logger = spdlog::logger("Canta Logger", sinks.begin(), sinks.end());
+    device->_logger = std::make_shared<spdlog::logger>("Canta Logger", sinks.begin(), sinks.end());
     device->logger().set_level(info.logLevel);
 
     device->logger().info("Beginning Init");
@@ -676,110 +676,24 @@ auto canta::Device::create(CreateInfo info) noexcept -> std::expected<std::uniqu
         return 0;
     };
 
-    device->_shaderList.setLogger(&device->_logger);
+    device->_shaderList.setLogger(device->_logger);
     device->_shaderList.setGetTimelineValue(getResourceTimelineValue);
     device->_shaderList.setDestructionDelay(info.resourceDestructionDelay);
-    device->_pipelineList.setLogger(&device->_logger);
+    device->_pipelineList.setLogger(device->_logger);
     device->_pipelineList.setGetTimelineValue(getResourceTimelineValue);
     device->_pipelineList.setDestructionDelay(info.resourceDestructionDelay);
-    device->_imageList.setLogger(&device->_logger);
+    device->_imageList.setLogger(device->_logger);
     device->_imageList.setGetTimelineValue(getResourceTimelineValue);
     device->_imageList.setDestructionDelay(info.resourceDestructionDelay);
-    device->_imageViewList.setLogger(&device->_logger);
+    device->_imageViewList.setLogger(device->_logger);
     device->_imageViewList.setGetTimelineValue(getResourceTimelineValue);
     device->_imageViewList.setDestructionDelay(info.resourceDestructionDelay);
-    device->_bufferList.setLogger(&device->_logger);
+    device->_bufferList.setLogger(device->_logger);
     device->_bufferList.setGetTimelineValue(getResourceTimelineValue);
     device->_bufferList.setDestructionDelay(info.resourceDestructionDelay);
-    device->_samplerList.setLogger(&device->_logger);
+    device->_samplerList.setLogger(device->_logger);
     device->_samplerList.setGetTimelineValue(getResourceTimelineValue);
     device->_samplerList.setDestructionDelay(info.resourceDestructionDelay);
-
-    device->_singleSort = device->createPipeline({
-        .compute = {
-            .module = device->createShaderModule({
-                .spirv = single_sort_spv_embedded,
-                .stage = ShaderStage::COMPUTE,
-                .name = "canta_single_sort"
-            })
-        }
-    });
-    device->_multiSort = device->createPipeline({
-        .compute = {
-            .module = device->createShaderModule({
-                .spirv = multi_sort_spv_embedded,
-                .stage = ShaderStage::COMPUTE,
-                .name = "canta_multi_sort"
-            })
-        }
-    });
-    device->_multiSortHistograms = device->createPipeline({
-        .compute = {
-            .module = device->createShaderModule({
-                .spirv = multi_sort_histograms_spv_embedded,
-                .stage = ShaderStage::COMPUTE,
-                .name = "canta_multi_sort_histograms"
-            })
-        }
-    });
-    device->_prefixSumExclusive = device->createPipeline({
-        .compute = {
-            .module = device->createShaderModule({
-                .spirv = prefix_sum_spv_embedded,
-                .stage = ShaderStage::COMPUTE,
-                .name = "canta_prefix_sum_exclusive"
-            }),
-            .entryPoint = "exclusive"
-        }
-    });
-    device->_prefixSumInclusive = device->createPipeline({
-        .compute = {
-            .module = device->createShaderModule({
-                .spirv = prefix_sum_spv_embedded,
-                .stage = ShaderStage::COMPUTE,
-                .name = "canta_prefix_sum_inclusive"
-            }),
-            .entryPoint = "inclusive"
-        }
-    });
-    device->_randomListGenerator = device->createPipeline({
-        .compute = {
-            .module = device->createShaderModule({
-                .spirv = random_list_spv_embedded,
-                .stage = ShaderStage::COMPUTE,
-                .name = "canta_generate_random_floats"
-            }),
-            .entryPoint = "generateUints"
-        }
-    });
-    device->_randomListGeneratorFloat = device->createPipeline({
-        .compute = {
-            .module = device->createShaderModule({
-                .spirv = random_list_spv_embedded,
-                .stage = ShaderStage::COMPUTE,
-                .name = "canta_generate_random_floats"
-            }),
-            .entryPoint = "generateFloats"
-        }
-    });
-    device->_generateRandomNoise = device->createPipeline({
-        .compute = {
-            .module = device->createShaderModule({
-                .spirv = random_noise_spv_embedded,
-                .stage = ShaderStage::COMPUTE,
-                .name = "canta_generate_random_noise"
-            }),
-        }
-    });
-    device->_generatePerlinNoise = device->createPipeline({
-        .compute = {
-            .module = device->createShaderModule({
-                .spirv = perlin_noise_spv_embedded,
-                .stage = ShaderStage::COMPUTE,
-                .name = "canta_generate_perlin_noise"
-            }),
-        }
-    });
 
     device->logger().info("Device creation complete");
 
@@ -1000,7 +914,7 @@ auto canta::Device::createSemaphore(Semaphore::CreateInfo info) -> std::expected
 auto canta::Device::createCommandPool(CommandPool::CreateInfo info) -> std::expected<CommandPool, VulkanError> {
     CommandPool pool = {};
     pool._device = this;
-    pool._commandBuffers.setLogger(&_logger);
+    pool._commandBuffers.setLogger(_logger);
 
     const auto getResourceTimelineValue = [this] () -> u64 {
         SemaphoreHandle timeline = resourceTimeline();

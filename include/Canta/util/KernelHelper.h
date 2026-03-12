@@ -14,12 +14,18 @@ namespace canta::util {
 
         const std::string _name;
         const std::span<const u32> _source;
+        std::string _entryPoint = "main";
 
         PipelineHandle _pipeline = {};
 
         u32 _x = 1;
         u32 _y = 1;
         u32 _z = 1;
+
+        auto entry(const std::string_view entryPoint) -> kernel_helper& {
+            _entryPoint = entryPoint;
+            return *this;
+        }
 
         auto pipeline(PipelineManager& manager) -> kernel_helper& {
             auto source = std::vector<u32>{};
@@ -31,8 +37,9 @@ namespace canta::util {
                         .spirv = source,
                         .stage = canta::ShaderStage::COMPUTE,
                         .name = _name
-                    }).value()
-                }
+                    }).value(),
+                    .entryPoint = _entryPoint,
+                },
             }).value();
             return *this;
         }
@@ -47,7 +54,8 @@ namespace canta::util {
                         .spirv = source,
                         .stage = canta::ShaderStage::COMPUTE,
                         .name = _name
-                    })
+                    }),
+                    .entryPoint = _entryPoint,
                 }
             });
             return *this;
