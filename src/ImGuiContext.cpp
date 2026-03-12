@@ -5,66 +5,14 @@
 #include <backends/imgui_impl_sdl2.h>
 #include <imnodes.h>
 #include <Ende/filesystem/File.h>
+#include "embedded_shaders_Canta.h"
 
-
-const char* vertexSlang = R"(
-
-struct VSOutput {
-    float4 position : SV_Position;
-    float2 uv : TEXCOORD;
-    float4 colour: COLOUR;
-};
-
-[shader("vertex")]
-VSOutput main(
-    float2 pos : POSITION,
-    float2 uv : TEXCOORD,
-    float4 colour,
-    uniform float2 scale,
-    uniform float2 translate,
-) {
-    VSOutput out;
-    out.position = float4(pos * scale + translate, 0, 1);
-    out.uv = uv;
-    out.colour = colour;
-    return out;
-}
-)";
-
-const char* fragmentSlang = R"(
-import canta;
-
-struct VSOutput {
-    float4 position : SV_Position;
-    float2 uv : TEXCOORD;
-    float4 colour: COLOUR;
-};
-
-struct Push {
-    [[vk::offset(16)]] canta.Sampler sampler;
-    [[vk::offset(20)]] canta.Image2D<float4> image;
-}
-
-[[vk::push_constant]]
-Push push;
-
-[shader("fragment")]
-float4 main(
-    in VSOutput input,
-) {
-    float4 colour = push.image.get().Sample(push.sampler.get(), input.uv);
-    return input.colour * colour;
-}
-)";
-
-auto canta::ImGuiContext::create(canta::ImGuiContext::CreateInfo info) -> ImGuiContext {
+auto canta::ImGuiContext::create(const CreateInfo info) -> ImGuiContext {
     ImGuiContext context = {};
 
     assert(info.device);
-    assert(info.pipelineManager);
 
     context._device = info.device;
-    context._pipelineManager = info.pipelineManager;
     context._sampler = info.device->createSampler({});
 
     IMGUI_CHECKVERSION();
@@ -330,18 +278,20 @@ auto canta::ImGuiContext::createPipeline(canta::Format format) -> PipelineHandle
     };
     auto colourFormats = std::vector{ format };
 
-    return _pipelineManager->getPipeline({
+    return _device->createPipeline({
         .vertex = {
-            .module = _pipelineManager->getShader({
-                .slang = vertexSlang,
+            .module = _device->createShaderModule({
+                .spirv = std::vector(imgui_spv_embedded.begin(), imgui_spv_embedded.end()),
                 .stage = ShaderStage::VERTEX
-            }).value()
+            }),
+            .entryPoint = "vertex"
         },
         .fragment = {
-            .module = _pipelineManager->getShader({
-                .slang = fragmentSlang,
-                .stage = ShaderStage::FRAGMENT
-            }).value()
+            .module = _device->createShaderModule({
+                .spirv = std::vector(imgui_spv_embedded.begin(), imgui_spv_embedded.end()),
+                .stage = ShaderStage::FRAGMENT,
+            }),
+            .entryPoint = "fragment"
         },
         .rasterState = {
             .cullMode = CullMode::NONE,
@@ -358,5 +308,5 @@ auto canta::ImGuiContext::createPipeline(canta::Format format) -> PipelineHandle
         .inputAttributes = inputAttributes,
         .topology = PrimitiveTopology::TRIANGLE_LIST,
         .colourFormats = colourFormats
-    }).value();
+    });
 }

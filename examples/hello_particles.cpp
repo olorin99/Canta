@@ -46,7 +46,6 @@ int main() {
     auto imguiContext = canta::ImGuiContext::create({
         .device = device.get(),
         .window = &window,
-        .pipelineManager = &pipelineManager,
     });
 
     auto pipeline = TRY_MAIN(pipelineManager.getPipeline(CANTA_SRC_DIR"/examples/particles_update.pipeline", std::to_array({

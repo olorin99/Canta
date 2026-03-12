@@ -29,7 +29,6 @@ int main() {
     auto imgui = canta::ImGuiContext::create({
         .device = device.get(),
         .window = &window,
-        .pipelineManager = &pipelineManger,
     });
 
     auto renderGraph = TRY_MAIN(canta::RenderGraph::create({

@@ -17,7 +17,6 @@ namespace canta {
         struct CreateInfo {
             Device* device = nullptr;
             SDLWindow* window = nullptr;
-            PipelineManager* pipelineManager = nullptr;
         };
         static auto create(CreateInfo info) -> ImGuiContext;
 
@@ -41,7 +40,6 @@ namespace canta {
         auto createPipeline(Format format) -> PipelineHandle;
 
         Device* _device = nullptr;
-        PipelineManager* _pipelineManager = nullptr;
         PipelineHandle _pipeline = {};
         Format _pipelineFormat = Format::RGBA8_UNORM;
 

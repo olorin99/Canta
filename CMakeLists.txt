@@ -85,6 +85,7 @@ compile_shaders(
         src/util/random_list.slang
         src/util/random_noise.slang
         src/util/perlin_noise.slang
+        src/imgui.slang
 )
 
 embed_shaders(
