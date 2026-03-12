@@ -34,6 +34,9 @@ function(compile_shaders)
         set(OUTPUT_FILE "${CMAKE_CURRENT_BINARY_DIR}/include/${base_name}.spv")
         list(APPEND SHADER_OUTPUTS ${OUTPUT_FILE})
 
+        if (NOT DEFINED SLANG_BINARY_DIR)
+            set(SLANG_BINARY_DIR "${CMAKE_BINARY_DIR}/_deps/slang-build")
+        endif ()
         set(SLANG_BINARY "${SLANG_BINARY_DIR}/slang-2025.24.3-linux-x86_64/bin/slangc")
 
         add_custom_command(
