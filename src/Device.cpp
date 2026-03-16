@@ -852,8 +852,7 @@ auto canta::Device::queueEnabled(const QueueType type) -> bool {
 }
 
 auto canta::Device::waitIdle() const -> std::expected<bool, VulkanError> {
-    auto result = vkDeviceWaitIdle(logicalDevice());
-    if (result != VK_SUCCESS)
+    if (auto result = vkDeviceWaitIdle(logicalDevice()); result != VK_SUCCESS)
         return std::unexpected(static_cast<VulkanError>(result));
     return true;
 }

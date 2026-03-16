@@ -31,15 +31,15 @@ VkPresentModeKHR getValidPresentMode(VkPhysicalDevice device, VkSurfaceKHR surfa
     std::vector<VkPresentModeKHR> modes(count);
     vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &count, modes.data());
 
-    for (auto& mode : modes) {
+    for (const auto& mode : modes) {
         if (mode == preference)
             return mode;
     }
-    for (auto& mode : modes) {
+    for (const auto& mode : modes) {
         if (mode == VK_PRESENT_MODE_MAILBOX_KHR)
             return mode;
     }
-    for (auto& mode : modes) {
+    for (const auto& mode : modes) {
         if (mode == VK_PRESENT_MODE_IMMEDIATE_KHR)
             return mode;
     }
@@ -104,15 +104,14 @@ auto canta::Swapchain::operator=(canta::Swapchain &&rhs) noexcept -> Swapchain &
 auto canta::Swapchain::acquire(SemaphoreHandle timeline) -> std::expected<ImageHandle, VulkanError> {
     _semaphoreIndex = (_semaphoreIndex % _semaphores.size());
     auto acquireSemaphore = _semaphores[_semaphoreIndex].acquire;
-    const auto result = vkAcquireNextImageKHR(_device->logicalDevice(), _swapchain, std::numeric_limits<u64>::max(), acquireSemaphore->semaphore(), VK_NULL_HANDLE, &_index);
-    switch (result) {
+    switch (const auto result = vkAcquireNextImageKHR(_device->logicalDevice(), _swapchain, std::numeric_limits<u64>::max(), acquireSemaphore->semaphore(), VK_NULL_HANDLE, &_index)) {
         case VK_SUCCESS:
             break;
         case VK_ERROR_OUT_OF_DATE_KHR:
             recreate();
             break;
         case VK_SUBOPTIMAL_KHR:
-//            recreate();
+            // recreate();
             break;
         default:
             return std::unexpected(static_cast<VulkanError>(result));
@@ -129,7 +128,6 @@ auto canta::Swapchain::acquire(SemaphoreHandle timeline) -> std::expected<ImageH
         TRY(_device->queue(QueueType::PRESENT)->submit({}, waits, signals));
     }
 
-
     return _imageHandles[_index];
 }
 
@@ -138,9 +136,6 @@ auto canta::Swapchain::present(std::span<SemaphoreHandle> timelines) -> std::exp
     _semaphoreIndex = (_semaphoreIndex + 1 % _semaphores.size());
 
     if (!timelines.empty()) {
-        // auto waits = std::to_array({
-        //     SemaphorePair(std::move(timeline))
-        // });
         std::vector<SemaphorePair> waits = {};
         for (auto& timeline : timelines)
             waits.emplace_back(timeline);
@@ -164,9 +159,16 @@ auto canta::Swapchain::present(std::span<SemaphoreHandle> timelines) -> std::exp
     presentInfo.pImageIndices = &_index;
     presentInfo.pResults = nullptr;
 
-    auto result = vkQueuePresentKHR(_device->queue(QueueType::GRAPHICS)->queue(), &presentInfo);
-    if (result != VK_SUCCESS)
-        return std::unexpected(static_cast<VulkanError>(result));
+    switch (auto result = vkQueuePresentKHR(_device->queue(QueueType::GRAPHICS)->queue(), &presentInfo)) {
+        case VK_SUCCESS:
+            break;
+        case VK_ERROR_OUT_OF_DATE_KHR:
+        case VK_SUBOPTIMAL_KHR:
+            recreate();
+            break;
+        default:
+            return std::unexpected(static_cast<VulkanError>(result));
+    }
     return _index;
 }
 
@@ -237,8 +239,9 @@ void canta::Swapchain::createSwapchain() {
     createInfo.oldSwapchain = _swapchain;
     auto oldSwapchain = _swapchain;
 
-    auto result = vkCreateSwapchainKHR(_device->logicalDevice(), &createInfo, nullptr, &_swapchain);
-
+    if (auto result = vkCreateSwapchainKHR(_device->logicalDevice(), &createInfo, nullptr, &_swapchain); result != VK_SUCCESS) {
+        _device->logger().error("Swapchain error: {}", static_cast<u32>(result));
+    }
 
     u32 count = 0;
     vkGetSwapchainImagesKHR(_device->logicalDevice(), _swapchain, &count, nullptr);
@@ -305,8 +308,9 @@ void canta::Swapchain::createSemaphores() {
 
 void canta::Swapchain::recreate() {
     vkDeviceWaitIdle(_device->logicalDevice());
-    for (auto& view : _imageViews)
+    for (const auto& view : _imageViews)
         vkDestroyImageView(_device->logicalDevice(), view, nullptr);
 
     createSwapchain();
+    vkDeviceWaitIdle(_device->logicalDevice());
 }

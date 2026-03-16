@@ -10,8 +10,8 @@ struct Particle {
     int radius;
 };
 
-bool outOfBounds(float2 position) {
-    if (position.x > screen_width || position.x < 0 || position.y > 1080 || position.y < 0)
+bool outOfBounds(float2 position, uint4 bounds) {
+    if (position.x > bounds.z || position.x < bounds.x || position.y > bounds.w || position.y < bounds.y)
         return true;
 
     return false;
@@ -29,7 +29,8 @@ void moveMain(
     uint3 threadId: SV_DispatchThreadID,
     uniform Particle* particles,
     uniform int maxParticles,
-    uniform float dt
+    uniform float dt,
+    uniform uint4 bounds,
 ) {
     const uint idx = threadId.x;
     if (idx >= maxParticles)
@@ -37,8 +38,8 @@ void moveMain(
     Particle particle = particles[idx];
 
     float2 newPosition = particle.position + particle.velocity * dt / 10;
-    if (outOfBounds(newPosition)) {
-        const float2 screenCenter = float2(screen_width / 2, 1080 / 2);
+    if (outOfBounds(newPosition, bounds)) {
+        const float2 screenCenter = bounds.xy + ((bounds.zw - bounds.xy) / 2.f);
 
         float2 direction = normalize(screenCenter - newPosition);
         float2 newVelocity = direction * length(particle.velocity);

@@ -23,7 +23,7 @@ int main() {
     std::printf("%s", canta::formatString(canta::Format::BC7_UNORM));
     std::printf("%s", canta::formatString(canta::Format::R16_UNORM));
 
-    canta::SDLWindow window("Hello Triangle", 1920, 1080);
+    canta::SDLWindow window("Hello Triangle", 1920, 1080, SDL_WINDOW_RESIZABLE);
 
     auto device = TRY_MAIN(canta::Device::create({
         .applicationName = "hello_triangle",
@@ -161,6 +161,11 @@ int main() {
         ImGui::ShowDemoWindow();
 
         if (ImGui::Begin("Stats")) {
+            const auto windowExtent = window.extent();
+            const auto swapchainExtent = swapchain->extent();
+            ImGui::Text("Window extent: { %u, %u }", windowExtent.x(), windowExtent.y());
+            ImGui::Text("Swapchain extent: { %u, %u }", swapchainExtent.x(), swapchainExtent.y());
+
 
             ImGui::Text("Delta Time: %f", dt);
 
@@ -313,8 +318,8 @@ int main() {
         renderGraph.reset();
 
         auto imageIndex = renderGraph.addImage({
-            .width = 1920,
-            .height = 1080,
+            .width = swapchain->width(),
+            .height = swapchain->height(),
             .mips = 4,
             .name = "image"
         });
@@ -330,8 +335,12 @@ int main() {
 
         const auto particlesGroup = renderGraph.addGroup("particles", { 0, 1, 0, 1 });
 
+        const auto bounds = ende::math::Vec<4, u32>{
+            0, 0, swapchain->width(), swapchain->height(),
+        };
+
         auto movedParticles = TRY_MAIN(renderGraph.compute("particles_move", pipeline, particlesGroup)
-            .pushConstants(canta::Write(particleBufferIndex), numParticles, static_cast<f32>(dt))
+            .pushConstants(canta::Write(particleBufferIndex), numParticles, static_cast<f32>(dt), bounds)
             .dispatchThreads(numParticles).output<canta::BufferIndex>());
 
         auto drawnParticles = TRY_MAIN(renderGraph.compute("particles_draw", pipelineDraw, particlesGroup)
