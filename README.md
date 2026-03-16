@@ -33,12 +33,12 @@ auto renderGraph = canta::RenderGraph::create({
 });
 
 // Create graph resources
-auto objectBuffer = renderGraph.addBuffer({
+auto objectBuffer = renderGraph->addBuffer({
     .size = sizeof(Object) * numObjects,
     .name = "object_buffer"
 });
 
-auto backbuffer = renderGraph.addImage({
+auto backbuffer = renderGraph->addImage({
     .width = 1920,
     .height = 1080,
     .format = canta::Format::RGBA8_SRGB,
@@ -46,35 +46,53 @@ auto backbuffer = renderGraph.addImage({
 });
 
 // Create graph passes
-renderGraph.addPass({
-    .name = "run_objects",
-    .type = canta::PassType::COMPUTE
-})
-    .addStorageBufferWrite(objectBuffer, canta::PipelineStage::COMPUTE_SHADER) // add write dependency
-    .setPipeline(runPipeline)
-    .pushConstants(objectBuffer)
-    .dispatch(x, y);
+const auto objects = rendergraph->compute("run_objects", runPipeline)
+    .pushConstants(Write(objectBuffer))
+    .dispatchThreads(x, y).output<BufferIndex>();
 
-renderGraph.addPass({
-    .name = "main_draw"
-    .type = canta::PassType::COMPUTE
-})
-    .addStorageBufferRead(objectBuffer, canta::PipelineStage::COMPUTE_SHADER) // reads output from "run_objects" pass
-    .addStorageImageWrite(backbuffer, canta::PipelineStage::COMPUTE_SHADER)
-    .setPipeline(drawPipeline)
-    .pushConstants(backbuffer, objectBuffer)
-    .dispatch(x, y);
+const auto finalBackbuffer = renderGraph->compute("main_draw", drawPipeline)
+    .pushConstants(Write(backbuffer), Read(objects))
+    .dispatchThreads(x, y).output<ImageIndex>();
 
 // Set output target
-renderGraph.setBackbuffer(backbuffer);
+renderGraph->setRoot(finalBackbuffer);
 
 // Compile and run
 renderGraph.compile();
-renderGraph.execute({}, {}); // First arg is semaphores to wait on and second is semaphores to signal for use with frame sync
+renderGraph.run({}, {}, false); // First arg is semaphores to wait on and second is semaphores to signal for use with frame sync, third is whether to run the graph asynchronously or not.
 
 ```
 
-### Pipeline Manager
+### Shaders
+There are several ways to use shaders with canta. Either compiled and embedded through the build script or evaluated at runtime using a pipeline manager.
+
+#### Embedded
+Shaders can be embedded into the binary using cmake functions included with the library. The function takes two named parameters. `NAME` which designates a namespace the shaders will be available under. And `SHADERS` which is a list of paths to shaders to embed.
+```cmake
+embed_shaders(
+        NAME project_name
+        SHADERS path/to/shader/file.spv path/to/shader/file.slang
+)
+```
+
+Additionally, the included slang compiler can be used to build slang shaders at build time which can then be embedded into the binary.
+```cmake
+compile_shaders(path/to/shader/file.slang path/to/shader/file1.slang)
+embed_shaders(
+        NAME project_name
+        SHADERS ${COMPILED_SHADER_OUTPUTS}
+)
+```
+Once embedded the shader data is available in the `embedded_shaders_${NAME}.h` header file. The shader data is contained in a namespace `NAME` in variables named `${file_name}_${file_type}_embedded` with `file_type` being either `slang` or `spv`. Embedded spirv compute shaders will also have a helper function generated which facilitates using the shader in a  render graph. These function are named using the file name.
+```c++
+#include "embedded_shaders_PROJECT.h"
+
+auto shader_data = project_name::file_slang_embedded;
+
+auto computePass = project_name::file(x, y, z)(graph, push, constants, go, here, with, Read(and), Write(depenencies));
+```
+
+#### Pipeline Manager
 Includes a pipeline manager which facilitates the creation and management of shaders and pipeline objects. Shaders/Pipelines are cached after the first use so passing the same arguments to getShader/getPipeline will return the same object.
 
 ```c++
@@ -101,33 +119,50 @@ auto pipeline  = pipelineManager.getPipeline({
         .entryPoint = "main"
     },
     .fragment = {
-        .module = pipelineManager.getShader({
-            .path - "path/to/fragment/shader",
-            .stage = canta::ShaderStage::FRAGMENT,
-            .name = "fragment_shader"
-        }),
+        .path = "can/also/just/provide/a/path/for/the/shader.slang",
         .entryPoint = "fragmentMain"
     },
     .name = "raster_pipeline"
 });
-
 ```
 
 ## Dependencies
-### System
 - SDL2
 - Vulkan
 - spdlog
-
-### Downloaded with cmake
 - Ende
 - volk
 - VulkanMemoryAllocator
 - Tessil/robin-map
 - SPIRV-Cross
 - slang
-
-### Embeded in project
 - imgui
 - rapidjson
 - imnodes
+
+## Build
+### Install dependencies
+#### Arch
+`sudo pacman -Syu libsdl2`
+#### Ubuntu
+`sudo apt install libsdl2-dev libspdlog-dev libvulkan-dev`
+
+To build library standalone.
+```bash
+git clone https://git.melamar.xyz/olorin99/Canta
+cd Canta
+mkdir build
+cd build
+cmake -G Ninja -DCMAKE_BUILD_TYPE=Release ..
+cmake --build . --target Canta -j8
+```
+
+To include in cmake project.
+```cmake
+FetchContent_Declare(
+        Canta
+        GIT_REPOSITORY  https://git.melamar.xyz/olorin99/Canta
+        GIT_TAG         "main"
+)
+FetchContent_MakeAvailable(Canta)
+```
