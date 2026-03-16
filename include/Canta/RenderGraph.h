@@ -383,7 +383,7 @@ namespace canta {
 
         auto dispatchThreads(u32 x = 1, u32 y = 1, u32 z = 1) -> ComputePass&;
         auto dispatchWorkgroups(u32 x = 1, u32 y = 1, u32 z = 1) -> ComputePass&;
-        auto dispatchIndirect(BufferHandle commands, u32 offset) -> ComputePass&;
+        auto dispatchIndirect(BufferIndex commands, u32 offset) -> ComputePass&;
 
     };
 
@@ -414,13 +414,13 @@ namespace canta {
         }
 
         auto draw(u32 count, u32 instanceCount = 1, u32 firstVertex = 0, u32 firstIndex = 0, u32 firstInstance = 0, bool indexed = false) -> GraphicsPass&;
-        auto drawIndirect(BufferHandle commands, u32 offset, u32 drawCount, bool indexed = false, u32 stride = 0) -> GraphicsPass&;
-        auto drawIndirectCount(BufferHandle commands, u32 offset, BufferHandle countBuffer, u32 countOffset, bool indexed = false, u32 stride = 0) -> GraphicsPass&;
+        auto drawIndirect(BufferIndex commands, u32 offset, u32 drawCount, bool indexed = false, u32 stride = 0) -> GraphicsPass&;
+        auto drawIndirectCount(BufferIndex commands, u32 offset, BufferIndex countBuffer, u32 countOffset, bool indexed = false, u32 stride = 0) -> GraphicsPass&;
 
         auto drawMeshTasksThreads(u32 x = 1, u32 y = 1, u32 z = 1) -> GraphicsPass&;
         auto drawMeshTasksWorkgroups(u32 x = 1, u32 y = 1, u32 z = 1) -> GraphicsPass&;
-        auto drawMeshTasksIndirect(BufferHandle commands, u32 offset, u32 drawCount, u32 stride = sizeof(VkDrawMeshTasksIndirectCommandEXT)) -> GraphicsPass&;
-        auto drawMeshTasksIndirectCount(BufferHandle commands, u32 offset, BufferHandle countBuffer, u32 countOffset, u32 stride = sizeof(VkDrawMeshTasksIndirectCommandEXT)) -> GraphicsPass&;
+        auto drawMeshTasksIndirect(BufferIndex commands, u32 offset, u32 drawCount, u32 stride = sizeof(VkDrawMeshTasksIndirectCommandEXT)) -> GraphicsPass&;
+        auto drawMeshTasksIndirectCount(BufferIndex commands, u32 offset, BufferIndex countBuffer, u32 countOffset, u32 stride = sizeof(VkDrawMeshTasksIndirectCommandEXT)) -> GraphicsPass&;
 
         auto blit(ImageIndex src, ImageIndex dst, Filter filter = Filter::LINEAR) -> GraphicsPass&;
 

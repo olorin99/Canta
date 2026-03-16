@@ -694,10 +694,11 @@ auto canta::ComputePass::dispatchWorkgroups(u32 x, u32 y, u32 z) -> ComputePass 
     return *this;
 }
 
-auto canta::ComputePass::dispatchIndirect(BufferHandle commandBuffer, u32 offset) -> ComputePass & {
-    pass().setCallback([commandBuffer, offset] (auto cmd, auto& graph, const RenderPass::PushData& push) {
+auto canta::ComputePass::dispatchIndirect(const BufferIndex commands, u32 offset) -> ComputePass & {
+    addIndirectRead(commands);
+    pass().setCallback([commands, offset] (auto cmd, auto& graph, const RenderPass::PushData& push) -> std::expected<bool, RenderGraphError> {
         cmd->pushConstants(ShaderStage::COMPUTE, { push.data.data(), push.size }, 0);
-        cmd->dispatchIndirect(commandBuffer, offset);
+        cmd->dispatchIndirect(TRY(graph.getBuffer(commands)), offset);
         return true;
     });
     return *this;
@@ -762,23 +763,26 @@ auto canta::GraphicsPass::draw(u32 count, u32 instanceCount, u32 firstVertex, u3
     return *this;
 }
 
-auto canta::GraphicsPass::drawIndirect(BufferHandle commands, u32 offset, u32 drawCount, bool indexed, u32 stride) -> GraphicsPass & {
+auto canta::GraphicsPass::drawIndirect(const BufferIndex commands, u32 offset, u32 drawCount, bool indexed, u32 stride) -> GraphicsPass & {
+    addIndirectRead(commands);
     auto dimensions = pass().dimensions();
-    pass().setCallback([dimensions, commands, offset, drawCount, indexed, stride] (auto cmd, auto& graph, const RenderPass::PushData& push) {
+    pass().setCallback([dimensions, commands, offset, drawCount, indexed, stride] (auto cmd, auto& graph, const RenderPass::PushData& push) -> std::expected<bool, RenderGraphError> {
         cmd->setViewport({ static_cast<f32>(dimensions.x()), static_cast<f32>(dimensions.y()) });
         cmd->pushConstants(ShaderStage::VERTEX | ShaderStage::FRAGMENT, { push.data.data(), push.size }, 0);
-        cmd->drawIndirect(commands, offset, drawCount, indexed, stride);
+        cmd->drawIndirect(TRY(graph.getBuffer(commands)), offset, drawCount, indexed, stride);
         return true;
     });
     return *this;
 }
 
-auto canta::GraphicsPass::drawIndirectCount(BufferHandle commands, u32 offset, BufferHandle countBuffer, u32 countOffset, bool indexed, u32 stride) -> GraphicsPass & {
+auto canta::GraphicsPass::drawIndirectCount(const BufferIndex commands, u32 offset, const BufferIndex countBuffer, u32 countOffset, bool indexed, u32 stride) -> GraphicsPass & {
+    addIndirectRead(commands);
+    addIndirectRead(countBuffer);
     auto dimensions = pass().dimensions();
-    pass().setCallback([dimensions, commands, offset, countBuffer, countOffset, indexed, stride] (auto cmd, auto& graph, const RenderPass::PushData& push) {
+    pass().setCallback([dimensions, commands, offset, countBuffer, countOffset, indexed, stride] (auto cmd, auto& graph, const RenderPass::PushData& push) -> std::expected<bool, RenderGraphError> {
         cmd->setViewport({ static_cast<f32>(dimensions.x()), static_cast<f32>(dimensions.y()) });
         cmd->pushConstants(ShaderStage::VERTEX | ShaderStage::FRAGMENT, { push.data.data(), push.size }, 0);
-        cmd->drawIndirectCount(commands, offset, countBuffer, countOffset, indexed, stride);
+        cmd->drawIndirectCount(TRY(graph.getBuffer(commands)), offset, TRY(graph.getBuffer(countBuffer)), countOffset, indexed, stride);
         return true;
     });
     return *this;
@@ -806,23 +810,26 @@ auto canta::GraphicsPass::drawMeshTasksWorkgroups(u32 x, u32 y, u32 z) -> Graphi
     return *this;
 }
 
-auto canta::GraphicsPass::drawMeshTasksIndirect(BufferHandle commands, u32 offset, u32 drawCount, u32 stride) -> GraphicsPass & {
+auto canta::GraphicsPass::drawMeshTasksIndirect(const BufferIndex commands, u32 offset, u32 drawCount, u32 stride) -> GraphicsPass & {
+    addIndirectRead(commands);
     auto dimensions = pass().dimensions();
-    pass().setCallback([dimensions, commands, offset, drawCount, stride] (auto cmd, auto& graph, const RenderPass::PushData& push) {
+    pass().setCallback([dimensions, commands, offset, drawCount, stride] (auto cmd, auto& graph, const RenderPass::PushData& push) -> std::expected<bool, RenderGraphError> {
         cmd->setViewport({ static_cast<f32>(dimensions.x()), static_cast<f32>(dimensions.y()) });
         cmd->pushConstants(ShaderStage::MESH | ShaderStage::FRAGMENT, { push.data.data(), push.size }, 0);
-        cmd->drawMeshTasksIndirect(commands, offset, drawCount, stride);
+        cmd->drawMeshTasksIndirect(TRY(graph.getBuffer(commands)), offset, drawCount, stride);
         return true;
     });
     return *this;
 }
 
-auto canta::GraphicsPass::drawMeshTasksIndirectCount(BufferHandle commands, u32 offset, BufferHandle countBuffer, u32 countOffset, u32 stride) -> GraphicsPass & {
+auto canta::GraphicsPass::drawMeshTasksIndirectCount(const BufferIndex commands, u32 offset, const BufferIndex countBuffer, u32 countOffset, u32 stride) -> GraphicsPass & {
+    addIndirectRead(commands);
+    addIndirectRead(countBuffer);
     auto dimensions = pass().dimensions();
-    pass().setCallback([dimensions, commands, offset, countBuffer, countOffset, stride] (auto cmd, auto& graph, const RenderPass::PushData& push) {
+    pass().setCallback([dimensions, commands, offset, countBuffer, countOffset, stride] (auto cmd, auto& graph, const RenderPass::PushData& push) -> std::expected<bool, RenderGraphError> {
         cmd->setViewport({ static_cast<f32>(dimensions.x()), static_cast<f32>(dimensions.y()) });
         cmd->pushConstants(ShaderStage::MESH | ShaderStage::FRAGMENT, { push.data.data(), push.size }, 0);
-        cmd->drawMeshTasksIndirectCount(commands, offset, countBuffer, countOffset, stride);
+        cmd->drawMeshTasksIndirectCount(TRY(graph.getBuffer(commands)), offset, TRY(graph.getBuffer(countBuffer)), countOffset, stride);
         return true;
     });
     return *this;
