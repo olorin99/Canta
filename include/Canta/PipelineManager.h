@@ -21,23 +21,55 @@ namespace canta {
         std::vector<u32> spirv = {};
         std::string_view slang = {};
         std::vector<Macro> macros = {};
-        ShaderStage stage = ShaderStage::NONE;
-        std::string_view name = {};
+        std::string_view entry = "main";
+
+        explicit operator bool() const {
+            return !spirv.empty() || !path.empty() || !slang.empty();
+        }
+    };
+
+    struct PipelineDescription {
+        ShaderDescription vertex = {};
+        ShaderDescription tesselationControl = {};
+        ShaderDescription tesselationEvaluation = {};
+        ShaderDescription geometry = {};
+        ShaderDescription fragment = {};
+        ShaderDescription compute = {};
+        ShaderDescription rayGen = {};
+        ShaderDescription anyHit = {};
+        ShaderDescription closestHit = {};
+        ShaderDescription miss = {};
+        ShaderDescription intersection = {};
+        ShaderDescription callable = {};
+        ShaderDescription task = {};
+        ShaderDescription mesh = {};
+        std::optional<ende::math::Vec<3, u32>> localSize = {};
+        std::vector<SpecializationConstant> specializationConstants = {};
+        RasterState rasterState = {};
+        DepthState depthState = {};
+        BlendState blendState = {};
+        std::vector<VertexInputBinding> inputBindings = {};
+        std::vector<VertexInputAttribute> inputAttributes = {};
+        PrimitiveTopology topology = PrimitiveTopology::TRIANGLE_LIST;
+        bool primitiveRestart = false;
+        std::vector<Format> colourFormats = {};
+        Format depthFormat = Format::UNDEFINED;
+        std::string name = {};
     };
 }
 
 namespace std {
-    template <> struct hash<canta::Pipeline::CreateInfo> {
-        size_t operator()(const canta::Pipeline::CreateInfo& object) const;
+    template <> struct hash<canta::PipelineDescription> {
+        size_t operator()(const canta::PipelineDescription& object) const noexcept;
     };
     template <> struct hash<canta::ShaderDescription> {
-        size_t operator()(const canta::ShaderDescription& object) const;
+        size_t operator()(const canta::ShaderDescription& object) const noexcept;
     };
 }
 
 namespace canta {
 
-    bool operator==(const Pipeline::CreateInfo& lhs, const Pipeline::CreateInfo& rhs);
+    bool operator==(const PipelineDescription& lhs, const PipelineDescription& rhs);
     bool operator==(const ShaderDescription& lhs, const ShaderDescription& rhs);
 
     class PipelineManager {
@@ -45,56 +77,45 @@ namespace canta {
 
         struct CreateInfo {
             Device* device = nullptr;
-            std::filesystem::path rootPath = {};
+            std::filesystem::path rootPath = CANTA_SRC_DIR;
+            std::span<std::filesystem::path> searchPaths = {};
             bool rowMajor = true;
         };
 
         static auto create(CreateInfo info) -> PipelineManager;
 
+        PipelineManager() = default;
+
         PipelineManager(PipelineManager&& rhs) noexcept;
         auto operator=(PipelineManager&& rhs) noexcept -> PipelineManager&;
 
-        PipelineManager() = default;
+        [[nodiscard]] auto getPipeline(PipelineDescription info, const PipelineHandle& oldPipeline = {}) -> std::expected<PipelineHandle, Error>;
 
-        [[nodiscard]] auto getShader(ShaderDescription info) -> std::expected<ShaderHandle, Error>;
-        [[nodiscard]] auto getPipeline(Pipeline::CreateInfo info) -> std::expected<PipelineHandle, Error>;
-        [[nodiscard]] auto getPipeline(const Pipeline& old, Pipeline::CreateInfo overrideInfo) -> std::expected<PipelineHandle, Error>;
         [[nodiscard]] auto getPipeline(const std::filesystem::path& path, std::span<const Macro> additionalMacros = {}, const std::vector<SpecializationConstant>& specializationConstants = {}) -> std::expected<PipelineHandle, Error>;
 
-        auto reload(ShaderHandle shader) -> std::expected<ShaderHandle, Error>;
-        auto reload(PipelineHandle pipeline) -> std::expected<PipelineHandle, Error>;
+        [[nodiscard]] auto reload() -> std::expected<bool, Error>;
 
-        auto reload(ShaderDescription description) -> std::expected<ShaderHandle, Error>;
-        auto reload(Pipeline::CreateInfo info) -> std::expected<PipelineHandle, Error>;
+        [[nodiscard]] auto reload(const PipelineHandle& pipeline) -> std::expected<PipelineHandle, Error>;
 
-        void reloadAll(bool force = false);
 
         void addVirtualFile(const std::filesystem::path& path, const std::string& contents);
-        [[nodiscard]] auto shaders() const -> const tsl::robin_map<ShaderDescription, ShaderHandle>& { return _shaders; }
-
-        [[nodiscard]] auto pipelines() const -> const tsl::robin_map<Pipeline::CreateInfo, PipelineHandle, std::hash<Pipeline::CreateInfo>>& { return _pipelines; }
 
     private:
 
-        [[nodiscard]] auto createShader(ShaderDescription info, ShaderHandle handle = {}) -> std::expected<ShaderHandle, Error>;
+        [[nodiscard]] auto findVirtualFile(const std::filesystem::path& path) const -> std::expected<std::string, Error>;
 
-        // auto compileGLSL(std::string_view name, std::string_view glsl, ShaderStage stage, std::span<const Macro> macros = {}) -> std::expected<std::vector<u32>, std::string>;
         [[nodiscard]] auto compileSlang(std::string_view name, std::string_view slang, ShaderStage stage, std::span<const Macro> macros = {}) -> std::expected<std::vector<u32>, std::string>;
-
         [[nodiscard]] auto createSlangSession(std::span<const Macro> macros = {}) -> std::expected<Slang::ComPtr<slang::ISession>, std::string>;
 
-        [[nodiscard]] auto findVirtualFile(const std::filesystem::path& path) -> std::expected<std::string, Error>;
-
         Device* _device = nullptr;
-        std::filesystem::path _rootPath = {};
+        std::vector<std::filesystem::path> _searchPaths = {};
         bool _rowMajor = true;
-        tsl::robin_map<ShaderDescription, ShaderHandle> _shaders;
-        tsl::robin_map<Pipeline::CreateInfo, PipelineHandle, std::hash<Pipeline::CreateInfo>> _pipelines;
+
+        tsl::robin_map<PipelineDescription, PipelineHandle, std::hash<PipelineDescription>> _pipelines = {};
 
         ende::fs::FileWatcher _fileWatcher = {};
-        tsl::robin_map<std::filesystem::path, std::pair<ShaderDescription, std::vector<Pipeline::CreateInfo>>> _watchedPipelines;
-
         std::vector<std::pair<std::string, std::string>> _virtualFiles = {};
+        tsl::robin_map<std::filesystem::path, PipelineDescription> _watchedFiles = {};
 
         Slang::ComPtr<slang::IGlobalSession> _slangGlobalSession = {};
         Slang::ComPtr<slang::ISession> _slangMainSession = {};

@@ -16,6 +16,7 @@ namespace canta {
         struct CreateInfo {
             std::span<const u32> spirv = {};
             ShaderStage stage = ShaderStage::NONE;
+            std::string entry = "main";
         };
 
         [[nodiscard]] static auto create(std::span<CreateInfo> infos) -> ShaderInterface;

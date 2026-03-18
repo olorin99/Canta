@@ -5,6 +5,7 @@
 #include <type_traits>
 #include <variant>
 #include <array>
+#include <Ende/platform.h>
 
 #define STRINGIFY(str) #str
 #define TO_STRING_ENUM(e) case e: return STRINGIFY(e);

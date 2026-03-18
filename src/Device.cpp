@@ -4,6 +4,7 @@
 #ifdef CANTA_RENDERDOC
 #include <renderdoc_app.h>
 #endif
+#include <Canta/ShaderInterface.h>
 
 #define VMA_IMPLEMENTATION
 #define VMA_STATIC_VULKAN_FUNCTIONS 0
@@ -14,7 +15,6 @@
 #define EMBEDDED_SHADERS_NO_REGISTER
 #include "embedded_shaders_Canta.h"
 
-template<> u32 canta::ShaderHandle::s_hash = 0;
 template<> u32 canta::PipelineHandle::s_hash = 0;
 template<> u32 canta::ImageHandle::s_hash = 0;
 template<> u32 canta::ImageViewHandle::s_hash = 0;
@@ -676,9 +676,6 @@ auto canta::Device::create(CreateInfo info) noexcept -> std::expected<std::uniqu
         return 0;
     };
 
-    device->_shaderList.setLogger(device->_logger);
-    device->_shaderList.setGetTimelineValue(getResourceTimelineValue);
-    device->_shaderList.setDestructionDelay(info.resourceDestructionDelay);
     device->_pipelineList.setLogger(device->_logger);
     device->_pipelineList.setGetTimelineValue(getResourceTimelineValue);
     device->_pipelineList.setDestructionDelay(info.resourceDestructionDelay);
@@ -723,7 +720,6 @@ canta::Device::~Device() {
 
     _descriptorUpdates.clear();
 
-    _shaderList.clearAll();
     _pipelineList.clearAll();
     _imageViewList.destroyAll();
     _imageList.clearAll();
@@ -790,7 +786,6 @@ void canta::Device::gc() {
                 deferredCommand(cmd);
         });
     }
-    _shaderList.clearQueue();
     _pipelineList.clearQueue();
     _imageViewList.clearQueue();
     _imageList.clearQueue([this](auto& resource) {
@@ -953,38 +948,7 @@ auto canta::Device::createCommandPool(CommandPool::CreateInfo info) -> std::expe
     return pool;
 }
 
-auto canta::Device::createShaderModule(ShaderModule::CreateInfo info, ShaderHandle oldHandle) -> ShaderHandle {
-    VkShaderModule module = {};
-    VkShaderModuleCreateInfo createInfo = {};
-    createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-    createInfo.codeSize = info.spirv.size() * sizeof(u32);
-    createInfo.pCode = info.spirv.data();
-
-    if (const auto result = vkCreateShaderModule(logicalDevice(), &createInfo, nullptr, &module); result != VK_SUCCESS)
-        return {};
-
-    if (!info.name.empty())
-        setDebugName(VK_OBJECT_TYPE_SHADER_MODULE, reinterpret_cast<u64>(module), info.name);
-
-    ShaderHandle handle = {};
-    if (oldHandle)
-        handle = _shaderList.reallocate(oldHandle);
-    else
-        handle = _shaderList.allocate();
-
-    handle->_device = this;
-    handle->_module = module;
-    handle->_stage = info.stage;
-    auto ar = std::to_array({ ShaderInterface::CreateInfo{ info.spirv, info.stage } });
-    handle->_interface = ShaderInterface::create(ar);
-    handle->_name = info.name;
-
-    logger().info("Shader module {} created", info.name);
-
-    return handle;
-}
-
-auto canta::Device::createPipeline(Pipeline::CreateInfo info, PipelineHandle oldHandle) -> PipelineHandle {
+auto canta::Device::createPipeline(Pipeline::CreateInfo info, const PipelineHandle& oldHandle) -> PipelineHandle {
     ShaderInterface interface = {};
     std::vector<VkPipelineShaderStageCreateInfo> shaderStages = {};
     std::vector<u8> specializationConstantsData = {};
@@ -1080,8 +1044,13 @@ auto canta::Device::createPipeline(Pipeline::CreateInfo info, PipelineHandle old
     specInfo.mapEntryCount = specializationMapEntries.size();
     specInfo.pMapEntries = specializationMapEntries.data();
 
-    const auto attachShader = [&](ShaderInfo& shaderInfo) {
-        auto array = std::to_array({ interface, shaderInfo.module->interface() });
+    const auto attachShader = [&](const ShaderInfo& shaderInfo, const ShaderStage stage) {
+        auto interfaceInfos = std::to_array({ShaderInterface::CreateInfo{
+            .spirv = shaderInfo.spirv,
+            .stage = stage,
+            .entry = shaderInfo.entry,
+        }});
+        auto array = std::to_array({ interface, ShaderInterface::create(interfaceInfos) });
         interface = ShaderInterface::merge(array);
 
         for (u32 i = 0; i < info.specializationConstants.size(); i++) {
@@ -1091,47 +1060,61 @@ auto canta::Device::createPipeline(Pipeline::CreateInfo info, PipelineHandle old
             }
         }
 
+        VkShaderModule module = {};
+        VkShaderModuleCreateInfo createInfo = {};
+        createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+        createInfo.codeSize = shaderInfo.spirv.size() * sizeof(u32);
+        createInfo.pCode = shaderInfo.spirv.data();
+
+        const auto result = vkCreateShaderModule(logicalDevice(), &createInfo, nullptr, &module);
+        // result != VK_SUCCESS)
+        // if (const auto result = vkCreateShaderModule(logicalDevice(), &createInfo, nullptr, &module); result != VK_SUCCESS)
+            // return {};
+
+        if (!info.name.empty())
+            setDebugName(VK_OBJECT_TYPE_SHADER_MODULE, reinterpret_cast<u64>(module), std::format("{}::{}", info.name, shaderInfo.entry));
+
         VkPipelineShaderStageCreateInfo stageCreateInfo = {};
         stageCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-        stageCreateInfo.stage = static_cast<VkShaderStageFlagBits>(shaderInfo.module->stage());
-        stageCreateInfo.module = shaderInfo.module->module();
+        stageCreateInfo.stage = static_cast<VkShaderStageFlagBits>(stage);
+        stageCreateInfo.module = module;
         stageCreateInfo.pSpecializationInfo = &specInfo;
-        stageCreateInfo.pName = shaderInfo.entryPoint.data();
+        stageCreateInfo.pName = shaderInfo.entry.data();
         shaderStages.push_back(stageCreateInfo);
     };
 
-    PipelineMode mode = PipelineMode::GRAPHICS;
+    PipelineMode mode = GRAPHICS;
 
-    if (info.vertex.module)
-        attachShader(info.vertex);
-    if (info.tesselationControl.module)
-        attachShader(info.tesselationControl);
-    if (info.tesselationEvaluation.module)
-        attachShader(info.tesselationEvaluation);
-    if (info.geometry.module)
-        attachShader(info.geometry);
-    if (info.fragment.module)
-        attachShader(info.fragment);
-    if (info.compute.module) {
-        attachShader(info.compute);
-        mode = PipelineMode::COMPUTE;
+    if (info.vertex)
+        attachShader(info.vertex, ShaderStage::VERTEX);
+    if (info.tesselationControl)
+        attachShader(info.tesselationControl, ShaderStage::TESS_CONTROL);
+    if (info.tesselationEvaluation)
+        attachShader(info.tesselationEvaluation, ShaderStage::TESS_EVAL);
+    if (info.geometry)
+        attachShader(info.geometry, ShaderStage::GEOMETRY);
+    if (info.fragment)
+        attachShader(info.fragment, ShaderStage::FRAGMENT);
+    if (info.compute) {
+        attachShader(info.compute, ShaderStage::COMPUTE);
+        mode = COMPUTE;
     }
-    if (info.rayGen.module)
-        attachShader(info.rayGen);
-    if (info.anyHit.module)
-        attachShader(info.anyHit);
-    if (info.closestHit.module)
-        attachShader(info.closestHit);
-    if (info.miss.module)
-        attachShader(info.miss);
-    if (info.intersection.module)
-        attachShader(info.intersection);
-    if (info.callable.module)
-        attachShader(info.callable);
-    if (info.task.module)
-        attachShader(info.task);
-    if (info.mesh.module)
-        attachShader(info.mesh);
+    if (info.rayGen)
+        attachShader(info.rayGen, ShaderStage::RAYGEN);
+    if (info.anyHit)
+        attachShader(info.anyHit, ShaderStage::ANY_HIT);
+    if (info.closestHit)
+        attachShader(info.closestHit, ShaderStage::CLOSEST_HIT);
+    if (info.miss)
+        attachShader(info.miss, ShaderStage::MISS);
+    if (info.intersection)
+        attachShader(info.intersection, ShaderStage::INTERSECTION);
+    if (info.callable)
+        attachShader(info.callable, ShaderStage::CALLABLE);
+    if (info.task)
+        attachShader(info.task, ShaderStage::TASK);
+    if (info.mesh)
+        attachShader(info.mesh, ShaderStage::MESH);
 
     if (shaderStages.empty()) {
         logger().error("No valid shader modueles attach to pipeline: {}", info.name);
@@ -1331,7 +1314,7 @@ auto canta::Device::createPipeline(Pipeline::CreateInfo info, PipelineHandle old
         dynamicStateCreateInfo.dynamicStateCount = 2;
         dynamicStateCreateInfo.pDynamicStates = dynamicStates;
 
-        if (!info.mesh.module) {
+        if (!info.mesh) {
             createInfo.pVertexInputState = &vertexInputState;
             createInfo.pInputAssemblyState = &inputAssemblyState;
         }
@@ -1348,8 +1331,11 @@ auto canta::Device::createPipeline(Pipeline::CreateInfo info, PipelineHandle old
         createInfo.basePipelineIndex = -1;
 
         auto result = vkCreateGraphicsPipelines(logicalDevice(), VK_NULL_HANDLE, 1, &createInfo, nullptr, &pipeline);
-        if (result != VK_SUCCESS)
+        if (result != VK_SUCCESS) {
+            for (auto& module : shaderStages)
+                vkDestroyShaderModule(_logicalDevice, module.module, nullptr);
             return {};
+        }
 
     } else {
         VkComputePipelineCreateInfo createInfo = {};
@@ -1361,9 +1347,14 @@ auto canta::Device::createPipeline(Pipeline::CreateInfo info, PipelineHandle old
         createInfo.basePipelineIndex = -1;
 
         auto result = vkCreateComputePipelines(logicalDevice(), VK_NULL_HANDLE, 1, &createInfo, nullptr, &pipeline);
-        if (result != VK_SUCCESS)
+        if (result != VK_SUCCESS) {
+            for (auto& module : shaderStages)
+                vkDestroyShaderModule(_logicalDevice, module.module, nullptr);
             return {};
+        }
     }
+    for (auto& module : shaderStages)
+        vkDestroyShaderModule(_logicalDevice, module.module, nullptr);
     if (!info.name.empty())
         setDebugName(VK_OBJECT_TYPE_PIPELINE, (u64)pipeline, info.name);
 
@@ -1975,8 +1966,6 @@ void canta::Device::destroyPipelineStatistics(u32 poolIndex, u32 queryIndex) {
 
 auto canta::Device::resourceStats() const -> ResourceStats {
     return {
-        .shaderCount = _shaderList.used(),
-        .shaderAllocated = _shaderList.allocated(),
         .pipelineCount = _pipelineList.used(),
         .pipelineAllocated = _pipelineList.allocated(),
         .imageCount = _imageList.used(),

@@ -245,7 +245,7 @@ void canta::ImGuiContext::setupRenderState(ImDrawData *drawData, CommandHandle c
     push.scale[1] = 2.f / drawData->DisplaySize.y;
     push.translate[0] = -1 - drawData->DisplayPos.x * push.scale[0];
     push.translate[1] = -1 - drawData->DisplayPos.y * push.scale[1];
-    commandBuffer->pushConstants(ShaderStage::VERTEX, push);
+    commandBuffer->pushConstants(ShaderStage::VERTEX | ShaderStage::FRAGMENT, push);
 }
 
 auto canta::ImGuiContext::createPipeline(canta::Format format) -> PipelineHandle {
@@ -280,18 +280,12 @@ auto canta::ImGuiContext::createPipeline(canta::Format format) -> PipelineHandle
 
     return _device->createPipeline({
         .vertex = {
-            .module = _device->createShaderModule({
-                .spirv = std::vector(imgui_spv_embedded.begin(), imgui_spv_embedded.end()),
-                .stage = ShaderStage::VERTEX
-            }),
-            .entryPoint = "vertex"
+            .spirv = std::vector(imgui_spv_embedded.begin(), imgui_spv_embedded.end()),
+            .entry = "vertex"
         },
         .fragment = {
-            .module = _device->createShaderModule({
-                .spirv = std::vector(imgui_spv_embedded.begin(), imgui_spv_embedded.end()),
-                .stage = ShaderStage::FRAGMENT,
-            }),
-            .entryPoint = "fragment"
+            .spirv = std::vector(imgui_spv_embedded.begin(), imgui_spv_embedded.end()),
+            .entry = "fragment"
         },
         .rasterState = {
             .cullMode = CullMode::NONE,

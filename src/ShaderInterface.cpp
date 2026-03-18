@@ -91,11 +91,99 @@ auto getStruct(tsl::robin_map<std::string, canta::ShaderInterface::Member>& type
     return structSize;
 }
 
+auto matchExecutionModeToStage(const spv::ExecutionModel mode) -> canta::ShaderStage {
+    switch (mode) {
+        case spv::ExecutionModelVertex:
+            return canta::ShaderStage::VERTEX;
+        case spv::ExecutionModelTessellationControl:
+            return canta::ShaderStage::TESS_CONTROL;
+        case spv::ExecutionModelTessellationEvaluation:
+            return canta::ShaderStage::TESS_EVAL;
+        case spv::ExecutionModelGeometry:
+            return canta::ShaderStage::GEOMETRY;
+        case spv::ExecutionModelFragment:
+            return canta::ShaderStage::FRAGMENT;
+        case spv::ExecutionModelGLCompute:
+            return canta::ShaderStage::COMPUTE;
+        case spv::ExecutionModelKernel:
+            return canta::ShaderStage::COMPUTE;
+        case spv::ExecutionModelRayGenerationKHR:
+            return canta::ShaderStage::RAYGEN;
+        case spv::ExecutionModelIntersectionKHR:
+            return canta::ShaderStage::INTERSECTION;
+        case spv::ExecutionModelAnyHitKHR:
+            return canta::ShaderStage::ANY_HIT;
+        case spv::ExecutionModelClosestHitKHR:
+            return canta::ShaderStage::CLOSEST_HIT;
+        case spv::ExecutionModelMissKHR:
+            return canta::ShaderStage::MISS;
+        case spv::ExecutionModelCallableKHR:
+            return canta::ShaderStage::CALLABLE;
+        case spv::ExecutionModelTaskEXT:
+            return canta::ShaderStage::TASK;
+        case spv::ExecutionModelMeshEXT:
+            return canta::ShaderStage::MESH;
+        case spv::ExecutionModelMax:
+            return canta::ShaderStage::NONE;
+    }
+    return canta::ShaderStage::NONE;
+}
+
+auto matchStageToExecutionModel(const canta::ShaderStage stage) -> spv::ExecutionModel {
+    switch (stage) {
+        case canta::ShaderStage::NONE:
+            break;
+        case canta::ShaderStage::VERTEX:
+            return spv::ExecutionModelVertex;
+        case canta::ShaderStage::TESS_CONTROL:
+            return spv::ExecutionModelTessellationControl;
+        case canta::ShaderStage::TESS_EVAL:
+            return spv::ExecutionModelTessellationEvaluation;
+        case canta::ShaderStage::GEOMETRY:
+            return spv::ExecutionModelGeometry;
+        case canta::ShaderStage::FRAGMENT:
+            return spv::ExecutionModelFragment;
+        case canta::ShaderStage::COMPUTE:
+            return spv::ExecutionModelKernel;
+        case canta::ShaderStage::ALL_GRAPHICS:
+            return spv::ExecutionModelVertex;
+        case canta::ShaderStage::ALL:
+            return spv::ExecutionModelVertex;
+        case canta::ShaderStage::RAYGEN:
+            return spv::ExecutionModelVertex;
+        case canta::ShaderStage::ANY_HIT:
+            return spv::ExecutionModelVertex;
+        case canta::ShaderStage::CLOSEST_HIT:
+            return spv::ExecutionModelVertex;
+        case canta::ShaderStage::MISS:
+            return spv::ExecutionModelVertex;
+        case canta::ShaderStage::INTERSECTION:
+            return spv::ExecutionModelVertex;
+        case canta::ShaderStage::CALLABLE:
+            return spv::ExecutionModelVertex;
+        case canta::ShaderStage::TASK:
+            return spv::ExecutionModelVertex;
+        case canta::ShaderStage::MESH:
+            return spv::ExecutionModelVertex;
+    }
+    return spv::ExecutionModelMax;
+}
+
 auto canta::ShaderInterface::create(std::span<CreateInfo> infos) -> ShaderInterface {
     ShaderInterface interface = {};
 
     for (auto& info : infos) {
         spirv_cross::Compiler compiler(info.spirv.data(), info.spirv.size());
+
+        // auto entryPoint = compiler.get_entry_point(info.entryPoint, )
+
+        for (auto entryPoints = compiler.get_entry_points_and_stages(); auto&[name, execution_model] : entryPoints) {
+            if (const auto stage = matchExecutionModeToStage(execution_model); info.stage == stage && info.entry == name) {
+                compiler.set_entry_point(name, execution_model);
+                break;
+            }
+        }
+
         auto resources = compiler.get_shader_resources();
 
         interface._stages |= info.stage;

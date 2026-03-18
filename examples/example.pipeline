@@ -6,12 +6,11 @@
   "fragment": {},
   "compute": {
     "path": "/home/christian/Documents/Projects/Canta/examples/particles.slang",
-    "entryPoint": "moveMain",
+    "entry": "moveMain",
     "macros": [{
       "name": "CANTA_TEST",
       "value": "HELLO"
-    }],
-    "stage": "COMPUTE"
+    }]
   },
   "rayGen": {},
   "anyHit": {},

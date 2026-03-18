@@ -14,7 +14,6 @@
 #include <Canta/Semaphore.h>
 #include <Canta/CommandPool.h>
 #include <Canta/ResourceList.h>
-#include <Canta/ShaderModule.h>
 #include <Canta/Pipeline.h>
 #include <Canta/Image.h>
 #include <Canta/Buffer.h>
@@ -42,7 +41,6 @@
 
 namespace canta {
 
-    using ShaderHandle = Handle<ShaderModule, ResourceList<ShaderModule>>;
     using PipelineHandle = Handle<Pipeline, ResourceList<Pipeline>>;
     using ImageHandle = Handle<Image, ResourceList<Image>>;
     using ImageViewHandle = Handle<ImageView, ResourceList<ImageView>>;
@@ -240,8 +238,7 @@ namespace canta {
         [[nodiscard]] auto createCommandPool(CommandPool::CreateInfo info) -> std::expected<CommandPool, VulkanError>;
 
 
-        [[nodiscard]] auto createShaderModule(ShaderModule::CreateInfo info, ShaderHandle oldHandle = {}) -> ShaderHandle;
-        [[nodiscard]] auto createPipeline(Pipeline::CreateInfo info, PipelineHandle oldHandle = {}) -> PipelineHandle;
+        [[nodiscard]] auto createPipeline(Pipeline::CreateInfo info, const PipelineHandle& oldHandle = {}) -> PipelineHandle;
         [[nodiscard]] auto createImage(Image::CreateInfo info, ImageHandle oldHandle = {}) -> ImageHandle;
         [[nodiscard]] auto createImageView(ImageView::CreateInfo info, ImageViewHandle oldHandle = {}) -> ImageViewHandle;
         [[nodiscard]] auto createBuffer(Buffer::CreateInfo info, BufferHandle oldHandle = {}) -> BufferHandle;
@@ -398,7 +395,6 @@ namespace canta {
         std::vector<DescriptorUpdate> _descriptorUpdates = {};
         std::mutex _descriptorMutex = {};
 
-        ResourceList<ShaderModule> _shaderList = {};
         ResourceList<Pipeline> _pipelineList = {};
         ResourceList<Image> _imageList = {};
         ResourceList<ImageView> _imageViewList = {};

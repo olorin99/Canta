@@ -5,7 +5,6 @@
       "name": "CANTA_TEST",
       "value": "HELLO"
     }],
-    "stage": "COMPUTE",
-    "entryPoint": "moveMain"
+    "entry": "moveMain"
   }
 }

@@ -23,7 +23,7 @@ int main() {
     std::printf("%s", canta::formatString(canta::Format::BC7_UNORM));
     std::printf("%s", canta::formatString(canta::Format::R16_UNORM));
 
-    canta::SDLWindow window("Hello Triangle", 1920, 1080, SDL_WINDOW_RESIZABLE);
+    canta::SDLWindow window("Hello Triangle", 1920, 1080);
 
     auto device = TRY_MAIN(canta::Device::create({
         .applicationName = "hello_triangle",
@@ -40,7 +40,6 @@ int main() {
 
     auto pipelineManager = canta::PipelineManager::create({
         .device = device.get(),
-        .rootPath = CANTA_SRC_DIR
     });
 
     auto imguiContext = canta::ImGuiContext::create({
@@ -59,14 +58,10 @@ int main() {
         std::printf("%s - size: %d\n", type.name.c_str(), type.size);
     }
 
-    auto pipelineDraw = TRY_MAIN(pipelineManager.getPipeline(canta::Pipeline::CreateInfo{
+    auto pipelineDraw = TRY_MAIN(pipelineManager.getPipeline({
         .compute = {
-            .module = TRY_MAIN(pipelineManager.getShader({
-                .path = "examples/particles.slang",
-                .stage = canta::ShaderStage::COMPUTE,
-                .name = "particleDraw"
-            })),
-            .entryPoint = "drawMain"
+            .path = "examples/particles.slang",
+            .entry = "drawMain"
         },
         .localSize = ende::math::Vec<3, u32>{ 64, 1, 1 },
         .specializationConstants = {
@@ -74,12 +69,6 @@ int main() {
         },
         .name = "particles_draw"
     }));
-
-    auto testModule = pipelineManager.getShader({
-        .path = CANTA_SRC_DIR"/examples/hello.slang",
-        .stage = canta::ShaderStage::COMPUTE,
-        .name = "hello"
-    });
 
     constexpr const u32 numParticles = 1000;
 
@@ -154,7 +143,7 @@ int main() {
         // device->startFrameCapture();
         device->beginFrame();
         device->gc();
-        pipelineManager.reloadAll();
+        TRY_MAIN(pipelineManager.reload());
         uploadBuffer.clearSubmitted();
 
         imguiContext.beginFrame();

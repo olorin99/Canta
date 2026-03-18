@@ -31,14 +31,10 @@ namespace canta::util {
             auto source = std::vector<u32>{};
             source.assign(_source.begin(), _source.end());
 
-            _pipeline = manager.getPipeline(Pipeline::CreateInfo{
+            _pipeline = manager.getPipeline(PipelineDescription{
                 .compute = {
-                    .module = manager.getShader({
-                        .spirv = source,
-                        .stage = canta::ShaderStage::COMPUTE,
-                        .name = _name
-                    }).value(),
-                    .entryPoint = _entryPoint,
+                    .spirv = source,
+                    .entry = _entryPoint,
                 },
                 .name = _name,
             }).value();
@@ -51,12 +47,8 @@ namespace canta::util {
 
             _pipeline = device->createPipeline(Pipeline::CreateInfo{
                 .compute = {
-                    .module = device->createShaderModule({
-                        .spirv = source,
-                        .stage = canta::ShaderStage::COMPUTE,
-                        .name = _name
-                    }),
-                    .entryPoint = _entryPoint,
+                    .spirv = source,
+                    .entry = _entryPoint,
                 },
                 .name = _name,
             });

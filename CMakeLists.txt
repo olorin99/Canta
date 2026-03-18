@@ -111,8 +111,6 @@ add_library(Canta
         src/util.cpp
         include/Canta/util.h
         include/Canta/ResourceList.h
-        src/ShaderModule.cpp
-        include/Canta/ShaderModule.h
         src/ShaderInterface.cpp
         include/Canta/ShaderInterface.h
         src/Pipeline.cpp

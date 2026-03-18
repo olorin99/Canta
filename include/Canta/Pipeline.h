@@ -1,32 +1,31 @@
 #ifndef CANTA_PIPELINE_H
 #define CANTA_PIPELINE_H
 
-#include <string_view>
-#include <span>
-
-
+#include <Canta/Enums.h>
+#include <Ende/math/Vec.h>
 #include <Canta/ResourceList.h>
-#include <Canta/ShaderModule.h>
+#include <Canta/ShaderInterface.h>
 
 namespace canta {
 
     class Device;
 
-    using ShaderHandle = Handle<ShaderModule, ResourceList<ShaderModule>>;
-
     struct ShaderInfo {
-        ShaderHandle module = {};
-        std::string path;
-        std::string entryPoint = "main";
+        std::vector<u32> spirv = {};
+        std::string entry = "main";
 
         explicit operator bool() const {
-            return module || !path.empty();
+            return !spirv.empty();
+        }
+
+        auto operator==(const ShaderInfo& rhs) const -> bool {
+            return entry == rhs.entry && spirv.size() == rhs.spirv.size();
         }
     };
 
     struct SpecializationConstant {
         u32 id = 0;
-        std::string name = "";
+        std::string name = {};
         // std::variant<u32, i32, f32> value = 0;
         union {
             u32 uintValue = 0;
