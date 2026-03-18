@@ -1055,7 +1055,7 @@ auto canta::Device::createPipeline(Pipeline::CreateInfo info, const PipelineHand
 
         for (u32 i = 0; i < info.specializationConstants.size(); i++) {
             if (!info.specializationConstants[i].name.empty()) {
-                if (auto constant = interface.getSpecConstant(info.specializationConstants[i].name))
+                if (const auto constant = interface.getSpecConstant(info.specializationConstants[i].name))
                     specializationMapEntries[i].constantID = constant->id;
             }
         }

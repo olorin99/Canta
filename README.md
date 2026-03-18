@@ -111,16 +111,13 @@ auto shader = pipelineManager.getShader({
 // Create and cache pipeline.
 auto pipeline  = pipelineManager.getPipeline({
     .vertex = {
-        .module = pipelineManager.getShader({
-            .path = "path/to/vertex/shader",
-            .stage = canta::ShaderStage::VERTEX
-            .name = "vertex_shader"
-        }),
-        .entryPoint = "main"
+        .path = "path/to/vertex/shader",
+        .name = "vertex_shader",
+        .entry = "main"
     },
     .fragment = {
         .path = "can/also/just/provide/a/path/for/the/shader.slang",
-        .entryPoint = "fragmentMain"
+        .entry = "fragmentMain"
     },
     .name = "raster_pipeline"
 });

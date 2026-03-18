@@ -923,6 +923,29 @@ namespace canta {
         MESH = VK_SHADER_STAGE_MESH_BIT_EXT
     };
 
+    constexpr const char* shaderStageString(const ShaderStage stage) {
+        switch (stage) {
+            TO_STRING_ENUM(ShaderStage::NONE)
+            TO_STRING_ENUM(ShaderStage::VERTEX)
+            TO_STRING_ENUM(ShaderStage::TESS_CONTROL)
+            TO_STRING_ENUM(ShaderStage::TESS_EVAL)
+            TO_STRING_ENUM(ShaderStage::GEOMETRY)
+            TO_STRING_ENUM(ShaderStage::FRAGMENT)
+            TO_STRING_ENUM(ShaderStage::COMPUTE)
+            TO_STRING_ENUM(ShaderStage::ALL_GRAPHICS)
+            TO_STRING_ENUM(ShaderStage::ALL)
+            TO_STRING_ENUM(ShaderStage::RAYGEN)
+            TO_STRING_ENUM(ShaderStage::ANY_HIT)
+            TO_STRING_ENUM(ShaderStage::CLOSEST_HIT)
+            TO_STRING_ENUM(ShaderStage::MISS)
+            TO_STRING_ENUM(ShaderStage::INTERSECTION)
+            TO_STRING_ENUM(ShaderStage::CALLABLE)
+            TO_STRING_ENUM(ShaderStage::TASK)
+            TO_STRING_ENUM(ShaderStage::MESH)
+        }
+        return STRINGIFY(PipelineStage::NONE);
+    }
+
     enum class PipelineStage {
         TOP = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
         DRAW_INDIRECT = VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT,

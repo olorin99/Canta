@@ -75,18 +75,10 @@ float4 main(
 
     auto pipeline = pipelineManager.getPipeline({
         .vertex = {
-            .module = pipelineManager.getShader({
-                .slang = vertexSlang,
-                .stage = canta::ShaderStage::VERTEX,
-                .name = "vertex_shader"
-            }).value()
+            .slang = vertexSlang,
         },
         .fragment = {
-            .module = pipelineManager.getShader({
-                .slang = fragmentSlang,
-                .stage = canta::ShaderStage::FRAGMENT,
-                .name = "fragment_shader"
-            }).value()
+            .slang = fragmentSlang,
         },
         .colourFormats = std::vector{ colourFormat }
     }).value();
@@ -142,11 +134,11 @@ float4 main(
         auto flyingIndex = device->flyingIndex();
 
         commandPools[flyingIndex].reset();
-        auto& commandBuffer = commandPools[flyingIndex].getBuffer();
+        auto commandBuffer = commandPools[flyingIndex].getBuffer();
 
-        commandBuffer.begin();
+        commandBuffer->begin();
 
-        commandBuffer.barrier({
+        commandBuffer->barrier({
             .image = swapImage,
             .dstStage = canta::PipelineStage::COLOUR_OUTPUT,
             .dstAccess = canta::Access::COLOUR_WRITE,
@@ -162,20 +154,20 @@ float4 main(
             }
         });
 
-        commandBuffer.beginRendering({
+        commandBuffer->beginRendering({
             .size = window.extent(),
             .colourAttachments = attachments
         });
-        commandBuffer.setViewport({
+        commandBuffer->setViewport({
             static_cast<f32>(window.extent().x()),
             static_cast<f32>(window.extent().y())
         });
-        commandBuffer.bindPipeline(pipeline);
-        commandBuffer.pushConstants(canta::ShaderStage::VERTEX, buffer->address());
-        commandBuffer.draw(3);
-        commandBuffer.endRendering();
+        commandBuffer->bindPipeline(pipeline);
+        commandBuffer->pushConstants(canta::ShaderStage::VERTEX, buffer->address());
+        commandBuffer->draw(3);
+        commandBuffer->endRendering();
 
-        commandBuffer.barrier({
+        commandBuffer->barrier({
             .image = swapImage,
             .srcStage = canta::PipelineStage::COLOUR_OUTPUT,
             .dstStage = canta::PipelineStage::BOTTOM,
@@ -185,7 +177,7 @@ float4 main(
             .dstLayout = canta::ImageLayout::PRESENT
         });
 
-        commandBuffer.end();
+        commandBuffer->end();
 
         device->queue(canta::QueueType::GRAPHICS)->submit({ &commandBuffer, 1 }, waits, signals);
 

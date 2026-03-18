@@ -140,10 +140,11 @@ auto canta::PipelineManager::getPipeline(PipelineDescription info, const Pipelin
             return value;
         }
 
+        std::string name = {};
         std::string source = {};
-        std::vector<u32> spirv = {};
 
         if (!shaderInfo.slang.empty()) {
+            name = std::format("{}::{}::{}", shaderStageString(stage), shaderInfo.entry, shaderInfo.slang.substr(0, 20));
             source = shaderInfo.slang;
         }
         if (!shaderInfo.path.empty()) {
@@ -152,10 +153,11 @@ auto canta::PipelineManager::getPipeline(PipelineDescription info, const Pipelin
                 _device->logger().error("Invalid shader path: {}", (_searchPaths.front() / shaderInfo.path).string());
                 return std::unexpected(Error::InvalidPath);
             }
+            name = shaderInfo.path.stem().string();
             source = shaderFile->read();
             _fileWatcher.addWatch(_searchPaths.front() / shaderInfo.path);
         }
-        spirv = TRY(compileSlang(shaderInfo.path.stem().string(), source, stage, shaderInfo.macros).transform_error([this](const auto& error) {
+        std::vector<u32> spirv = TRY(compileSlang(name, source, stage, shaderInfo.macros).transform_error([this](const auto& error) {
             _device->logger().error("Shader VulkanError: {}", error.c_str());
             return Error::InvalidShader;
         }));
@@ -179,6 +181,18 @@ auto canta::PipelineManager::getPipeline(PipelineDescription info, const Pipelin
     createInfo.callable = TRY(evalShader(info.callable, ShaderStage::CALLABLE));
     createInfo.task = TRY(evalShader(info.task, ShaderStage::TASK));
     createInfo.mesh = TRY(evalShader(info.mesh, ShaderStage::MESH));
+    createInfo.localSize = info.localSize;
+    createInfo.specializationConstants = info.specializationConstants;
+    createInfo.rasterState = info.rasterState;
+    createInfo.depthState = info.depthState;
+    createInfo.blendState = info.blendState;
+    createInfo.inputBindings = info.inputBindings;
+    createInfo.inputAttributes = info.inputAttributes;
+    createInfo.topology = info.topology;
+    createInfo.primitiveRestart = info.primitiveRestart;
+    createInfo.colourFormats = info.colourFormats;
+    createInfo.depthFormat = info.depthFormat;
+    createInfo.name = info.name;
 
     auto handle = _device->createPipeline(createInfo, oldPipeline);
     if (!handle) return std::unexpected(Error::InvalidPipeline);
@@ -507,7 +521,7 @@ auto canta::PipelineManager::compileSlang(const std::string_view name, const std
 
 auto canta::PipelineManager::createSlangSession(const std::span<const Macro> macros) -> std::expected<Slang::ComPtr<slang::ISession>, std::string> {
     if (macros.empty() && _slangMainSession) {
-     return _slangMainSession;
+        return _slangMainSession;
     }
 
     slang::SessionDesc sessionDesc = {};
@@ -519,10 +533,10 @@ auto canta::PipelineManager::createSlangSession(const std::span<const Macro> mac
     sessionDesc.searchPathCount = searchPaths.size();
     std::vector<slang::PreprocessorMacroDesc> slangMacros = {};
     for (auto& macro : macros) {
-     slang::PreprocessorMacroDesc macroDesc = {};
-     macroDesc.name = macro.name.c_str();
-     macroDesc.value = macro.value.c_str();
-     slangMacros.push_back(macroDesc);
+        slang::PreprocessorMacroDesc macroDesc = {};
+        macroDesc.name = macro.name.c_str();
+        macroDesc.value = macro.value.c_str();
+        slangMacros.push_back(macroDesc);
     }
     sessionDesc.preprocessorMacros = slangMacros.data();
     sessionDesc.preprocessorMacroCount = slangMacros.size();
@@ -552,18 +566,18 @@ auto canta::PipelineManager::createSlangSession(const std::span<const Macro> mac
     // load canta module by default
     Slang::ComPtr<slang::IModule> cantaModule = {};
     {
-     Slang::ComPtr<slang::IBlob> diagnostics = {};
-     for (auto& file : _virtualFiles) {
-         if (file.first == "canta.slang") {
-             cantaModule = session->loadModuleFromSourceString("canta", file.first.c_str(), file.second.c_str(), diagnostics.writeRef());
-             DIAGNOSE(diagnostics);
-             break;
-         }
-     }
+        Slang::ComPtr<slang::IBlob> diagnostics = {};
+        for (auto& file : _virtualFiles) {
+            if (file.first == "canta.slang") {
+                cantaModule = session->loadModuleFromSourceString("canta", file.first.c_str(), file.second.c_str(), diagnostics.writeRef());
+                DIAGNOSE(diagnostics);
+                break;
+            }
+        }
     }
 
     if (macros.empty() && !_slangMainSession) {
-     _slangMainSession = session;
+        _slangMainSession = session;
     }
 
     return session;
