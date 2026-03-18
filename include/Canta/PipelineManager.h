@@ -77,7 +77,7 @@ namespace canta {
 
         struct CreateInfo {
             Device* device = nullptr;
-            std::filesystem::path rootPath = CANTA_SRC_DIR;
+            std::filesystem::path rootPath = {};
             std::span<std::filesystem::path> searchPaths = {};
             bool rowMajor = true;
         };
