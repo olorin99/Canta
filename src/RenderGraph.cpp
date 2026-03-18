@@ -1807,7 +1807,7 @@ void canta::RenderGraph::buildBarriers() {
     for (auto& pass : _orderedPasses)
         pass.mergeAccesses();
 
-    for (i32 passIndex = _orderedPasses.size() - 1; passIndex > 0; passIndex--) {
+    for (i32 passIndex = _orderedPasses.size() - 1; passIndex >= 0; passIndex--) {
         auto& pass = _orderedPasses[passIndex];
 
         for (auto& access : pass._accesses) {
