@@ -590,6 +590,8 @@ namespace canta {
             bool multiQueue = false;
         };
 
+        RenderGraph() = default;
+
         static auto create(const CreateInfo &info) -> std::expected<RenderGraph, RenderGraphError>;
 
         // resource management
@@ -717,8 +719,6 @@ namespace canta {
 
     private:
         friend RenderGraphDebugger;
-
-        RenderGraph() = default;
 
         [[nodiscard]] auto getResourceIndices(std::span<const RenderPass> passes) const -> std::vector<std::pair<u32, u32>>;
 
