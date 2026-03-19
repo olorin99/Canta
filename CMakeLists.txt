@@ -37,7 +37,7 @@ function(compile_shaders)
         if (NOT DEFINED SLANG_BINARY_DIR)
             set(SLANG_BINARY_DIR "${CMAKE_BINARY_DIR}/_deps/slang-build")
         endif ()
-        set(SLANG_BINARY "${SLANG_BINARY_DIR}/slang-2025.24.3-linux-x86_64/bin/slangc")
+        set(SLANG_BINARY "${SLANG_BINARY_DIR}/slang-2026.4.2-slang-linux-x86_64/bin/slangc")
 
         add_custom_command(
                 OUTPUT ${OUTPUT_FILE}
