@@ -23,7 +23,7 @@ namespace canta {
             std::function<void(i32)> deleter = {};
         };
 
-        static auto create(List* list, Data* data) -> Handle {
+        static auto create(List* list, std::weak_ptr<Data> data) -> Handle {
             Handle handle = {};
             handle._list = list;
             handle._data = data;
@@ -70,42 +70,47 @@ namespace canta {
         }
 
         auto operator==(const Handle& rhs) const noexcept -> bool {
-            return _list == rhs._list && _data == rhs._data;
+            return _list == rhs._list && _data.lock() == rhs._data.lock();
         }
 
         explicit operator bool() const noexcept {
-            return _list && (!_data || _data->index >= 0);
+            auto d = _data.lock();
+            return _list && (!d || d->index >= 0);
         }
 
         auto operator*() noexcept -> T& {
-            assert(_list && _data);
-            return _list->_resources[_data->index]->first;
+            auto d = _data.lock();
+            assert(_list && d);
+            return _list->_resources[d->index]->first;
         }
 
         auto operator->() noexcept -> T* {
-            assert(_list && _data);
-            return &_list->_resources[_data->index]->first;
+            auto d = _data.lock();
+            assert(_list && d);
+            return &_list->_resources[d->index]->first;
         }
 
         auto operator*() const noexcept -> const T& {
-            assert(_list && _data);
-            return _list->_resources[_data->index]->first;
+            auto d = _data.lock();
+            assert(_list && d);
+            return _list->_resources[d->index]->first;
         }
 
         auto operator->() const noexcept -> const T* {
-            assert(_list && _data);
-            return &_list->_resources[_data->index]->first;
+            auto d = _data.lock();
+            assert(_list && d);
+            return &_list->_resources[d->index]->first;
         }
 
         auto index() const -> i32 {
-            if (_data)
-                return _data->index;
+            if (auto d = _data.lock())
+                return d->index;
             return -1;
         }
 
         auto count() const -> i32 {
-            if (_data)
-                return _data->count;
+            if (auto d = _data.lock())
+                return d->count;
             return 0;
         }
 
@@ -120,18 +125,18 @@ namespace canta {
     private:
         friend List;
 
-        static inline auto increment(Data* data) -> i32 {
-            if (data) {
-                return ++data->count;
+        static inline auto increment(std::weak_ptr<Data> data) -> i32 {
+            if (auto d = data.lock()) {
+                return ++d->count;
             }
             return -1;
         }
 
-        static inline auto decrement(Data* data) -> i32 {
-            if (data) {
-                const i32 newCount = --data->count;
+        static inline auto decrement(std::weak_ptr<Data> data) -> i32 {
+            if (auto d = data.lock()) {
+                const i32 newCount = --d->count;
                 if (newCount < 1) {
-                    data->deleter(data->index);
+                    d->deleter(d->index);
                 }
                 return newCount;
             }
@@ -139,7 +144,7 @@ namespace canta {
         }
 
         List* _list = nullptr;
-        Data* _data = nullptr;
+        std::weak_ptr<Data> _data = {};
 
         u32 _hash = 0;
         static u32 s_hash;
@@ -149,10 +154,14 @@ namespace canta {
     template <typename T>
     class ResourceList {
     public:
-        using ResourceHandle =  Handle<T, ResourceList<T>>;
+        using ResourceHandle =  Handle<T, ResourceList>;
         using ResourceData = ResourceHandle::Data;
 
         ResourceList() = default;
+
+        ~ResourceList() {
+            clearAll();
+        }
 
         ResourceList(ResourceList&& rhs) noexcept {
             std::swap(_resources, rhs._resources);
@@ -176,7 +185,7 @@ namespace canta {
         [[nodiscard]] static auto create(i32 destructionDelay = 3, std::weak_ptr<spdlog::logger> logger = {}, std::function<u64()> getTimelineValue = [] { return 0; }) -> ResourceList<T> {
             ResourceList<T> list = {};
             list._destructionDelay = destructionDelay;
-            list._logger = logger;
+            list._logger = std::move(logger);
             list._getTimelineValue = std::move(getTimelineValue);
             return list;
         }
@@ -199,9 +208,10 @@ namespace canta {
             if (!_freeResources.empty()) {
                 index = _freeResources.back();
                 _freeResources.pop_back();
-                _resources[index] = std::make_unique<std::pair<T, ResourceData>>();
-                _resources[index]->second.index = index;
-                _resources[index]->second.deleter = [this](i32 index) {
+                _resources[index] = std::make_unique<std::pair<T, std::shared_ptr<ResourceData>>>();
+                _resources[index]->second = std::make_shared<ResourceData>();
+                _resources[index]->second->index = index;
+                _resources[index]->second->deleter = [this](i32 index) {
                     std::unique_lock lock(_mutex);
                     const auto timelineValue = _getTimelineValue();
                     _destroyQueue.emplace_back(timelineValue, index);
@@ -209,9 +219,10 @@ namespace canta {
                 };
             } else {
                 index = _resources.size();
-                _resources.emplace_back(std::make_unique<std::pair<T, ResourceData>>());
-                _resources.back()->second.index = index;
-                _resources.back()->second.deleter = [this](i32 index) {
+                _resources.emplace_back(std::make_unique<std::pair<T, std::shared_ptr<ResourceData>>>());
+                _resources[index]->second = std::make_shared<ResourceData>();
+                _resources.back()->second->index = index;
+                _resources.back()->second->deleter = [this](i32 index) {
                     std::unique_lock lock(_mutex);
                     const auto timelineValue = _getTimelineValue();
                     _destroyQueue.emplace_back(timelineValue, index);
@@ -228,8 +239,8 @@ namespace canta {
             auto newIndex = newHandle.index();
             _resources[newIndex].swap(_resources[oldIndex]);
             _resources[oldIndex]->first = std::move(_resources[newIndex]->first);
-            _resources[newIndex]->second.index = newIndex;
-            _resources[oldIndex]->second.index = oldIndex;
+            _resources[newIndex]->second->index = newIndex;
+            _resources[oldIndex]->second->index = oldIndex;
             return getHandle(newIndex);
         }
 
@@ -238,7 +249,7 @@ namespace canta {
             i32 newIndex = newHandle.index();
             std::unique_lock lock(_mutex);
             _resources[newIndex].swap(_resources[oldIndex]);
-            std::swap(_resources[oldIndex]->second.index, _resources[newIndex]->second.index);
+            std::swap(_resources[oldIndex]->second->index, _resources[newIndex]->second->index);
             return oldHandle;
         }
 
@@ -247,6 +258,7 @@ namespace canta {
             const auto timelineValue = _getTimelineValue();
             for (auto it = _destroyQueue.begin(); it != _destroyQueue.end(); ++it) {
                 if ((it->first + _destructionDelay) < timelineValue) {
+                    _resources[it->second]->second->deleter = {};
                     func(_resources[it->second]->first);
                     if (const auto logger = _logger.lock()) logger->info("GPU Resource {} at index {} destroyed. Timeline({} <= {})", typeid(T).name(), it->second, it->first, timelineValue);
                     _freeResources.push_back(it->second);
@@ -258,6 +270,7 @@ namespace canta {
         void clearAll(std::function<void(T&)> func = [](auto& resource) { resource = {}; }) {
             std::unique_lock lock(_mutex);
             for (auto& resource : _resources) {
+                resource->second->deleter = {};
                 func(resource->first);
             }
             _resources.clear();
@@ -277,8 +290,8 @@ namespace canta {
         [[nodiscard]] auto getHandle(i32 index) -> ResourceHandle {
             if (index >= _resources.size())
                 return {};
-            ++_resources[index]->second.count;
-            return ResourceHandle::create(this, &_resources[index]->second);
+            ++_resources[index]->second->count;
+            return ResourceHandle::create(this, _resources[index]->second);
         }
 
         auto allocated() const -> u32 { return _resources.size(); }
@@ -290,12 +303,12 @@ namespace canta {
         auto used() const -> u32 { return allocated() - free(); }
 
     private:
-        friend Handle<T, ResourceList<T>>;
+        friend Handle<T, ResourceList>;
 
-        std::vector<std::unique_ptr<std::pair<T, typename Handle<T, ResourceList<T>>::Data>>> _resources = {};
+        std::vector<std::unique_ptr<std::pair<T, std::shared_ptr<ResourceData>>>> _resources = {};
         std::vector<u32> _freeResources = {};
         std::vector<std::pair<u64, i32>> _destroyQueue = {};
-        i32 _destructionDelay = 3;
+        u32 _destructionDelay = 3;
         std::function<u64()> _getTimelineValue = [] { return 0; };
         std::mutex _mutex = {};
         std::weak_ptr<spdlog::logger> _logger = {};
