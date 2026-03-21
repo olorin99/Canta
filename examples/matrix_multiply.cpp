@@ -73,7 +73,6 @@ int main() {
 
     const auto computePipeline = pipelineManager.getPipeline({
         .compute = {
-            .module = pipelineManager.getShader({
                 .slang = R"(
 import canta;
 
@@ -86,17 +85,12 @@ void main(
 ) {
     buffer[0] = 0;
 }
-)",
-                .stage = canta::ShaderStage::COMPUTE,
-                .name = "compute_0",
-            }).value()
-        }
+)",}
     }).value();
 
     const auto computePipeline1 = pipelineManager.getPipeline({
     .compute = {
-        .module = pipelineManager.getShader({
-            .slang = R"(
+        .slang = R"(
 import canta;
 
 [shader("compute")]
@@ -108,15 +102,11 @@ void main(
     buffer[0] = 0;
 }
 )",
-            .stage = canta::ShaderStage::COMPUTE,
-            .name = "compute_0",
-        }).value()
     }
 }).value();
 
     const auto graphicsPipeline = pipelineManager.getPipeline({
 .vertex = {
-    .module = pipelineManager.getShader({
         .slang = R"(
 import canta;
 
@@ -128,13 +118,9 @@ void main(
     float4 value = image[uint2(0, 1)];
 }
 )",
-        .stage = canta::ShaderStage::VERTEX,
-        .name = "vertex_0",
-    }).value()
 },
         .fragment = {
-            .module = pipelineManager.getShader({
-        .slang = R"(
+            .slang = R"(
 import canta;
 
 [shader("fragment")]
@@ -145,9 +131,6 @@ float4 main(
     return float4(1, 1, 1, 1);
 }
 )",
-        .stage = canta::ShaderStage::FRAGMENT,
-        .name = "fragment_0",
-    }).value()
         },
         .colourFormats = {
             canta::Format::RGBA8_UNORM

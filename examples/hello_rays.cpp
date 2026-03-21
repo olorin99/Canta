@@ -3,7 +3,7 @@
 #include <Canta/SDLWindow.h>
 #include <Ende/filesystem/File.h>
 
-#include "Canta/PipelineManager.h"
+#include <Canta/PipelineManager.h>
 
 class Camera {
 public:
@@ -89,10 +89,10 @@ int main() {
 
     auto uploadedData = TRY_MAIN(renderGraph.host("sphere_upload").upload(sphereBuffer, spheres));
 
-    auto image = TRY_MAIN(renderGraph.compute("trace_rays", pipelineManager.getPipeline(canta::Pipeline::CreateInfo{
+    auto image = TRY_MAIN(renderGraph.compute("trace_rays", pipelineManager.getPipeline(canta::PipelineDescription{
             .compute = {
                 .path = CANTA_SRC_DIR"/examples/hello_raytrace.slang",
-                .entryPoint = "traceMain"
+                .entry = "traceMain"
             }
         }).value())
         .pushConstants(canta::Read(uploadedData), canta::Write(outputImage), static_cast<u32>(spheres.size()), camera, imageWidth, imageHeight)

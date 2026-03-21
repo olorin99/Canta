@@ -1,0 +1,7 @@
+{
+    "cmake.configureArgs": [
+        "-DCMAKE_EXPORT_COMPILE_COMMANDS=1"
+    ],
+    "clang-tidy.buildPath": "${workspaceFolder}/build",
+    "cmake.clearOutputBeforeBuild": false
+}
