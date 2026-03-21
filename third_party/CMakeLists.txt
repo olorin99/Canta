@@ -4,7 +4,7 @@ set(ENDE_BUILD_EXAMPLES OFF CACHE BOOL "")
 FetchContent_Declare(
     Ende
     GIT_REPOSITORY https://git.melamar.xyz/olorin99/Ende
-    GIT_TAG        "v1.0.0"
+    GIT_TAG        "master"
 )
 
 FetchContent_Declare(

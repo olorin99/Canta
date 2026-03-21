@@ -45,80 +45,47 @@ TEST_CASE("Resource reference counting", "[refcount]") {
 TEST_CASE("PipelineManager", "[pipelinemanager]") {
     auto device = canta::Device::create({
         .applicationName = "tests",
-        .logLevel = spdlog::level::off
+        .headless = true,
+        .logLevel = spdlog::level::err
     }).value();
     auto pipelineManager = canta::PipelineManager::create({
         .device = device.get(),
         .rootPath = CANTA_SRC_DIR
     });
 
-    SECTION("build shader") {
-        auto shader = pipelineManager.getShader({
-            .glsl = R"(
-//GLSL version to use
-#version 460
-
-//size of a workgroup for compute
-layout (local_size_x = 16, local_size_y = 16) in;
-
-//descriptor bindings for the pipeline
-layout(rgba16f,set = 0, binding = 0) uniform image2D image;
-
-
-void main()
-{
-    ivec2 texelCoord = ivec2(gl_GlobalInvocationID.xy);
-	ivec2 size = imageSize(image);
-
-    if(texelCoord.x < size.x && texelCoord.y < size.y)
-    {
-        vec4 color = vec4(0.0, 0.0, 0.0, 1.0);
-
-        if(gl_LocalInvocationID.x != 0 && gl_LocalInvocationID.y != 0)
-        {
-            color.x = float(texelCoord.x)/(size.x);
-            color.y = float(texelCoord.y)/(size.y);
-        }
-
-        imageStore(image, texelCoord, color);
-    }
-}
-
-)",
-            .stage = canta::ShaderStage::COMPUTE,
-            .name = "test"
-        });
-        REQUIRE(shader.has_value());
-    }
-
-#ifdef CANTA_USE_SLANG
-    SECTION("build slang") {
-        auto shader = pipelineManager.getShader({
+    SECTION("build pipeline") {
+        auto shader = pipelineManager.getPipeline({
+            .compute = {
             .slang = R"(
-// hello-world.slang
-[[vk::binding(0, 1)]] StructuredBuffer<float> buffer0;
-[[vk::binding(1, 1)]] StructuredBuffer<float> buffer1;
-[[vk::binding(2, 1)]] RWStructuredBuffer<float> result;
+import canta;
 
 [shader("compute")]
-[numthreads(1,1,1)]
-void computeMain(uint3 threadId : SV_DispatchThreadID)
-{
-    uint index = threadId.x;
-    result[index] = buffer0[index] + buffer1[index];
-}
+[numthreads(1, 1, 1)]
+void main(
+    uint3 threadId: SV_DispatchThreadID,
+    uniform uint* buffer,
+    uniform uint count,
+) {
+    const uint idx = threadId.x;
+    if (idx >= count)
+        return;
 
-)"
-        });
+    buffer[idx] = idx;
+}
+)",
+        }});
+        if (!shader.has_value()) {
+            printf("the error is error: %d", shader.error());
+        }
         REQUIRE(shader.has_value());
     }
-#endif
+
 
     SECTION("invalid path") {
-        auto shader = pipelineManager.getShader({
-            .path = "alkdfjalkdf",
-            .stage = canta::ShaderStage::COMPUTE,
-            .name = "test"
+        auto shader = pipelineManager.getPipeline({
+            .compute = {
+                .path = "alkdfjalkdf",
+            }
         });
         REQUIRE(!shader.has_value());
     }
@@ -129,7 +96,7 @@ TEST_CASE("RenderGraph", "[rendergraph]") {
         .applicationName = "tests",
         .logLevel = spdlog::level::off
     }).value();
-    auto renderGraph = canta::RenderGraph::create({
+    auto renderGraph = *canta::RenderGraph::create({
         .device = device.get(),
         .name = "tests"
     });
@@ -144,39 +111,42 @@ TEST_CASE("RenderGraph", "[rendergraph]") {
 
 
     SECTION("basic graph") {
-        auto& pass1 = renderGraph.addPass("pass1")
-                .addStorageImageWrite(image1, canta::PipelineStage::COMPUTE_SHADER);
+        auto pass1 = renderGraph.compute("pass1")
+                .addStorageImageWrite(image1);
 
-        auto& pass2 = renderGraph.addPass("pass2")
-                .addStorageImageRead(image1, canta::PipelineStage::COMPUTE_SHADER)
-                .addStorageImageWrite(backbuffer, canta::PipelineStage::COMPUTE_SHADER);
+        auto pass2 = renderGraph.compute("pass2")
+                .addStorageImageRead(*pass1.output<canta::ImageIndex>())
+                .addStorageImageWrite(backbuffer);
 
-        auto& pass3 = renderGraph.addPass("pass3")
-                .addStorageImageRead(backbuffer, canta::PipelineStage::COMPUTE_SHADER);
+        auto pass3 = renderGraph.compute("pass3")
+                .addStorageImageRead(backbuffer);
 
-        renderGraph.setBackbuffer(backbuffer);
+        renderGraph.setRoot(*pass2.output<canta::ImageIndex>());
         REQUIRE(renderGraph.compile());
     }
 
     SECTION("cyclic graph") {
 
-        auto& pass1 = renderGraph.addPass("pass1")
-                .addStorageImageWrite(image1, canta::PipelineStage::COMPUTE_SHADER);
+        auto pass1 = renderGraph.compute("pass1")
+                .addStorageImageWrite(image1);
 
-        auto& pass2 = renderGraph.addPass("pass2")
-                .addStorageImageRead(image1, canta::PipelineStage::COMPUTE_SHADER)
-                .addStorageImageWrite(image2, canta::PipelineStage::COMPUTE_SHADER);
+        auto pass2 = renderGraph.compute("pass2")
+                .addStorageImageRead(*pass1.output<canta::ImageIndex>())
+                .addStorageImageWrite(image2);
 
-        auto& pass3 = renderGraph.addPass("pass3")
-                .addStorageImageRead(image2, canta::PipelineStage::COMPUTE_SHADER)
-                .addStorageImageWrite(image1, canta::PipelineStage::COMPUTE_SHADER);
+        auto pass3 = renderGraph.compute("pass3")
+                .addStorageImageRead(*pass2.output<canta::ImageIndex>())
+                .addStorageImageWrite(image3);
 
-        auto& pass4 = renderGraph.addPass("pass4")
-                .addStorageImageRead(image1, canta::PipelineStage::COMPUTE_SHADER)
-                .addStorageImageWrite(backbuffer, canta::PipelineStage::COMPUTE_SHADER);
+        pass2.addStorageImageRead(*pass3.output<canta::ImageIndex>());
+        pass2.addStorageImageRead(*pass2.output<canta::ImageIndex>());
 
-        renderGraph.setBackbuffer(backbuffer);
-        REQUIRE(!renderGraph.compile());
+        auto pass4 = renderGraph.compute("pass4")
+                .addStorageImageRead(*pass3.output<canta::ImageIndex>())
+                .addStorageImageWrite(backbuffer);
+
+        renderGraph.setRoot(*pass4.output<canta::ImageIndex>());
+        REQUIRE(!renderGraph.compile().has_value());
     }
 
 }

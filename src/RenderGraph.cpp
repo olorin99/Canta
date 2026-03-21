@@ -1,4 +1,3 @@
-#include <ranges>
 #include <Canta/RenderGraph.h>
 #include <Canta/ImGuiContext.h>
 
@@ -1103,6 +1102,7 @@ auto canta::RenderGraph::create(const CreateInfo &info) -> std::expected<RenderG
     graph._device = info.device;
     graph._threadPool = info.threadPool;
     graph._multiQueue = info.multiQueue;
+    graph._name = info.name;
     if (!graph._threadPool)
         graph._threadPool = std::make_shared<ende::thread::ThreadPool>();
 

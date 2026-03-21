@@ -40,6 +40,7 @@ int main() {
 
     auto pipelineManager = canta::PipelineManager::create({
         .device = device.get(),
+        .rootPath = CANTA_SRC_DIR
     });
 
     auto imguiContext = canta::ImGuiContext::create({

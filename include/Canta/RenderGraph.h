@@ -5,7 +5,6 @@
 #include <Ende/graph/graph.h>
 #include <expected>
 #include <Canta/Device.h>
-#include <Canta/RenderGraph.h>
 #include <Ende/thread/ThreadPool.h>
 
 namespace canta {
@@ -588,6 +587,7 @@ namespace canta {
             Device* device;
             std::shared_ptr<ende::thread::ThreadPool> threadPool = nullptr;
             bool multiQueue = false;
+            std::string_view name = {};
         };
 
         RenderGraph() = default;
@@ -740,6 +740,7 @@ namespace canta {
         Device* _device = nullptr;
         std::shared_ptr<ende::thread::ThreadPool> _threadPool = nullptr;
         bool _multiQueue = false;
+        std::string _name = {};
 
         std::vector<RenderPass> _orderedPasses = {};
 

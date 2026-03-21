@@ -5,10 +5,27 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "type": "lldb-dap",
+            "request": "launch",
+            "name": "Launch",
+            "program": "tests/tests",
+            "args": [],
+            "env": [],
+            "cwd": "${workspaceFolder}/build"
+        },
+        {
             "name": "Debug",
             "type": "gdb",
             "request": "launch",
             "target": "examples/hello_rays",
+            "cwd": "${workspaceRoot}/build",
+            "valuesFormatting": "parseText"
+        },
+        {
+            "name": "DebugTest",
+            "type": "gdb",
+            "request": "launch",
+            "target": "tests/tests",
             "cwd": "${workspaceRoot}/build",
             "valuesFormatting": "parseText"
         }
