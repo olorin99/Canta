@@ -6,6 +6,7 @@
 #include <expected>
 #include <Canta/Device.h>
 #include <Ende/thread/ThreadPool.h>
+#include <Canta/Enums.h>
 
 namespace canta {
 
@@ -427,6 +428,17 @@ namespace canta {
         auto imgui(ImGuiContext& context, ImageIndex image) -> std::expected<ImageIndex, RenderGraphError>;
     };
 
+    struct ImageCopy {
+        ImageLayout layout = ImageLayout::TRANSFER_DST;
+        ende::math::Vec<3, u32> dimensions = { 0, 0, 0 };
+        ende::math::Vec<3, u32> offsets = { 0, 0, 0 };
+        u32 mipLevel = 0;
+        u32 layer = 0;
+        u32 layerCount = 1;
+        u32 size = 0;
+        u32 offset = 0;
+    };
+
     class TransferPass : public PassBuilder {
     public:
 
@@ -438,18 +450,13 @@ namespace canta {
         auto addTransferWrite(ImageIndex index) -> TransferPass&;
 
         auto copy(BufferIndex src, BufferIndex dst, u32 srcOffset = 0, u32 dstOffset = 0, u32 size = 0) -> std::expected<BufferIndex, RenderGraphError>;
-        struct ImageCopy {
-            ImageLayout layout = ImageLayout::TRANSFER_DST;
-            ende::math::Vec<3, u32> dimensions = { 0, 0, 0 };
-            ende::math::Vec<3, u32> offsets = { 0, 0, 0 };
-            u32 mipLevel = 0;
-            u32 layer = 0;
-            u32 layerCount = 1;
-            u32 size = 0;
-            u32 offset;
-        };
-        auto copy(BufferIndex src, ImageIndex dst, const ImageCopy& info) -> std::expected<ImageIndex, RenderGraphError>;
-        auto copy(ImageIndex src, BufferIndex dst, ImageCopy info) -> std::expected<BufferIndex, RenderGraphError>;
+        
+        auto copy(BufferIndex src, ImageIndex dst, const ImageCopy& info = {
+            .layout = ImageLayout::TRANSFER_DST,
+        }) -> std::expected<ImageIndex, RenderGraphError>;
+        auto copy(ImageIndex src, BufferIndex dst, const ImageCopy& info = {
+            .layout = ImageLayout::TRANSFER_SRC,
+        }) -> std::expected<BufferIndex, RenderGraphError>;
 
         auto clear(ImageIndex index, const ClearValue& value = std::to_array({0.f, 0.f, 0.f, 1.f})) -> std::expected<ImageIndex, RenderGraphError>;
         auto clear(BufferIndex index, u32 value = 0, u32 offset = 0, u32 size = 0) -> std::expected<BufferIndex, RenderGraphError>;

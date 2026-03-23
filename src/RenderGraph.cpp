@@ -1,3 +1,4 @@
+#include "Canta/Enums.h"
 #include <Canta/RenderGraph.h>
 #include <Canta/ImGuiContext.h>
 
@@ -401,7 +402,7 @@ auto canta::PassBuilder::setCallback(const std::function<std::expected<bool, Ren
     ({\
     auto&& tmp = (expr);\
     if (!tmp.has_value())\
-    opt = tmp.error();\
+    (opt) = tmp.error();\
     std::move(tmp.value());\
     })
 
@@ -857,7 +858,7 @@ auto canta::GraphicsPass::imgui(ImGuiContext &context, ImageIndex image) -> std:
     setManualPipeline(true);
     pass().setCallback([&context, image] (auto cmd, auto& graph, const auto& push) {
         auto imageInfo = graph.getImageInfo(image);
-        context.render(ImGui::GetDrawData(), cmd, imageInfo->format);
+        context.render(ImGui::GetDrawData(), std::move(cmd), imageInfo->format);
         return true;
     });
     return output<ImageIndex>();
@@ -906,6 +907,8 @@ auto canta::TransferPass::copy(BufferIndex src, ImageIndex dst, const ImageCopy&
     addTransferWrite(dst);
     pass().setCallback([src, dst, info] (auto cmd, auto& graph, const auto& push) -> std::expected<bool, RenderGraphError> {
         auto copyInfo = info;
+        if (copyInfo.layout == ImageLayout::TRANSFER_SRC)
+            copyInfo.layout = ImageLayout::TRANSFER_DST;
         if (copyInfo.size == 0 || copyInfo.dimensions.x() == 0 || copyInfo.dimensions.y() == 0 || copyInfo.dimensions.z() == 0) {
             auto bufferInfo = TRY(graph.getBufferInfo(src));
             auto imageInfo = TRY(graph.getImageInfo(dst));
@@ -935,11 +938,13 @@ auto canta::TransferPass::copy(BufferIndex src, ImageIndex dst, const ImageCopy&
     return output<ImageIndex>();
 }
 
-auto canta::TransferPass::copy(ImageIndex src, BufferIndex dst, ImageCopy info) -> std::expected<BufferIndex, RenderGraphError> {
+auto canta::TransferPass::copy(ImageIndex src, BufferIndex dst, const ImageCopy& info) -> std::expected<BufferIndex, RenderGraphError> {
     addTransferRead(src);
     addTransferWrite(dst);
     pass().setCallback([src, dst, info] (auto cmd, auto& graph, const auto& push) -> std::expected<bool, RenderGraphError> {
         auto copyInfo = info;
+        if (copyInfo.layout == ImageLayout::TRANSFER_DST)
+            copyInfo.layout = ImageLayout::TRANSFER_SRC;
         if (copyInfo.size == 0 || copyInfo.dimensions.x() == 0 || copyInfo.dimensions.y() == 0 || copyInfo.dimensions.z() == 0) {
             auto bufferInfo = TRY(graph.getBufferInfo(dst));
             auto imageInfo = TRY(graph.getImageInfo(src));
@@ -1831,10 +1836,10 @@ void canta::RenderGraph::buildBarriers() {
             if (prevAccess.passIndex > -1) {
                 auto& prevPass = _orderedPasses[prevAccess.passIndex];
                 if (prevPass._queueType != pass._queueType || pass._type == RenderPass::Type::PRESENT) {
-                    pass._queueWaits.emplace_back(std::make_pair(prevAccess.passIndex, prevPass._queueType));
+                    pass._queueWaits.emplace_back(prevAccess.passIndex, prevPass._queueType);
                 }
                 if (prevPass._type == RenderPass::Type::PRESENT)
-                    pass._queueWaits.emplace_back(std::make_pair(prevAccess.passIndex, QueueType::NONE));
+                    pass._queueWaits.emplace_back(prevAccess.passIndex, QueueType::NONE);
             }
         }
     }

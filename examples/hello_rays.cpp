@@ -98,7 +98,7 @@ int main() {
         .pushConstants(canta::Read(uploadedData), canta::Write(outputImage), static_cast<u32>(spheres.size()), camera, imageWidth, imageHeight)
         .dispatchThreads(imageWidth, imageHeight).output<canta::ImageIndex>());
 
-    auto output = TRY_MAIN(renderGraph.transfer("copy_to_buffer").copy(image, outputBufferIndex, {}));
+    auto output = TRY_MAIN(renderGraph.transfer("copy_to_buffer").copy(image, outputBufferIndex));
 
     renderGraph.setRoot(output);
 
