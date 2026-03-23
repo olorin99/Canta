@@ -144,7 +144,7 @@ auto canta::PipelineManager::getPipeline(PipelineDescription info, const Pipelin
         std::string source = {};
 
         if (!shaderInfo.slang.empty()) {
-            name = std::format("{}::{}::{}", shaderStageString(stage), shaderInfo.entry, shaderInfo.slang.substr(0, 20));
+            name = std::format("{}::{}::{}", shaderStageString(stage), shaderInfo.entry, shaderInfo.slang);
             source = shaderInfo.slang;
         }
         if (!shaderInfo.path.empty()) {
