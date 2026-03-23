@@ -82,10 +82,7 @@ int main() {
         .name = "output_image"
     });
 
-    auto outputBufferIndex = renderGraph.addBuffer({
-        .buffer = outputBuffer,
-        .name = "output_buffer"
-    });
+    auto outputBufferIndex = renderGraph.addExternalBuffer(outputBuffer);
 
     auto uploadedData = TRY_MAIN(renderGraph.host("sphere_upload").upload(sphereBuffer, spheres));
 

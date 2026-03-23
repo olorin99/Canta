@@ -103,7 +103,7 @@ void canta::RenderGraphDebugger::drawRenderGraph() {
                 ImGui::Text("%s: %d, %d", resource.data(), id, passId + id);
                 ImNodes::EndOutputAttribute();
 
-                auto nextAccess = _renderGraph->getNextAccess(_renderGraph->passes(), i, index);
+                auto nextAccess = _renderGraph->getNextAccess(i, index);
                 if (nextAccess.passIndex < 0)
                     continue;
                 links.push_back({ passId + id, nextAccess.passIndex * 100 + nextAccess.access.id });
@@ -203,9 +203,8 @@ void canta::RenderGraphDebugger::render() {
             ImGui::Text("Resource Info");
             ImGui::Separator();
             const auto resource = *_renderGraph->getResource(index);
-            const auto resourceName = *_renderGraph->getResourceName(index);
-            ImGui::Text("Name: %s", resourceName.data());
-            if (std::holds_alternative<ImageInfo>(resource)) {
+            ImGui::Text("Name: %s", resource.name.data());
+            if (std::holds_alternative<ImageInfo>(resource.info)) {
                 const auto image = _renderGraph->getImageInfo({ .index = index });
                 ImGui::Text("Image");
                 ImGui::Text("Id: %u, Index: %u", id, index);

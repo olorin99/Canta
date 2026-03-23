@@ -1,6 +1,7 @@
 #ifndef CANTA_RENDERGRAPHV2_H
 #define CANTA_RENDERGRAPHV2_H
 
+#include "Canta/Semaphore.h"
 #include <Ende/platform.h>
 #include <Ende/graph/graph.h>
 #include <expected>
@@ -11,6 +12,7 @@
 namespace canta {
 
     class ImGuiContext;
+    class RenderGraph;
     class RenderGraphDebugger;
 
     enum class RenderGraphError {
@@ -29,10 +31,12 @@ namespace canta {
 
     struct ImageIndex : ende::graph::Edge {
         i32 index = -1;
+        u32 graphIndex = 0;
     };
 
     struct BufferIndex : ende::graph::Edge {
         i32 index = -1;
+        u32 graphIndex = 0;
     };
 
     struct ResourceAccess {
@@ -588,7 +592,13 @@ namespace canta {
     class RenderGraph : public ende::graph::Graph<RenderPass> {
     public:
 
-        using Resource = std::variant<BufferInfo, ImageInfo>;
+        using ResourceInfo = std::variant<BufferInfo, ImageInfo>;
+
+        struct Resource {
+            ResourceInfo info = {};
+            ResourceAccess initialAccess = {};
+            std::string name = {};
+        };
 
         struct CreateInfo {
             Device* device;
@@ -604,9 +614,37 @@ namespace canta {
         // resource management
         auto addGroup(std::string_view name, const std::array<f32, 4>& colour) -> RenderGroup;
 
-        auto addBuffer(BufferInfo info) -> BufferIndex;
+        struct BufferCreateInfo {
+            u32 size = 0;
+            std::string name = {};
+        };
+        auto addBuffer(BufferCreateInfo info) -> BufferIndex;
 
-        auto addImage(ImageInfo info) -> ImageIndex;
+        struct ImageCreateInfo {
+            u32 width = 1;
+            u32 height = 1;
+            u32 depth = 1;
+            u32 mips = 1;
+            Format format = Format::RGBA8_UNORM;
+            bool isSwapchain = false;
+            std::string name = {};
+        };
+        auto addImage(ImageCreateInfo info) -> ImageIndex;
+
+        auto addExternalBuffer(BufferHandle buffer, ResourceAccess access = {
+            .access = canta::Access::MEMORY_WRITE,
+            .stage = PipelineStage::TOP,
+        }) -> BufferIndex;
+
+        auto addExternalImage(ImageHandle image, ResourceAccess access = {
+            .access = canta::Access::MEMORY_WRITE,
+            .stage = PipelineStage::TOP,
+            .layout = ImageLayout::UNDEFINED,
+        }) -> ImageIndex;
+
+
+        auto importFromGraph(RenderGraph& graph, BufferIndex index) -> std::expected<BufferIndex, RenderGraphError>;
+        auto importFromGraph(RenderGraph& graph, ImageIndex index) -> std::expected<ImageIndex, RenderGraphError>;
 
         auto alias(BufferIndex index) -> BufferIndex;
         auto alias(ImageIndex index) -> ImageIndex;
@@ -720,9 +758,12 @@ namespace canta {
             i32 passIndex = -1;
             ResourceAccess access;
         };
-        [[nodiscard]] static auto getNextAccess(std::span<const RenderPass> passes, i32 startIndex, i32 resource) -> Access;
-        [[nodiscard]] static auto getCurrAccess(std::span<const RenderPass> passes, i32 startIndex, i32 resource) -> Access;
-        [[nodiscard]] static auto getPrevAccess(std::span<const RenderPass> passes, i32 startIndex, i32 resource) -> Access;
+        [[nodiscard]] auto getNextAccess(i32 startIndex, i32 resource) -> Access;
+        [[nodiscard]] auto getCurrAccess(i32 startIndex, i32 resource) -> Access;
+        [[nodiscard]] auto getPrevAccess(i32 startIndex, i32 resource) -> Access;
+
+        auto validateGraphResource(BufferIndex index) const -> std::expected<bool, RenderGraphError>;
+        auto validateGraphResource(ImageIndex index) const-> std::expected<bool, RenderGraphError>;
 
     private:
         friend RenderGraphDebugger;
@@ -744,9 +785,12 @@ namespace canta {
         void buildResources();
         auto buildRenderAttachments() -> std::expected<bool, RenderGraphError> ;
 
+        static u32 s_graphIndex;
+
         Device* _device = nullptr;
         std::shared_ptr<ende::thread::ThreadPool> _threadPool = nullptr;
         bool _multiQueue = false;
+        u32 _graphIndex = 0;
         std::string _name = {};
 
         std::vector<RenderPass> _orderedPasses = {};
@@ -757,6 +801,8 @@ namespace canta {
         // VmaPool _resourcePool = {};
         // u32 _poolSize = 0;
         std::vector<Resource> _resources = {};
+
+        std::vector<SemaphorePair> _importedWaits = {};
 
         i32 _groupId = 0;
 

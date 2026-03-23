@@ -4,6 +4,8 @@
 #include <Canta/RenderGraph.h>
 #include <Canta/PipelineManager.h>
 
+#include "Canta/Enums.h"
+#include "Ende/platform.h"
 #include "embedded_shaders_Matrix.h"
 
 void genMatrix(u32 N, f32* data) {
@@ -112,7 +114,6 @@ import canta;
 
 [shader("vertex")]
 void main(
-    uint3 threadId: SV_DispatchThreadID,
     uniform canta.Image2D<float4> image,
 ) {
     float4 value = image[uint2(0, 1)];
@@ -125,7 +126,6 @@ import canta;
 
 [shader("fragment")]
 float4 main(
-    uint3 threadId: SV_DispatchThreadID,
     uniform canta.Image2D<float4> image,
 ) {
     return float4(1, 1, 1, 1);
@@ -140,6 +140,20 @@ float4 main(
     auto graph = TRY_MAIN(canta::RenderGraph::create({
         .device = device.get(),
     }));
+
+    auto uploadGraph = TRY_MAIN(canta::RenderGraph::create({
+        .device = device.get(),
+    }));
+
+    auto buf = uploadGraph.addBuffer({ .size = N * N * sizeof(float), .name = "upload_buffer" });
+
+    auto uploadedData = TRY_MAIN(uploadGraph.host("upload").upload(buf, lhsData));
+
+    uploadGraph.setRoot(uploadedData);
+    TRY_MAIN(uploadGraph.compile());
+    TRY_MAIN(uploadGraph.run({}, {}, false));
+
+    auto bu = TRY_MAIN(graph.importFromGraph(uploadGraph, uploadedData));
 
     const auto buffer = graph.addBuffer({ .size = 1000, .name = "buffer_0" });
     const auto hostBuffer = graph.addBuffer({ .size = 1000, .name = "buffer_1" });
@@ -158,7 +172,7 @@ float4 main(
 
     auto geometryPass = [&] (canta::RenderGraph& g, int index) -> std::expected<canta::BufferIndex, canta::RenderGraphError> {
         auto p1 = g.compute(std::format("compute_pass_1_{}", index), computePipeline1)
-            .addStorageBufferRead(outputBuffer)
+            .addStorageBufferRead(bu)
             .addStorageBufferWrite(outputBuffer)
             .pushConstants(outputBuffer)
             .dispatchThreads(1, 1, 1);
