@@ -253,7 +253,7 @@ void canta::RenderPass::mergeAccesses() {
 
                 const auto nextWriter = hasWrite(nextAccess);
 
-                access.access = access.access | nextAccess.access;
+                access.access = nextWriter ? nextAccess.access : access.access;
                 access.stage = std::min(access.stage, nextAccess.stage);
                 access.layout = nextWriter ? nextAccess.layout : access.layout;
 
@@ -564,7 +564,7 @@ auto canta::PassBuilder::addBlitRead(const ImageIndex index) -> PassBuilder& {
 auto canta::PassBuilder::addBlitWrite(const ImageIndex index) -> PassBuilder& {
     if (_error.has_value()) return *this;
 
-    auto info = *write(index, Access::TRANSFER_READ | Access::TRANSFER_WRITE, PipelineStage::TRANSFER, ImageLayout::TRANSFER_DST);
+    auto info = *write(index, Access::TRANSFER_WRITE, PipelineStage::TRANSFER, ImageLayout::TRANSFER_DST);
 
     info.usage |= ImageUsage::TRANSFER_DST;
     STORE_ERROR(_error, _graph->updateImageInfo(index, info));
@@ -584,7 +584,7 @@ auto canta::PassBuilder::addTransferRead(const ImageIndex index) -> PassBuilder&
 auto canta::PassBuilder::addTransferWrite(const ImageIndex index) -> PassBuilder& {
     if (_error.has_value()) return *this;
 
-    auto info = *write(index, Access::TRANSFER_READ | Access::TRANSFER_WRITE, PipelineStage::TRANSFER, ImageLayout::TRANSFER_DST);
+    auto info = *write(index, Access::TRANSFER_WRITE, PipelineStage::TRANSFER, ImageLayout::TRANSFER_DST);
 
     info.usage |= ImageUsage::TRANSFER_DST;
     STORE_ERROR(_error, _graph->updateImageInfo(index, info));
@@ -604,7 +604,7 @@ auto canta::PassBuilder::addTransferRead(const BufferIndex index) -> PassBuilder
 auto canta::PassBuilder::addTransferWrite(const BufferIndex index) -> PassBuilder& {
     if (_error.has_value()) return *this;
 
-    auto info = *write(index, Access::TRANSFER_READ | Access::TRANSFER_WRITE, PipelineStage::TRANSFER);
+    auto info = *write(index, Access::TRANSFER_WRITE, PipelineStage::TRANSFER);
 
     info.usage |= BufferUsage::TRANSFER_DST;
     STORE_ERROR(_error, _graph->updateBufferInfo(index, info));
@@ -1058,7 +1058,7 @@ auto canta::PresentPass::acquire(Swapchain* swapchain) -> std::expected<ImageInd
         .swapchainImage = true,
         .name = "swapchain_index",
     });
-    write(swapIndex, Access::MEMORY_READ | Access::MEMORY_WRITE, PipelineStage::BOTTOM, ImageLayout::UNDEFINED);
+    TRY(write(swapIndex, Access::NONE, PipelineStage::BOTTOM, ImageLayout::UNDEFINED));
     pass().setCallback([swapIndex, swapchain] (auto cmd, auto& graph, const auto& push) -> std::expected<bool, RenderGraphError> {
         auto image = TRY(swapchain->acquire(graph.timeline()).transform_error([] (VulkanError error) {
             return RenderGraphError::DEVICE_ERROR;
@@ -1077,8 +1077,8 @@ auto canta::PresentPass::present(Swapchain* swapchain, const ImageIndex index) -
     if (auto info = TRY(_graph->getImageInfo(index)); !info.swapchainImage)
         return std::unexpected(RenderGraphError::INVALID_RESOURCE);
 
-    TRY(read(index, Access::MEMORY_READ, PipelineStage::BOTTOM, ImageLayout::PRESENT));
-    TRY(write(index, Access::MEMORY_READ | Access::MEMORY_WRITE, PipelineStage::BOTTOM, ImageLayout::PRESENT));
+    TRY(read(index, Access::NONE, PipelineStage::BOTTOM, ImageLayout::PRESENT));
+    TRY(write(index, Access::NONE, PipelineStage::BOTTOM, ImageLayout::PRESENT));
     auto timeline = _graph->timeline();
     pass().setCallback([timeline, swapchain] (auto cmd, auto& graph, const auto& push) -> std::expected<bool, RenderGraphError> {
         const auto waits = reinterpret_cast<const uint*>(push.data.data());
