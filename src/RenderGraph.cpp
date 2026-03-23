@@ -1560,7 +1560,6 @@ auto canta::RenderGraph::run(std::span<SemaphorePair> waits, std::span<Semaphore
         if (passIndex == 0) {
             waitHandles.insert(waitHandles.end(), waits.begin(), waits.end());
             waitHandles.insert(waitHandles.end(), _importedWaits.begin(), _importedWaits.end());
-            printf("%d\n", _importedWaits.size());
         }
         if (passIndex == _orderedPasses.size() - 1)
             signalHandles.insert(signalHandles.end(), signals.begin(), signals.end());

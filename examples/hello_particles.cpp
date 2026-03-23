@@ -314,10 +314,7 @@ int main() {
             .name = "image"
         });
 
-        auto particleBufferIndex = renderGraph.addBuffer({
-            .buffer = buffer,
-            .name = "particles_buffer"
-        });
+        auto particleBufferIndex = renderGraph.addExternalBuffer(buffer);
 
         auto swapchainIndex = TRY_MAIN(renderGraph.acquire(&*swapchain));
 
