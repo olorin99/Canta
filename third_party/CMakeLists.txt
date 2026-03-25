@@ -68,12 +68,12 @@ FetchContent_Declare(slang
 
 FetchContent_MakeAvailable(Ende volk vma spdlog tsl_map spirv_cross slang)
 
-set(SLANG_BINARY_DIR ${slang_BINARY_DIR} PARENT_SCOPE)
+set(SLANG_OUTPUT_DIR ${slang_BINARY_DIR} CACHE INTERNAL "SLANG_OUTPUT_DIR")
 
 set(SLANG_ARCH ${CMAKE_SYSTEM_PROCESSOR})
 string(TOLOWER ${CMAKE_SYSTEM_NAME} SLANG_OS)
 string(REPLACE "v" "" SLANG_VERSION ${SLANG_GIT_TAG})
-set(SLANG_OUTPUT_DIR "${slang_BINARY_DIR}/slang-${SLANG_VERSION}-${SLANG_OS}-${SLANG_ARCH}" PARENT_SCOPE)
+set(SLANG_BINARY_DIR "${slang_BINARY_DIR}/slang-${SLANG_VERSION}-${SLANG_OS}-${SLANG_ARCH}" CACHE INTERNAL "SLANG_BINARY_DIR")
 
 set(IMGUI_SOURCES ${IMGUI_PATH}/imgui.cpp ${IMGUI_PATH}/imgui_demo.cpp ${IMGUI_PATH}/imgui_tables.cpp ${IMGUI_PATH}/imgui_widgets.cpp ${IMGUI_PATH}/imgui_draw.cpp ${IMGUI_PATH}/backends/imgui_impl_vulkan.cpp ${IMGUI_PATH}/backends/imgui_impl_sdl2.cpp)
 add_library(imgui ${IMGUI_SOURCES})
