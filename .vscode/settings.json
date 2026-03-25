@@ -4,7 +4,7 @@
     ],
     "clang-tidy.buildPath": "${workspaceFolder}/build",
     "cmake.clearOutputBeforeBuild": false,
-    "cmake.environment": {
-        "LD_LIBRARY_PATH": "$LD_LIBRARY_PATH:/home/christian/Documents/Projects/Canta/cmake-build-debug/_deps/slang-build/slang-2026.4.2-linux-x86_64/lib"
-    },
+    //"cmake.environment": {
+    //    "LD_LIBRARY_PATH": "$LD_LIBRARY_PATH:/home/christian/Documents/Projects/Canta/cmake-build-debug/_deps/slang-build/slang-2026.4.2-linux-x86_64/lib"
+    //},
 }

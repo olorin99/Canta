@@ -21,6 +21,7 @@ find_package(SDL2 REQUIRED)
 find_package(Threads REQUIRED)
 
 add_subdirectory(third_party)
+set(CMAKE_BUILD_RPATH "${SLANG_OUTPUT_DIR}/lib")
 
 function(compile_shaders)
     file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/include")
@@ -34,10 +35,10 @@ function(compile_shaders)
         set(OUTPUT_FILE "${CMAKE_CURRENT_BINARY_DIR}/include/${base_name}.spv")
         list(APPEND SHADER_OUTPUTS ${OUTPUT_FILE})
 
-        if (NOT DEFINED SLANG_BINARY_DIR)
-            set(SLANG_BINARY_DIR "${CMAKE_BINARY_DIR}/_deps/slang-build")
+        if (NOT DEFINED SLANG_OUTPUT_DIR)
+            error("Slang binary not found")
         endif ()
-        set(SLANG_BINARY "${SLANG_BINARY_DIR}/slang-2026.4.2-linux-x86_64/bin/slangc")
+        set(SLANG_BINARY "${SLANG_OUTPUT_DIR}/bin/slangc")
 
         add_custom_command(
                 OUTPUT ${OUTPUT_FILE}
