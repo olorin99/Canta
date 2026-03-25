@@ -36,7 +36,7 @@ function(compile_shaders)
         list(APPEND SHADER_OUTPUTS ${OUTPUT_FILE})
 
         if (NOT DEFINED SLANG_OUTPUT_DIR)
-            error("Slang binary not found")
+            message(FATAL_ERROR "Slang binary not found")
         endif ()
         set(SLANG_BINARY "${SLANG_OUTPUT_DIR}/bin/slangc")
 
