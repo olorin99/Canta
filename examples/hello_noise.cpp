@@ -1,7 +1,7 @@
 
 #include <Canta/RenderGraph.h>
 #include <Canta/PipelineManager.h>
-#include <Ende/time/time.h>
+#include <Ende/time/Clock.h>
 #include "Canta/ImGuiContext.h"
 #include "Canta/SDLWindow.h"
 #include "Canta/util/random.h"
@@ -42,7 +42,7 @@ int main() {
     f32 timeScale = 1.0f;
     i32 octaves = 6;
 
-    auto clock = ende::time::SystemTime::now();
+    auto clock = ende::time::Clock::now();
 
     f64 dt = 1.f / 60;
     while (!window.shouldClose()) {
@@ -80,7 +80,7 @@ int main() {
                 break;
             case 1:
                 noiseImage = canta::generatePerlinNoise(renderGraph, 1920, 1080, {
-                    .time = (clock.elapsed().milliseconds() / 1000.f) * timeScale,
+                    .time = (clock.milliseconds() / 1000.f) * timeScale,
                     .octaves = static_cast<u32>(octaves),
                     .seed = static_cast<u32>(seed)
                 });
