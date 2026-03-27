@@ -24,3 +24,6 @@ target_link_libraries(prefix_sum Canta)
 
 add_executable(hello_noise hello_noise.cpp)
 target_link_libraries(hello_noise Canta)
+
+add_executable(hello_upload hello_upload.cpp)
+target_link_libraries(hello_upload Canta)

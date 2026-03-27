@@ -1,4 +1,4 @@
-#include "Canta/CommandPool.h"
+#include <Canta/CommandPool.h>
 #include <Canta/Device.h>
 
 template<> u32 canta::CommandHandle ::s_hash = 0;
@@ -8,18 +8,12 @@ canta::CommandPool::~CommandPool() {
         return;
     reset();
 
-    for (auto& buffer : _buffers) {
-        auto b = buffer.buffer();
-        vkFreeCommandBuffers(_device->logicalDevice(), _pool, 1, &b);
-    }
-
     vkDestroyCommandPool(_device->logicalDevice(), _pool, nullptr);
 }
 
 canta::CommandPool::CommandPool(CommandPool &&rhs) noexcept {
     std::swap(_device, rhs._device);
     std::swap(_pool, rhs._pool);
-    std::swap(_buffers, rhs._buffers);
     std::swap(_index, rhs._index);
     std::swap(_queueType, rhs._queueType);
     std::swap(_commandBuffers, rhs._commandBuffers);
@@ -28,7 +22,6 @@ canta::CommandPool::CommandPool(CommandPool &&rhs) noexcept {
 auto canta::CommandPool::operator=(CommandPool &&rhs) noexcept -> CommandPool & {
     std::swap(_device, rhs._device);
     std::swap(_pool, rhs._pool);
-    std::swap(_buffers, rhs._buffers);
     std::swap(_index, rhs._index);
     std::swap(_queueType, rhs._queueType);
     std::swap(_commandBuffers, rhs._commandBuffers);
@@ -61,4 +54,8 @@ auto canta::CommandPool::getBuffer() -> CommandHandle {
     auto handle = _commandBuffers.allocate();
     *handle = std::move(buffer);
     return handle;
+}
+
+auto canta::CommandPool::queue() -> std::shared_ptr<Queue> {
+    return _device->queue(_queueType);
 }

@@ -10,6 +10,7 @@
 namespace canta {
 
     class Device;
+    class Queue;
 
     using CommandHandle = Handle<CommandBuffer, ResourceList<CommandBuffer>>;
 
@@ -34,12 +35,13 @@ namespace canta {
 
         auto bufferCount() const -> u32 { return _commandBuffers.used(); }
 
+        auto queue() -> std::shared_ptr<Queue>;
+
     private:
         friend Device;
 
         Device* _device = nullptr;
         VkCommandPool _pool = VK_NULL_HANDLE;
-        std::vector<CommandBuffer> _buffers = {};
         QueueType _queueType = QueueType::NONE;
         u32 _index = 0;
         ResourceList<CommandBuffer> _commandBuffers = {};

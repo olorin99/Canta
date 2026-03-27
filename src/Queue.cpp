@@ -14,23 +14,25 @@ auto canta::Queue::submit(std::span<CommandHandle> commandBuffers, std::span<Sem
         waitInfos[i].deviceIndex = 0;
         waitInfos[i].pNext = nullptr;
     }
-    for (u32 i = 0; i < signals.size(); i++) {
-        auto& signal = signals[i];
-        signalInfos[i].sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
-        signalInfos[i].semaphore = signal.semaphore->semaphore();
-        signalInfos[i].value = signal.value;
-        signalInfos[i].stageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
-        signalInfos[i].deviceIndex = 0;
-        signalInfos[i].pNext = nullptr;
+    u32 signalCount = 0;
+    for (; signalCount < signals.size(); signalCount++) {
+        auto& signal = signals[signalCount];
+        signalInfos[signalCount].sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
+        signalInfos[signalCount].semaphore = signal.semaphore->semaphore();
+        signalInfos[signalCount].value = signal.value;
+        signalInfos[signalCount].stageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
+        signalInfos[signalCount].deviceIndex = 0;
+        signalInfos[signalCount].pNext = nullptr;
     }
     if (_device->resourceTimeline()) {
         // resource timeline signal on each queue submit
-        signalInfos[signals.size()].sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
-        signalInfos[signals.size()].semaphore = _device->resourceTimeline()->semaphore();
-        signalInfos[signals.size()].value = _device->resourceTimeline()->increment();
-        signalInfos[signals.size()].stageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
-        signalInfos[signals.size()].deviceIndex = 0;
-        signalInfos[signals.size()].pNext = nullptr;
+        signalInfos[signalCount].sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
+        signalInfos[signalCount].semaphore = _device->resourceTimeline()->semaphore();
+        signalInfos[signalCount].value = _device->resourceTimeline()->increment();
+        signalInfos[signalCount].stageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
+        signalInfos[signalCount].deviceIndex = 0;
+        signalInfos[signalCount].pNext = nullptr;
+        signalCount++;
     }
 
     VkCommandBufferSubmitInfo commandInfos[commandBuffers.size()];
@@ -47,7 +49,7 @@ auto canta::Queue::submit(std::span<CommandHandle> commandBuffers, std::span<Sem
     submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO_2;
     submitInfo.waitSemaphoreInfoCount = waits.size();
     submitInfo.pWaitSemaphoreInfos = waitInfos;
-    submitInfo.signalSemaphoreInfoCount = signals.size();
+    submitInfo.signalSemaphoreInfoCount = signalCount;
     submitInfo.pSignalSemaphoreInfos = signalInfos;
     submitInfo.commandBufferInfoCount = commandBuffers.size();
     submitInfo.pCommandBufferInfos = commandInfos;

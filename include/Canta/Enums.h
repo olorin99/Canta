@@ -418,6 +418,10 @@ namespace canta {
 
     constexpr u32 formatSize(Format format) {
         switch (format) {
+            case Format::RG32_SFLOAT:
+            case Format::RG32_SINT:
+            case Format::RG32_UINT:
+                return 4 * 2;
             case Format::RGBA8_UNORM:
             case Format::RGBA8_SNORM:
             case Format::RGBA8_USCALED:

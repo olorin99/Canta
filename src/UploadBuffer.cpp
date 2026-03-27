@@ -1,5 +1,5 @@
 #include <cstring>
-#include "Canta/UploadBuffer.h"
+#include <Canta/UploadBuffer.h>
 
 auto canta::UploadBuffer::create(canta::UploadBuffer::CreateInfo info) -> std::expected<UploadBuffer, VulkanError> {
     UploadBuffer buffer = {};
@@ -163,6 +163,7 @@ auto canta::UploadBuffer::upload(canta::ImageHandle dstHandle, std::span<const u
                 .dstLayerCount = 1,
                 .srcSize = allocationSize,
                 .srcOffset = offset,
+                .firstTransfer = (dstOffset.x() + dstOffset.y() + dstOffset.z()) == 0,
                 .finalTransfer = (data.size() - (uploadOffset + allocationSize) == 0) && info.final
             });
 
@@ -213,11 +214,11 @@ auto canta::UploadBuffer::flushStagedData() -> UploadBuffer& {
                 //TODO: manager barriers
                 commandBuffer->barrier({
                     .image = staged.dst,
-                    .srcStage = PipelineStage::TOP,
+                    .srcStage = staged.firstTransfer ? PipelineStage::TOP : PipelineStage::TRANSFER,
                     .dstStage = PipelineStage::TRANSFER,
-                    .srcAccess = Access::NONE,
+                    .srcAccess = staged.firstTransfer ? Access::NONE : Access::TRANSFER_WRITE,
                     .dstAccess = Access::TRANSFER_WRITE,
-                    .srcLayout = ImageLayout::UNDEFINED,
+                    .srcLayout = staged.firstTransfer ? ImageLayout::UNDEFINED : ImageLayout::TRANSFER_DST,
                     .dstLayout = ImageLayout::TRANSFER_DST
                 });
                 commandBuffer->copyBufferToImage({
@@ -241,8 +242,6 @@ auto canta::UploadBuffer::flushStagedData() -> UploadBuffer& {
                             .dstAccess = Access::MEMORY_READ,
                             .srcLayout = ImageLayout::TRANSFER_DST,
                             .dstLayout = ImageLayout::SHADER_READ_ONLY,
-                            .srcQueue = _device->queue(QueueType::TRANSFER)->familyIndex(),
-                            .dstQueue = _device->queue(QueueType::GRAPHICS)->familyIndex()
                     };
                     commandBuffer->barrier(barrier);
                     _releasedFromQueue.push_back(barrier);
@@ -273,7 +272,9 @@ auto canta::UploadBuffer::wait(u64 timeout) -> std::expected<bool, VulkanError> 
     if (_submitted.empty())
         return false;
     const auto maxSignal = std::ranges::max_element(_submitted);
-    return _timelineSemaphore->wait(*maxSignal);
+    auto value = _timelineSemaphore->wait(*maxSignal);
+    _commandPool.reset();
+    return value;
 }
 
 auto canta::UploadBuffer::clearSubmitted() -> u32 {
