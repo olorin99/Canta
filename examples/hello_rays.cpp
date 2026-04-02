@@ -30,7 +30,7 @@ private:
 
 
 int main() {
-    auto device = TRY_MAIN(canta::Device::create({
+    auto device = maybe_conv(i32, canta::Device::create({
         .applicationName = "hello_rays",
         .headless = true,
         .enableMeshShading = false,
@@ -49,7 +49,7 @@ int main() {
         .rootPath = CANTA_SRC_DIR
     });
 
-    auto renderGraph = TRY_MAIN(canta::RenderGraph::create({
+    auto renderGraph = maybe_conv(i32, canta::RenderGraph::create({
         .device = device.get(),
         .multiQueue = false,
         // .name = "graph"
@@ -84,9 +84,9 @@ int main() {
 
     auto outputBufferIndex = renderGraph.addExternalBuffer(outputBuffer);
 
-    auto uploadedData = TRY_MAIN(renderGraph.host("sphere_upload").upload(sphereBuffer, spheres));
+    auto uploadedData = maybe_conv(i32, renderGraph.host("sphere_upload").upload(sphereBuffer, spheres));
 
-    auto image = TRY_MAIN(renderGraph.compute("trace_rays", pipelineManager.getPipeline(canta::PipelineDescription{
+    auto image = maybe_conv(i32, renderGraph.compute("trace_rays", pipelineManager.getPipeline(canta::PipelineDescription{
             .compute = {
                 .path = CANTA_SRC_DIR"/examples/hello_raytrace.slang",
                 .entry = "traceMain"
@@ -95,12 +95,12 @@ int main() {
         .pushConstants(canta::Read(uploadedData), canta::Write(outputImage), static_cast<u32>(spheres.size()), camera, imageWidth, imageHeight)
         .dispatchThreads(imageWidth, imageHeight).output<canta::ImageIndex>());
 
-    auto output = TRY_MAIN(renderGraph.transfer("copy_to_buffer").copy(image, outputBufferIndex));
+    auto output = maybe_conv(i32, renderGraph.transfer("copy_to_buffer").copy(image, outputBufferIndex));
 
     renderGraph.setRoot(output);
 
-    TRY_MAIN(renderGraph.compile());
-    TRY_MAIN(renderGraph.run({}, {}, false));
+    maybe_conv(i32, renderGraph.compile());
+    maybe_conv(i32, renderGraph.run({}, {}, false));
 
     auto mapped = canta::Ptr<ende::math::Vec4f>(*renderGraph.getBuffer(outputBufferIndex));
 

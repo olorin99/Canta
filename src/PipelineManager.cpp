@@ -157,30 +157,30 @@ auto canta::PipelineManager::getPipeline(PipelineDescription info, const Pipelin
             source = shaderFile->read();
             _fileWatcher.addWatch(_searchPaths.front() / shaderInfo.path);
         }
-        std::vector<u32> spirv = TRY(compileSlang(name, source, stage, shaderInfo.macros).transform_error([this](const auto& error) {
+        std::vector<u32> spirv = maybe(compileSlang(name, source, stage, shaderInfo.macros), [this](const auto& error) {
             _device->logger().error("Shader VulkanError: {}", error.c_str());
             return Error::InvalidShader;
-        }));
+        });
 
         value.spirv = spirv;
         return value;
     };
 
     Pipeline::CreateInfo createInfo = {};
-    createInfo.vertex = TRY(evalShader(info.vertex, ShaderStage::VERTEX));
-    createInfo.tesselationControl = TRY(evalShader(info.tesselationControl, ShaderStage::TESS_CONTROL));
-    createInfo.tesselationEvaluation = TRY(evalShader(info.tesselationEvaluation, ShaderStage::TESS_EVAL));
-    createInfo.geometry = TRY(evalShader(info.geometry, ShaderStage::GEOMETRY));
-    createInfo.fragment = TRY(evalShader(info.fragment, ShaderStage::FRAGMENT));
-    createInfo.compute = TRY(evalShader(info.compute, ShaderStage::COMPUTE));
-    createInfo.rayGen = TRY(evalShader(info.rayGen, ShaderStage::RAYGEN));
-    createInfo.anyHit = TRY(evalShader(info.anyHit, ShaderStage::ANY_HIT));
-    createInfo.closestHit = TRY(evalShader(info.closestHit, ShaderStage::CLOSEST_HIT));
-    createInfo.miss = TRY(evalShader(info.miss, ShaderStage::MISS));
-    createInfo.intersection = TRY(evalShader(info.intersection, ShaderStage::INTERSECTION));
-    createInfo.callable = TRY(evalShader(info.callable, ShaderStage::CALLABLE));
-    createInfo.task = TRY(evalShader(info.task, ShaderStage::TASK));
-    createInfo.mesh = TRY(evalShader(info.mesh, ShaderStage::MESH));
+    createInfo.vertex = maybe(evalShader(info.vertex, ShaderStage::VERTEX));
+    createInfo.tesselationControl = maybe(evalShader(info.tesselationControl, ShaderStage::TESS_CONTROL));
+    createInfo.tesselationEvaluation = maybe(evalShader(info.tesselationEvaluation, ShaderStage::TESS_EVAL));
+    createInfo.geometry = maybe(evalShader(info.geometry, ShaderStage::GEOMETRY));
+    createInfo.fragment = maybe(evalShader(info.fragment, ShaderStage::FRAGMENT));
+    createInfo.compute = maybe(evalShader(info.compute, ShaderStage::COMPUTE));
+    createInfo.rayGen = maybe(evalShader(info.rayGen, ShaderStage::RAYGEN));
+    createInfo.anyHit = maybe(evalShader(info.anyHit, ShaderStage::ANY_HIT));
+    createInfo.closestHit = maybe(evalShader(info.closestHit, ShaderStage::CLOSEST_HIT));
+    createInfo.miss = maybe(evalShader(info.miss, ShaderStage::MISS));
+    createInfo.intersection = maybe(evalShader(info.intersection, ShaderStage::INTERSECTION));
+    createInfo.callable = maybe(evalShader(info.callable, ShaderStage::CALLABLE));
+    createInfo.task = maybe(evalShader(info.task, ShaderStage::TASK));
+    createInfo.mesh = maybe(evalShader(info.mesh, ShaderStage::MESH));
     createInfo.localSize = info.localSize;
     createInfo.specializationConstants = info.specializationConstants;
     createInfo.rasterState = info.rasterState;
@@ -343,7 +343,7 @@ auto loadFormat(std::string_view format) -> canta::Format {
 }
 
 auto canta::PipelineManager::getPipeline(const std::filesystem::path& path, std::span<const Macro> additionalMacros, const std::vector<SpecializationConstant> &specializationConstants) -> std::expected<PipelineHandle, Error> {
-    const auto file = TRY(ende::fs::File::open(path).transform_error([] (const auto& error) { return Error::InvalidPath; }));
+    const auto file = maybe(ende::fs::File::open(path).transform_error([] (const auto& error) { return Error::InvalidPath; }));
 
     rapidjson::Document document;
     document.Parse(file.read().c_str());
@@ -445,7 +445,7 @@ auto canta::PipelineManager::reload() -> std::expected<bool, Error> {
         if (auto it = _watchedFiles.find(path); it != _watchedFiles.end()) {
             for (auto& [key, value] : _pipelines) {
                 if (key == it->second) {
-                    TRY(getPipeline(key, value));
+                    maybe(getPipeline(key, value));
                 }
             }
         }
@@ -477,7 +477,7 @@ auto canta::PipelineManager::findVirtualFile(const std::filesystem::path &path) 
 #define DIAGNOSE(diagnostics) if ((diagnostics) != nullptr) return std::unexpected(reinterpret_cast<const char*>(diagnostics->getBufferPointer()));
 
 auto canta::PipelineManager::compileSlang(const std::string_view name, const std::string_view slang, ShaderStage stage, const std::span<const Macro> macros) -> std::expected<std::vector<u32>, std::string> {
-    auto session = TRY(createSlangSession(macros));
+    auto session = maybe(createSlangSession(macros));
 
     std::string source = R"(
     #define GROUP_SIZE(x,y,z) [vk::constant_id(0)] const uint x_size = x;\

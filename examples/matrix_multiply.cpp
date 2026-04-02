@@ -44,7 +44,7 @@ void multiplyMatrix(const u32 N, const f32* lhs, const f32* rhs, f32* output) {
 
 int main() {
 
-    auto device = TRY_MAIN(canta::Device::create({
+    auto device = maybe_conv(i32, canta::Device::create({
         .applicationName = "matrix multiplication example",
         .headless = true,
         .enableMeshShading = false,
@@ -137,23 +137,23 @@ float4 main(
         }
 }).value();
 
-    auto graph = TRY_MAIN(canta::RenderGraph::create({
+    auto graph = maybe_conv(i32, canta::RenderGraph::create({
         .device = device.get(),
     }));
 
-    auto uploadGraph = TRY_MAIN(canta::RenderGraph::create({
+    auto uploadGraph = maybe_conv(i32, canta::RenderGraph::create({
         .device = device.get(),
     }));
 
     auto buf = uploadGraph.addBuffer({ .size = N * N * sizeof(float), .name = "upload_buffer" });
 
-    auto uploadedData = TRY_MAIN(uploadGraph.host("upload").upload(buf, lhsData));
+    auto uploadedData = maybe_conv(i32, uploadGraph.host("upload").upload(buf, lhsData));
 
     uploadGraph.setRoot(uploadedData);
-    TRY_MAIN(uploadGraph.compile());
-    TRY_MAIN(uploadGraph.run({}, {}, false));
+    maybe_conv(i32, uploadGraph.compile());
+    maybe_conv(i32, uploadGraph.run({}, {}, false));
 
-    auto bu = TRY_MAIN(graph.importFromGraph(uploadGraph, uploadedData));
+    auto bu = maybe_conv(i32, graph.importFromGraph(uploadGraph, uploadedData));
 
     const auto buffer = graph.addBuffer({ .size = 1000, .name = "buffer_0" });
     const auto hostBuffer = graph.addBuffer({ .size = 1000, .name = "buffer_1" });
@@ -166,8 +166,8 @@ float4 main(
         .pushConstants(buffer, image)
         .dispatchThreads(1, 1, 1);
 
-    const auto outputBuffer = TRY_MAIN(computePass.output<canta::BufferIndex>());
-    const auto outputImage = TRY_MAIN(computePass.output<canta::ImageIndex>(1));
+    const auto outputBuffer = maybe_conv(i32, computePass.output<canta::BufferIndex>());
+    const auto outputImage = maybe_conv(i32, computePass.output<canta::ImageIndex>(1));
 
 
     auto geometryPass = [&] (canta::RenderGraph& g, int index) -> std::expected<canta::BufferIndex, canta::RenderGraphError> {
@@ -178,13 +178,13 @@ float4 main(
             .dispatchThreads(1, 1, 1);
 
         auto p2 = g.compute(std::format("compute_pass_2_{}", index), computePipeline1)
-            .addStorageBufferRead(TRY(p1.output<canta::BufferIndex>()))
+            .addStorageBufferRead(maybe(p1.output<canta::BufferIndex>()))
             .addStorageBufferWrite(outputBuffer)
             .pushConstants(outputBuffer)
             .dispatchThreads(1, 1, 1);
 
         auto p3 = g.compute(std::format("compute_pass_3_{}", index), computePipeline1)
-            .addStorageBufferRead(TRY(p2.output<canta::BufferIndex>()))
+            .addStorageBufferRead(maybe(p2.output<canta::BufferIndex>()))
             .addStorageBufferWrite(outputBuffer)
             .pushConstants(outputBuffer)
             .dispatchThreads(1, 1, 1);
@@ -192,8 +192,8 @@ float4 main(
         return p3.output<canta::BufferIndex>();
     };
 
-    const auto b = TRY_MAIN(geometryPass(graph, 0));
-    const auto c = TRY_MAIN(geometryPass(graph, 1));
+    const auto b = maybe_conv(i32, geometryPass(graph, 0));
+    const auto c = maybe_conv(i32, geometryPass(graph, 1));
 
     auto computePass2 = graph.compute("pass_1", computePipeline);
     computePass2.addStorageBufferRead(b);
@@ -204,15 +204,15 @@ float4 main(
     computePass2.dispatchThreads();
 
     auto graphicsPass = graph.graphics("pass_2", graphicsPipeline)
-        .addSampledRead(TRY_MAIN(computePass2.output<canta::ImageIndex>()), canta::PipelineStage::FRAGMENT_SHADER)
+        .addSampledRead(maybe_conv(i32, computePass2.output<canta::ImageIndex>()), canta::PipelineStage::FRAGMENT_SHADER)
         .addColourWrite(swapImage)
         .pushConstants(outputImage)
         .draw(10);
 
-    auto transferPass = graph.graphics("pass_4").blit(TRY_MAIN(graphicsPass.output<canta::ImageIndex>()), outputImage);
+    auto transferPass = graph.graphics("pass_4").blit(maybe_conv(i32, graphicsPass.output<canta::ImageIndex>()), outputImage);
 
 
-    const auto l = TRY_MAIN(transferPass.output<canta::ImageIndex>());
+    const auto l = maybe_conv(i32, transferPass.output<canta::ImageIndex>());
     auto hostPass = graph.host<canta::ImageIndex, canta::BufferIndex, u32, std::string>("pass_3")
         .pushConstants(canta::Read(l), canta::Write(hostBuffer), 100, "hello")
         .setCallback([] (canta::RenderGraph&, const canta::ImageIndex& image, const canta::BufferIndex& buffer, const u32& argA, const std::string& argB) {
@@ -223,16 +223,16 @@ float4 main(
             printf("Arg b: %s\n", argB.c_str());
         });
 
-    const auto rootEdge = TRY_MAIN(hostPass.output<canta::BufferIndex>());
+    const auto rootEdge = maybe_conv(i32, hostPass.output<canta::BufferIndex>());
 
     printf("Pass count: %d\n", graph.vertexCount());
     printf("Edge count: %d\n", graph.edgeCount());
 
     graph.setRoot(rootEdge);
-    TRY_MAIN(graph.compile());
+    maybe_conv(i32, graph.compile());
     // TRY_MAIN(graph.compile());
 
-    TRY_MAIN(graph.run());
+    maybe_conv(i32, graph.run());
 
     // auto basePass = computePass.clone();
 

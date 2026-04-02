@@ -152,7 +152,7 @@ auto canta::RenderPass::run(RenderGraph &graph, CommandHandle commands) const ->
             auto& renderingAttachment = colourAttachments[attachmentIndex];
 
             if (!renderingAttachment.image) {
-                const auto image = TRY(graph.getImage({ .index = attachment.index }));
+                const auto image = maybe(graph.getImage({ .index = attachment.index }));
 
                 renderingAttachment.image = image;
             }
@@ -167,11 +167,11 @@ auto canta::RenderPass::run(RenderGraph &graph, CommandHandle commands) const ->
     }
 
 
-    const auto pushData = TRY(resolvePushConstants(graph, _pushData, _deferredPushConstants));
+    const auto pushData = maybe(resolvePushConstants(graph, _pushData, _deferredPushConstants));
     if (_pipeline)
         commands->bindPipeline(_pipeline);
     try {
-        TRY(_callback(commands, graph, pushData));
+        maybe(_callback(commands, graph, pushData));
     } catch (std::exception& e) {
         return std::unexpected(RenderGraphError::PASS_RUN);
     }
@@ -201,9 +201,9 @@ auto canta::RenderPass::resolvePushConstants(const RenderGraph& graph, PushData 
     for (const auto& deferredConstant : deferredConstants) {
         auto offset = deferredConstant.offset;
         if (deferredConstant.type == 0)
-            ::unpack(data, offset, TRY(graph.getBuffer(std::get<BufferIndex>(deferredConstant.value))));
+            ::unpack(data, offset, maybe(graph.getBuffer(std::get<BufferIndex>(deferredConstant.value))));
         else
-            ::unpack(data, offset, TRY(graph.getImage(std::get<ImageIndex>(deferredConstant.value))));
+            ::unpack(data, offset, maybe(graph.getImage(std::get<ImageIndex>(deferredConstant.value))));
     }
     return data;
 }
@@ -282,7 +282,7 @@ auto canta::PassBuilder::setManualPipeline(const bool state) -> PassBuilder & {
 }
 
 auto canta::PassBuilder::read(const BufferIndex index, const Access access, const PipelineStage stage) -> std::expected<BufferInfo, RenderGraphError> {
-    TRY(_graph->validateGraphResource(index));
+    maybe(_graph->validateGraphResource(index));
     pass().inputs.emplace_back(index);
     pass()._accesses.emplace_back(ResourceAccess{
         .id = index.id,
@@ -294,7 +294,7 @@ auto canta::PassBuilder::read(const BufferIndex index, const Access access, cons
 }
 
 auto canta::PassBuilder::read(const ImageIndex index, const Access access, const PipelineStage stage, const ImageLayout layout) -> std::expected<ImageInfo, RenderGraphError> {
-    TRY(_graph->validateGraphResource(index));
+    maybe(_graph->validateGraphResource(index));
     pass().inputs.emplace_back(index);
     pass()._accesses.emplace_back(ResourceAccess{
         .id = index.id,
@@ -307,7 +307,7 @@ auto canta::PassBuilder::read(const ImageIndex index, const Access access, const
 }
 
 auto canta::PassBuilder::write(const BufferIndex index, const Access access, const PipelineStage stage) -> std::expected<BufferInfo, RenderGraphError> {
-    TRY(_graph->validateGraphResource(index));
+    maybe(_graph->validateGraphResource(index));
     const auto alias = _graph->alias(index);
     pass().outputs.emplace_back(alias);
     pass()._accesses.emplace_back(ResourceAccess{
@@ -320,7 +320,7 @@ auto canta::PassBuilder::write(const BufferIndex index, const Access access, con
 }
 
 auto canta::PassBuilder::write(const ImageIndex index, const Access access, const PipelineStage stage, const ImageLayout layout) -> std::expected<ImageInfo, RenderGraphError> {
-    TRY(_graph->validateGraphResource(index));
+    maybe(_graph->validateGraphResource(index));
     const auto alias = _graph->alias(index);
     pass().outputs.emplace_back(alias);
     pass()._accesses.emplace_back(ResourceAccess{
@@ -703,7 +703,7 @@ auto canta::ComputePass::dispatchIndirect(const BufferIndex commands, u32 offset
     addIndirectRead(commands);
     pass().setCallback([commands, offset] (auto cmd, auto& graph, const RenderPass::PushData& push) -> std::expected<bool, RenderGraphError> {
         cmd->pushConstants(ShaderStage::COMPUTE, { push.data.data(), push.size }, 0);
-        cmd->dispatchIndirect(TRY(graph.getBuffer(commands)), offset);
+        cmd->dispatchIndirect(maybe(graph.getBuffer(commands)), offset);
         return true;
     });
     return *this;
@@ -774,7 +774,7 @@ auto canta::GraphicsPass::drawIndirect(const BufferIndex commands, u32 offset, u
     pass().setCallback([dimensions, commands, offset, drawCount, indexed, stride] (auto cmd, auto& graph, const RenderPass::PushData& push) -> std::expected<bool, RenderGraphError> {
         cmd->setViewport({ static_cast<f32>(dimensions.x()), static_cast<f32>(dimensions.y()) });
         cmd->pushConstants(ShaderStage::VERTEX | ShaderStage::FRAGMENT, { push.data.data(), push.size }, 0);
-        cmd->drawIndirect(TRY(graph.getBuffer(commands)), offset, drawCount, indexed, stride);
+        cmd->drawIndirect(maybe(graph.getBuffer(commands)), offset, drawCount, indexed, stride);
         return true;
     });
     return *this;
@@ -787,7 +787,7 @@ auto canta::GraphicsPass::drawIndirectCount(const BufferIndex commands, u32 offs
     pass().setCallback([dimensions, commands, offset, countBuffer, countOffset, indexed, stride] (auto cmd, auto& graph, const RenderPass::PushData& push) -> std::expected<bool, RenderGraphError> {
         cmd->setViewport({ static_cast<f32>(dimensions.x()), static_cast<f32>(dimensions.y()) });
         cmd->pushConstants(ShaderStage::VERTEX | ShaderStage::FRAGMENT, { push.data.data(), push.size }, 0);
-        cmd->drawIndirectCount(TRY(graph.getBuffer(commands)), offset, TRY(graph.getBuffer(countBuffer)), countOffset, indexed, stride);
+        cmd->drawIndirectCount(maybe(graph.getBuffer(commands)), offset, maybe(graph.getBuffer(countBuffer)), countOffset, indexed, stride);
         return true;
     });
     return *this;
@@ -821,7 +821,7 @@ auto canta::GraphicsPass::drawMeshTasksIndirect(const BufferIndex commands, u32 
     pass().setCallback([dimensions, commands, offset, drawCount, stride] (auto cmd, auto& graph, const RenderPass::PushData& push) -> std::expected<bool, RenderGraphError> {
         cmd->setViewport({ static_cast<f32>(dimensions.x()), static_cast<f32>(dimensions.y()) });
         cmd->pushConstants(ShaderStage::MESH | ShaderStage::FRAGMENT, { push.data.data(), push.size }, 0);
-        cmd->drawMeshTasksIndirect(TRY(graph.getBuffer(commands)), offset, drawCount, stride);
+        cmd->drawMeshTasksIndirect(maybe(graph.getBuffer(commands)), offset, drawCount, stride);
         return true;
     });
     return *this;
@@ -834,7 +834,7 @@ auto canta::GraphicsPass::drawMeshTasksIndirectCount(const BufferIndex commands,
     pass().setCallback([dimensions, commands, offset, countBuffer, countOffset, stride] (auto cmd, auto& graph, const RenderPass::PushData& push) -> std::expected<bool, RenderGraphError> {
         cmd->setViewport({ static_cast<f32>(dimensions.x()), static_cast<f32>(dimensions.y()) });
         cmd->pushConstants(ShaderStage::MESH | ShaderStage::FRAGMENT, { push.data.data(), push.size }, 0);
-        cmd->drawMeshTasksIndirectCount(TRY(graph.getBuffer(commands)), offset, TRY(graph.getBuffer(countBuffer)), countOffset, stride);
+        cmd->drawMeshTasksIndirectCount(maybe(graph.getBuffer(commands)), offset, maybe(graph.getBuffer(countBuffer)), countOffset, stride);
         return true;
     });
     return *this;
@@ -846,8 +846,8 @@ auto canta::GraphicsPass::blit(const ImageIndex src, const ImageIndex dst, const
     addTransferWrite(dst);
     pass().setCallback([src, dst, filter] (auto cmd, auto& graph, const auto& push) -> std::expected<bool, RenderGraphError> {
         cmd->blit({
-            .src = TRY(graph.getImage(src)),
-            .dst = TRY(graph.getImage(dst)),
+            .src = maybe(graph.getImage(src)),
+            .dst = maybe(graph.getImage(dst)),
             .srcLayout = ImageLayout::TRANSFER_SRC,
             .dstLayout = ImageLayout::TRANSFER_DST,
             .filter = filter,
@@ -896,8 +896,8 @@ auto canta::TransferPass::copy(BufferIndex src, BufferIndex dst, u32 srcOffset, 
     addTransferWrite(dst);
     pass().setCallback([src, dst, srcOffset, dstOffset, size] (auto cmd, auto& graph, const auto& push) -> std::expected<bool, RenderGraphError> {
         cmd->copyBuffer({
-            .src = TRY(graph.getBuffer(src)),
-            .dst = TRY(graph.getBuffer(dst)),
+            .src = maybe(graph.getBuffer(src)),
+            .dst = maybe(graph.getBuffer(dst)),
             .srcOffset = srcOffset,
             .dstOffset = dstOffset,
             .size = size,
@@ -915,8 +915,8 @@ auto canta::TransferPass::copy(BufferIndex src, ImageIndex dst, const ImageCopy&
         if (copyInfo.layout == ImageLayout::TRANSFER_SRC)
             copyInfo.layout = ImageLayout::TRANSFER_DST;
         if (copyInfo.size == 0 || copyInfo.dimensions.x() == 0 || copyInfo.dimensions.y() == 0 || copyInfo.dimensions.z() == 0) {
-            auto bufferInfo = TRY(graph.getBufferInfo(src));
-            auto imageInfo = TRY(graph.getImageInfo(dst));
+            auto bufferInfo = maybe(graph.getBufferInfo(src));
+            auto imageInfo = maybe(graph.getImageInfo(dst));
 
             copyInfo.dimensions = {
                 imageInfo.image->width(),
@@ -927,8 +927,8 @@ auto canta::TransferPass::copy(BufferIndex src, ImageIndex dst, const ImageCopy&
         }
 
         cmd->copyBufferToImage({
-            .buffer = TRY(graph.getBuffer(src)),
-            .image = TRY(graph.getImage(dst)),
+            .buffer = maybe(graph.getBuffer(src)),
+            .image = maybe(graph.getImage(dst)),
             .dstLayout = copyInfo.layout,
             .dstDimensions = copyInfo.dimensions,
             .dstOffsets = copyInfo.offsets,
@@ -951,8 +951,8 @@ auto canta::TransferPass::copy(ImageIndex src, BufferIndex dst, const ImageCopy&
         if (copyInfo.layout == ImageLayout::TRANSFER_DST)
             copyInfo.layout = ImageLayout::TRANSFER_SRC;
         if (copyInfo.size == 0 || copyInfo.dimensions.x() == 0 || copyInfo.dimensions.y() == 0 || copyInfo.dimensions.z() == 0) {
-            auto bufferInfo = TRY(graph.getBufferInfo(dst));
-            auto imageInfo = TRY(graph.getImageInfo(src));
+            auto bufferInfo = maybe(graph.getBufferInfo(dst));
+            auto imageInfo = maybe(graph.getImageInfo(src));
 
             copyInfo.dimensions = {
                 imageInfo.image->width(),
@@ -963,8 +963,8 @@ auto canta::TransferPass::copy(ImageIndex src, BufferIndex dst, const ImageCopy&
         }
 
         cmd->copyImageToBuffer({
-            .buffer = TRY(graph.getBuffer(dst)),
-            .image = TRY(graph.getImage(src)),
+            .buffer = maybe(graph.getBuffer(dst)),
+            .image = maybe(graph.getImage(src)),
             .dstLayout = copyInfo.layout,
             .dstDimensions = copyInfo.dimensions,
             .dstOffsets = copyInfo.offsets,
@@ -982,7 +982,7 @@ auto canta::TransferPass::copy(ImageIndex src, BufferIndex dst, const ImageCopy&
 auto canta::TransferPass::clear(const ImageIndex index, const ClearValue &value) -> std::expected<ImageIndex, RenderGraphError> {
     addTransferWrite(index);
     pass().setCallback([value, index] (auto cmd, auto& graph, const auto& push) -> std::expected<bool, RenderGraphError> {
-        cmd->clearImage(TRY(graph.getImage(index)), ImageLayout::TRANSFER_DST, value);
+        cmd->clearImage(maybe(graph.getImage(index)), ImageLayout::TRANSFER_DST, value);
         return true;
     });
     return output<ImageIndex>();
@@ -991,7 +991,7 @@ auto canta::TransferPass::clear(const ImageIndex index, const ClearValue &value)
 auto canta::TransferPass::clear(BufferIndex index, u32 value, u32 offset, u32 size) -> std::expected<BufferIndex, RenderGraphError> {
     addTransferWrite(index);
     pass().setCallback([index, value, offset, size] (auto cmd, auto& graph, const auto& push) -> std::expected<bool, RenderGraphError> {
-        cmd->clearBuffer(TRY(graph.getBuffer(index)), value, offset, size);
+        cmd->clearBuffer(maybe(graph.getBuffer(index)), value, offset, size);
         return true;
     });
     return output<BufferIndex>();
@@ -1029,9 +1029,9 @@ auto canta::HostPass::setCallback(const std::function<void(RenderGraph &)> &call
 
 auto canta::HostPass::upload(BufferIndex dst, std::span<const u8> data) -> std::expected<BufferIndex, RenderGraphError> {
     addStorageBufferWrite(dst);
-    auto dstInfo = TRY(_graph->getBufferInfo(dst));
+    auto dstInfo = maybe(_graph->getBufferInfo(dst));
     dstInfo.type = MemoryType::STAGING;
-    TRY(_graph->updateBufferInfo(dst, dstInfo));
+    maybe(_graph->updateBufferInfo(dst, dstInfo));
     setCallback([dst, data] (auto& graph) {
         auto buffer = *graph.getBuffer(dst);
         buffer->data(data);
@@ -1042,9 +1042,9 @@ auto canta::HostPass::upload(BufferIndex dst, std::span<const u8> data) -> std::
 auto canta::HostPass::readback(const BufferIndex src, std::span<u8> data) -> std::expected<BufferIndex, RenderGraphError> {
     addStorageBufferRead(src);
     addStorageBufferWrite(src);
-    auto srcInfo = TRY(_graph->getBufferInfo(src));
+    auto srcInfo = maybe(_graph->getBufferInfo(src));
     srcInfo.type = MemoryType::READBACK;
-    TRY(_graph->updateBufferInfo(src, srcInfo));
+    maybe(_graph->updateBufferInfo(src, srcInfo));
     setCallback([src, data] (auto& graph) {
         auto buffer = *graph.getBuffer(src);
         auto mapped = buffer->map();
@@ -1063,14 +1063,14 @@ auto canta::PresentPass::acquire(Swapchain* swapchain) -> std::expected<ImageInd
         .isSwapchain = true,
         .name = "swapchain_index",
     });
-    TRY(write(swapIndex, Access::NONE, PipelineStage::BOTTOM, ImageLayout::UNDEFINED));
+    maybe(write(swapIndex, Access::NONE, PipelineStage::BOTTOM, ImageLayout::UNDEFINED));
     pass().setCallback([swapIndex, swapchain] (auto cmd, auto& graph, const auto& push) -> std::expected<bool, RenderGraphError> {
-        auto image = TRY(swapchain->acquire(graph.timeline()).transform_error([] (VulkanError error) {
+        auto image = maybe(swapchain->acquire(graph.timeline()).transform_error([] (VulkanError error) {
             return RenderGraphError::DEVICE_ERROR;
         }));
-        auto info = TRY(graph.getImageInfo(swapIndex));
+        auto info = maybe(graph.getImageInfo(swapIndex));
         info.image = image;
-        TRY(graph.updateImageInfo(swapIndex, info));
+        maybe(graph.updateImageInfo(swapIndex, info));
         return true;
     });
 
@@ -1079,11 +1079,11 @@ auto canta::PresentPass::acquire(Swapchain* swapchain) -> std::expected<ImageInd
 
 //TODO: will need to handle special. chain timeline semaphore with acquire/present semaphores
 auto canta::PresentPass::present(Swapchain* swapchain, const ImageIndex index) -> std::expected<ImageIndex, RenderGraphError> {
-    if (auto info = TRY(_graph->getImageInfo(index)); !info.swapchainImage)
+    if (auto info = maybe(_graph->getImageInfo(index)); !info.swapchainImage)
         return std::unexpected(RenderGraphError::INVALID_RESOURCE);
 
-    TRY(read(index, Access::NONE, PipelineStage::BOTTOM, ImageLayout::PRESENT));
-    TRY(write(index, Access::NONE, PipelineStage::BOTTOM, ImageLayout::PRESENT));
+    maybe(read(index, Access::NONE, PipelineStage::BOTTOM, ImageLayout::PRESENT));
+    maybe(write(index, Access::NONE, PipelineStage::BOTTOM, ImageLayout::PRESENT));
     auto timeline = _graph->timeline();
     pass().setCallback([timeline, swapchain] (auto cmd, auto& graph, const auto& push) -> std::expected<bool, RenderGraphError> {
         const auto waits = reinterpret_cast<const uint*>(push.data.data());
@@ -1097,7 +1097,7 @@ auto canta::PresentPass::present(Swapchain* swapchain, const ImageIndex index) -
                 semaphores.emplace_back(graph.device()->queue(queueType)->timeline());
         }
 
-        TRY(swapchain->present(semaphores).transform_error([] (VulkanError error) {
+        maybe(swapchain->present(semaphores).transform_error([] (VulkanError error) {
             // _graph->device->logger().error("Present error: {}", static_cast<u32>(error));
             return RenderGraphError::DEVICE_ERROR;
         }));
@@ -1131,7 +1131,7 @@ auto canta::RenderGraph::create(const CreateInfo &info) -> std::expected<RenderG
         });
     }
 
-    graph._cpuTimeline = TRY(info.device->createSemaphore({
+    graph._cpuTimeline = maybe(info.device->createSemaphore({
         .initialValue = 0,
         .name = "cpu_timeline"
     }).transform_error([] (VulkanError e) { return RenderGraphError::DEVICE_ERROR; }));
@@ -1245,10 +1245,10 @@ auto canta::RenderGraph::addExternalImage(ImageHandle image, ResourceAccess acce
 
 auto canta::RenderGraph::importFromGraph(RenderGraph& graph, BufferIndex index) -> std::expected<BufferIndex, RenderGraphError> {
     if (this == &graph) return std::unexpected(RenderGraphError::INVALID_RESOURCE);
-    TRY(graph.validateGraphResource(index));
+    maybe(graph.validateGraphResource(index));
 
     auto lastAccess = graph.getPrevAccess(graph.passes().size(), index.index);
-    auto buffer = TRY(graph.getBuffer(index));
+    auto buffer = maybe(graph.getBuffer(index));
     if (lastAccess.passIndex > -1) {
         auto& pass = graph.passes()[lastAccess.passIndex];
         auto queueType = pass.queue();
@@ -1265,10 +1265,10 @@ auto canta::RenderGraph::importFromGraph(RenderGraph& graph, BufferIndex index) 
 
 auto canta::RenderGraph::importFromGraph(RenderGraph& graph, ImageIndex index) -> std::expected<ImageIndex, RenderGraphError> {
     if (this == &graph) return std::unexpected(RenderGraphError::INVALID_RESOURCE);
-    TRY(graph.validateGraphResource(index));
+    maybe(graph.validateGraphResource(index));
 
     auto lastAccess = graph.getPrevAccess(graph.passes().size(), index.index);
-    auto image = TRY(graph.getImage(index));
+    auto image = maybe(graph.getImage(index));
     return addExternalImage(image, lastAccess.access);
 }
 
@@ -1293,7 +1293,7 @@ auto canta::RenderGraph::alias(ImageIndex index) -> ImageIndex {
 }
 
 auto canta::RenderGraph::duplicate(const BufferIndex index) -> std::expected<BufferIndex, RenderGraphError> {
-    auto info = TRY(getBufferInfo(index));
+    auto info = maybe(getBufferInfo(index));
     info.buffer = {};
     info.usage = BufferUsage::STORAGE;
     info.type = MemoryType::DEVICE;
@@ -1301,7 +1301,7 @@ auto canta::RenderGraph::duplicate(const BufferIndex index) -> std::expected<Buf
 }
 
 auto canta::RenderGraph::duplicate(const ImageIndex index) -> std::expected<ImageIndex, RenderGraphError> {
-    auto info = TRY(getImageInfo(index));
+    auto info = maybe(getImageInfo(index));
     info.image = {};
     info.usage = ImageUsage::STORAGE;
     info.swapchainImage = false;
@@ -1451,13 +1451,13 @@ void canta::RenderGraph::setRoot(const ImageIndex index) {
 auto canta::RenderGraph::compile() -> std::expected<bool, RenderGraphError> {
     if (_rootEdge < 0) return std::unexpected(RenderGraphError::NO_ROOT);
 
-    auto sorted = TRY(sort(getEdges()[_rootEdge]).transform_error(mapGraphErrorToRenderGraphError));
+    auto sorted = maybe(sort(getEdges()[_rootEdge]).transform_error(mapGraphErrorToRenderGraphError));
 
     std::vector<std::pair<u32, u32>> indices = getResourceIndices(sorted);
 
     if (_multiQueue) {
         const auto sortedSpan = std::span(sorted.data(), sorted.size());
-        const auto dependencyLevels = TRY(buildDependencyLevels(sortedSpan));
+        const auto dependencyLevels = maybe(buildDependencyLevels(sortedSpan));
 
         for (auto& level : dependencyLevels) {
             for (auto& passIndex : level) {
@@ -1495,7 +1495,7 @@ auto canta::RenderGraph::compile() -> std::expected<bool, RenderGraphError> {
 
     buildBarriers();
     buildResources();
-    TRY(buildRenderAttachments());
+    maybe(buildRenderAttachments());
 
     return true;
 }
@@ -1549,7 +1549,7 @@ auto canta::RenderGraph::run(std::span<SemaphorePair> waits, std::span<Semaphore
         if (async && final)
             passSignals.emplace_back(_cpuTimeline, _cpuTimeline->increment());
 
-        TRY(queue->submit({ &commands, 1 }, passWaits, passSignals).transform_error([this] (VulkanError error) {
+        maybe(queue->submit({ &commands, 1 }, passWaits, passSignals).transform_error([this] (VulkanError error) {
             _device->logger().error("Invalid queue submit: {}", static_cast<u32>(error));
             return RenderGraphError::DEVICE_ERROR;
         }));
@@ -1582,7 +1582,7 @@ auto canta::RenderGraph::run(std::span<SemaphorePair> waits, std::span<Semaphore
                 }
                 currentCommandBuffer->end();
 
-                TRY(submitCommands(currentCommandBuffer, currentQueue, waitHandles, signalHandles, passIndex == _orderedPasses.size() - 1));
+                maybe(submitCommands(currentCommandBuffer, currentQueue, waitHandles, signalHandles, passIndex == _orderedPasses.size() - 1));
             }
 
             u32 count = pass._queueWaits.size();
@@ -1591,7 +1591,7 @@ auto canta::RenderGraph::run(std::span<SemaphorePair> waits, std::span<Semaphore
                 queueIndices.emplace_back(static_cast<u32>(wait.second));
 
             pass.pushConstants(count, queueIndices);
-            TRY(pass.run(*this, CommandHandle()));
+            maybe(pass.run(*this, CommandHandle()));
 
             currentCommandBuffer = {};
             continue;
@@ -1610,7 +1610,7 @@ auto canta::RenderGraph::run(std::span<SemaphorePair> waits, std::span<Semaphore
                 }
                 currentCommandBuffer->end();
 
-                TRY(submitCommands(currentCommandBuffer, currentQueue, waitHandles, signalHandles, passIndex == _orderedPasses.size() - 1));
+                maybe(submitCommands(currentCommandBuffer, currentQueue, waitHandles, signalHandles, passIndex == _orderedPasses.size() - 1));
             }
 
             if (passIndex != 0)
@@ -1627,19 +1627,19 @@ auto canta::RenderGraph::run(std::span<SemaphorePair> waits, std::span<Semaphore
 
             auto cpuValue = _cpuTimeline->increment();
             _threadPool->addJob([this, semaphores, cpuValue, pass] () -> std::expected<bool, RenderGraphError> {
-                TRY(_cpuTimeline->wait(cpuValue - 1).transform_error([this] (VulkanError error) -> RenderGraphError {
+                maybe(_cpuTimeline->wait(cpuValue - 1).transform_error([this] (VulkanError error) -> RenderGraphError {
                         _device->logger().error("Wait on invalid timeline: {}", static_cast<u32>(error));
                         return RenderGraphError::DEVICE_ERROR;
                     }));
                 for (auto& wait : semaphores) {
-                    TRY(wait.semaphore->wait(wait.value).transform_error([this] (VulkanError error) -> RenderGraphError {
+                    maybe(wait.semaphore->wait(wait.value).transform_error([this] (VulkanError error) -> RenderGraphError {
                         _device->logger().error("Wait on invalid timeline: {}", static_cast<u32>(error));
                         return RenderGraphError::DEVICE_ERROR;
                     }));
                 }
-                TRY(pass.run(*this, CommandHandle()));
+                maybe(pass.run(*this, CommandHandle()));
 
-                TRY(_cpuTimeline->signal(cpuValue).transform_error([this] (VulkanError error) -> RenderGraphError {
+                maybe(_cpuTimeline->signal(cpuValue).transform_error([this] (VulkanError error) -> RenderGraphError {
                     _device->logger().error("Signal on invalid timeline: {}", static_cast<u32>(error));
                     return RenderGraphError::DEVICE_ERROR;
                 }));
@@ -1661,7 +1661,7 @@ auto canta::RenderGraph::run(std::span<SemaphorePair> waits, std::span<Semaphore
             }
             currentCommandBuffer->end();
 
-            TRY(submitCommands(currentCommandBuffer, currentQueue, waitHandles, signalHandles, passIndex == _orderedPasses.size() - 1));
+            maybe(submitCommands(currentCommandBuffer, currentQueue, waitHandles, signalHandles, passIndex == _orderedPasses.size() - 1));
 
             currentCommandBuffer = {};
         }
@@ -1719,7 +1719,7 @@ auto canta::RenderGraph::run(std::span<SemaphorePair> waits, std::span<Semaphore
             waitHandles.emplace_back(waitedQueue->timeline());
         }
 
-        TRY(pass.run(*this, currentCommandBuffer));
+        maybe(pass.run(*this, currentCommandBuffer));
 
         if (_statsMode == QueryMode::PER_PASS)
             endStats(currentCommandBuffer, _statsCount++);
@@ -1735,13 +1735,13 @@ auto canta::RenderGraph::run(std::span<SemaphorePair> waits, std::span<Semaphore
             endTimer(currentCommandBuffer, _timerCount++);
         currentCommandBuffer->end();
 
-        TRY(submitCommands(currentCommandBuffer, currentQueue, waitHandles, signalHandles, true));
+        maybe(submitCommands(currentCommandBuffer, currentQueue, waitHandles, signalHandles, true));
     }
 
     if (!async) {
         bool success = false;
         do {
-            success = TRY(_cpuTimeline->wait(_cpuTimeline->value(), std::numeric_limits<u64>::max()).transform_error([] (VulkanError error) { return RenderGraphError::DEVICE_ERROR; }));
+            success = maybe(_cpuTimeline->wait(_cpuTimeline->value(), std::numeric_limits<u64>::max()).transform_error([] (VulkanError error) { return RenderGraphError::DEVICE_ERROR; }));
         } while (!success);
     }
 
@@ -1777,7 +1777,7 @@ auto canta::RenderGraph::getResourceIndices(const std::span<const RenderPass> pa
 }
 
 auto canta::RenderGraph::buildDependencyLevels(std::span<const RenderPass> passes) const -> std::expected<std::vector<std::vector<u32>>, RenderGraphError> {
-    const auto distances = TRY(ende::graph::longestPath(passes, edgeCount()).transform_error(mapGraphErrorToRenderGraphError));
+    const auto distances = maybe(ende::graph::longestPath(passes, edgeCount()).transform_error(mapGraphErrorToRenderGraphError));
     if (distances.empty()) return std::unexpected(RenderGraphError::INVALID_PASS_COUNT);
 
     const auto maxDistance = std::max_element(distances.begin(), distances.end());

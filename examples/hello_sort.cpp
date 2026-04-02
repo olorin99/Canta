@@ -12,7 +12,7 @@ struct Value {
 
 int main() {
 
-    auto device = TRY_MAIN(canta::Device::create({
+    auto device = maybe_conv(i32, canta::Device::create({
         .applicationName = "sort",
         .headless = true,
         .enableMeshShading = false,
@@ -29,7 +29,7 @@ int main() {
         .rootPath = CANTA_SRC_DIR"/examples",
     });
 
-    auto renderGraph = TRY_MAIN(canta::RenderGraph::create({
+    auto renderGraph = maybe_conv(i32, canta::RenderGraph::create({
         .device = device.get(),
         .multiQueue = false,
         // .name = "graph"
@@ -62,14 +62,14 @@ int main() {
         v.value3 = data[i];
     }
 
-    const auto keys = TRY_MAIN(renderGraph.host("data_upload").upload(buffer, data));
-    const auto values = TRY_MAIN(renderGraph.host("data_upload_second").upload(buffer1, valueData));
+    const auto keys = maybe_conv(i32, renderGraph.host("data_upload").upload(buffer, data));
+    const auto values = maybe_conv(i32, renderGraph.host("data_upload_second").upload(buffer1, valueData));
 
     // const auto sortOutputs = TRY_MAIN(canta::sort<Value>(renderGraph, keys, values));
     // const auto sortOutputs = TRY_MAIN(canta::singleSort<Value>(renderGraph, keys, values));
     // const auto sortOutputs1 = TRY_MAIN(canta::singleSort<Value>(renderGraph, keys, values));
 
-    const auto sortOutputs = TRY_MAIN(canta::multiSort<Value>(renderGraph, keys, values));
+    const auto sortOutputs = maybe_conv(i32, canta::multiSort<Value>(renderGraph, keys, values));
 
     // auto index = keys;
     // for (u32 iteration = 0; iteration < 4; iteration++) {
@@ -96,7 +96,7 @@ int main() {
     // }
 
 
-    const auto output = TRY_MAIN(renderGraph.host("data_read").readback(sortOutputs.keys, outputData));
+    const auto output = maybe_conv(i32, renderGraph.host("data_read").readback(sortOutputs.keys, outputData));
     // const auto output = TRY_MAIN(renderGraph.addReadbackPass("data_read", histogramOutput, outputData).aliasBufferOutput(0));
     // const auto output = TRY_MAIN(renderGraph.addReadbackPass("data_read", index, outputData).aliasBufferOutput(0));
     renderGraph.setRoot(output);

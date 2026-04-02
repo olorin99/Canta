@@ -1,7 +1,7 @@
 #ifndef CANTA_RENDERGRAPHV2_H
 #define CANTA_RENDERGRAPHV2_H
 
-#include "Canta/Semaphore.h"
+#include <Canta/Semaphore.h>
 #include <Ende/platform.h>
 #include <Ende/graph/graph.h>
 #include <expected>

@@ -1,4 +1,4 @@
-#include "Canta/Swapchain.h"
+#include <Canta/Swapchain.h>
 #include <Canta/Device.h>
 #include <numeric>
 #include <format>
@@ -125,7 +125,7 @@ auto canta::Swapchain::acquire(SemaphoreHandle timeline) -> std::expected<ImageH
             SemaphorePair(timeline, timeline->increment())
         });
 
-        TRY(_device->queue(QueueType::PRESENT)->submit({}, waits, signals));
+        maybe(_device->queue(QueueType::PRESENT)->submit({}, waits, signals));
     }
 
     return _imageHandles[_index];
@@ -143,7 +143,7 @@ auto canta::Swapchain::present(std::span<SemaphoreHandle> timelines) -> std::exp
             SemaphorePair(presentSemaphore)
         });
 
-        TRY(_device->queue(QueueType::PRESENT)->submit({}, waits, signals));
+        maybe(_device->queue(QueueType::PRESENT)->submit({}, waits, signals));
     }
 
     VkPresentInfoKHR presentInfo = {};

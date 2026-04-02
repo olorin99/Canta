@@ -6,18 +6,18 @@ auto canta::singleSort(RenderGraph &renderGraph, const BufferIndex keys, const B
     assert(typeSize % sizeof(u32) == 0);
 
     if (count == 0) {
-        const auto keysInfo = TRY(renderGraph.getBufferInfo(keys));
+        const auto keysInfo = maybe(renderGraph.getBufferInfo(keys));
         count = keysInfo.size / sizeof(u32);
     }
 
-    const auto tmpKeys = TRY(renderGraph.duplicate(keys));
-    const auto tmpValues = TRY(renderGraph.duplicate(values));
+    const auto tmpKeys = maybe(renderGraph.duplicate(keys));
+    const auto tmpValues = maybe(renderGraph.duplicate(values));
 
-    auto pass = TRY(single_sort()(renderGraph, ReadWrite(keys), Write(tmpKeys), ReadWrite(values), Write(tmpValues), count, typeSize));
+    auto pass = maybe(single_sort()(renderGraph, ReadWrite(keys), Write(tmpKeys), ReadWrite(values), Write(tmpValues), count, typeSize));
 
     return SortOutput{
-        .keys = TRY(pass.output<BufferIndex>(0)),
-        .values = TRY(pass.output<BufferIndex>(2)),
+        .keys = maybe(pass.output<BufferIndex>(0)),
+        .values = maybe(pass.output<BufferIndex>(2)),
     };
 }
 
@@ -25,7 +25,7 @@ auto canta::multiSort(RenderGraph& graph, const BufferIndex keys, const BufferIn
     assert(typeSize % sizeof(u32) == 0);
 
     if (count == 0) {
-        const auto keysInfo = TRY(graph.getBufferInfo(keys));
+        const auto keysInfo = maybe(graph.getBufferInfo(keys));
         count = keysInfo.size / sizeof(u32);
     }
     if (numBlocksPerWorkgroup == 0) {
@@ -42,8 +42,8 @@ auto canta::multiSort(RenderGraph& graph, const BufferIndex keys, const BufferIn
     totalThreads += remainder > 0 ? 1 : 0;
     const u32 numWorkgroups = (totalThreads + 256 - 1) / 256;
 
-    const auto tmpKeys = TRY(graph.duplicate(keys));
-    const auto tmpValues = TRY(graph.duplicate(values));
+    const auto tmpKeys = maybe(graph.duplicate(keys));
+    const auto tmpValues = maybe(graph.duplicate(values));
     const auto histogram = graph.addBuffer({
         .size = static_cast<u32>(numWorkgroups * 265 * sizeof(u32)),
         .name = "histogram",
@@ -60,14 +60,14 @@ auto canta::multiSort(RenderGraph& graph, const BufferIndex keys, const BufferIn
         const auto iterationValues = iteration % 2 == 0 ? values : tmpValues;
         const auto iterationTmpValues = iteration % 2 == 0 ? tmpValues : values;
 
-        auto histogramOutput = TRY(TRY(multi_sort_histograms(totalThreads)(graph, Read(iterationKeys), ReadWrite(histogram), count, shift, numWorkgroups, numBlocksPerWorkgroup))
+        auto histogramOutput = maybe(maybe(multi_sort_histograms(totalThreads)(graph, Read(iterationKeys), ReadWrite(histogram), count, shift, numWorkgroups, numBlocksPerWorkgroup))
             .addStorageBufferRead(index)
             .addStorageBufferRead(values)
             .output<BufferIndex>());
 
-        auto sortPass = TRY(multi_sort(totalThreads)(graph, ReadWrite(iterationKeys), ReadWrite(iterationTmpKeys), ReadWrite(iterationValues), ReadWrite(iterationTmpValues), Read(histogramOutput), count, shift, numWorkgroups, numBlocksPerWorkgroup, typeSize));
+        auto sortPass = maybe(multi_sort(totalThreads)(graph, ReadWrite(iterationKeys), ReadWrite(iterationTmpKeys), ReadWrite(iterationValues), ReadWrite(iterationTmpValues), Read(histogramOutput), count, shift, numWorkgroups, numBlocksPerWorkgroup, typeSize));
 
-        index = TRY(sortPass.output<BufferIndex>());
+        index = maybe(sortPass.output<BufferIndex>());
     }
 
     return SortOutput{

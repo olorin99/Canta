@@ -10,7 +10,7 @@ int main() {
 
     auto window = canta::SDLWindow("Hello Noise", 1920, 1080);
 
-    auto device = TRY_MAIN(canta::Device::create({
+    auto device = maybe_conv(i32, canta::Device::create({
         .applicationName = "hello_noise",
         .enableMeshShading = false,
         .instanceExtensions = window.requiredExtensions(),
@@ -31,7 +31,7 @@ int main() {
         .window = &window,
     });
 
-    auto renderGraph = TRY_MAIN(canta::RenderGraph::create({
+    auto renderGraph = maybe_conv(i32, canta::RenderGraph::create({
         .device = device.get(),
         .multiQueue = false,
         // .name = "render_graph"
@@ -92,18 +92,18 @@ int main() {
         // auto noiseImage = canta::generateRandomNoise(renderGraph, 1920, 1080, seed);
         // auto noiseImage = canta::generatePerlinNoise(renderGraph, 1920, 1080, {.time = (clock.elapsed().milliseconds() / 1000.f) * timeScale, .seed = static_cast<u32>(seed)});
 
-        auto swapIndex = TRY_MAIN(renderGraph.acquire(&*swapchain));
+        auto swapIndex = maybe_conv(i32, renderGraph.acquire(&*swapchain));
 
-        auto uiSwapImage = TRY_MAIN(renderGraph.graphics("blit_to_swapchain").blit(noiseImage, swapIndex).output<canta::ImageIndex>());
+        auto uiSwapImage = maybe_conv(i32, renderGraph.graphics("blit_to_swapchain").blit(noiseImage, swapIndex).output<canta::ImageIndex>());
 
-        auto uiImage = TRY_MAIN(renderGraph.graphics("ui").imgui(imgui, uiSwapImage));
+        auto uiImage = maybe_conv(i32, renderGraph.graphics("ui").imgui(imgui, uiSwapImage));
 
-        auto root = TRY_MAIN(renderGraph.present(&*swapchain, uiImage));
+        auto root = maybe_conv(i32, renderGraph.present(&*swapchain, uiImage));
 
 
         renderGraph.setRoot(root);
 
-        TRY_MAIN(renderGraph.compile());
+        maybe_conv(i32, renderGraph.compile());
 
         auto waits = std::to_array({
             canta::SemaphorePair{device->frameSemaphore(), device->framePrevValue()},
@@ -111,12 +111,12 @@ int main() {
         auto signals = std::to_array({
             canta::SemaphorePair{device->frameSemaphore()},
         });
-        TRY_MAIN(renderGraph.run(waits, signals));
+        maybe_conv(i32, renderGraph.run(waits, signals));
 
         dt = device->endFrame();
     }
 
 
-    TRY_MAIN(device->waitIdle());
+    maybe_conv(i32, device->waitIdle());
     return 0;
 }

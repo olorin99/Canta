@@ -25,7 +25,7 @@ int main() {
 
     canta::SDLWindow window("Hello Triangle", 1920, 1080);
 
-    auto device = TRY_MAIN(canta::Device::create({
+    auto device = maybe_conv(i32, canta::Device::create({
         .applicationName = "hello_triangle",
         .enableMeshShading = false,
         // .enableAsyncComputeQueue = false,
@@ -48,7 +48,7 @@ int main() {
         .window = &window,
     });
 
-    auto pipeline = TRY_MAIN(pipelineManager.getPipeline(CANTA_SRC_DIR"/examples/particles_update.pipeline", std::to_array({
+    auto pipeline = maybe_conv(i32, pipelineManager.getPipeline(CANTA_SRC_DIR"/examples/particles_update.pipeline", std::to_array({
         canta::Macro{
             .name = "ADDITIONAL",
             .value = "TEST"
@@ -59,7 +59,7 @@ int main() {
         std::printf("%s - size: %d\n", type.name.c_str(), type.size);
     }
 
-    auto pipelineDraw = TRY_MAIN(pipelineManager.getPipeline({
+    auto pipelineDraw = maybe_conv(i32, pipelineManager.getPipeline({
         .compute = {
             .path = "examples/particles.slang",
             .entry = "drawMain"
@@ -105,7 +105,7 @@ int main() {
         };
     }
 
-    auto uploadBuffer = TRY_MAIN(canta::UploadBuffer::create({
+    auto uploadBuffer = maybe_conv(i32, canta::UploadBuffer::create({
         .device = device.get(),
         .size = 1 << 16
     }));
@@ -119,7 +119,7 @@ int main() {
     //     .name = "Renderer"
     // }));
 
-    auto renderGraph = TRY_MAIN(canta::RenderGraph::create({
+    auto renderGraph = maybe_conv(i32, canta::RenderGraph::create({
         .device = device.get(),
         .multiQueue = false,
     }));
@@ -144,7 +144,7 @@ int main() {
         // device->startFrameCapture();
         device->beginFrame();
         device->gc();
-        TRY_MAIN(pipelineManager.reload());
+        maybe_conv(i32, pipelineManager.reload());
         uploadBuffer.clearSubmitted();
 
         imguiContext.beginFrame();
@@ -173,7 +173,7 @@ int main() {
                     break;
             }
             if (ImGui::Combo("PresentMode", &refreshModeIndex, refreshModes, 3)) {
-                TRY_MAIN(device->waitIdle());
+                maybe_conv(i32, device->waitIdle());
                 switch (refreshModeIndex) {
                     case 0:
                         swapchain->setPresentMode(canta::PresentMode::FIFO);
@@ -229,13 +229,13 @@ int main() {
             //
             auto timers = renderGraph.timers();
             for (auto& timer : timers) {
-                ImGui::Text("%s: %f ms", timer.name.data(), TRY_MAIN(timer.timer.result()) / 1000000.f);
+                ImGui::Text("%s: %f ms", timer.name.data(), maybe_conv(i32, timer.timer.result()) / 1000000.f);
             }
             auto pipelineStatistics = renderGraph.statistics();
             for (u32 statIndex = 0; auto& pipelineStats : pipelineStatistics) {
                 ImGui::PushID(statIndex++);
                 if (ImGui::TreeNode(pipelineStats.name.data())) {
-                    auto stats = TRY_MAIN(pipelineStats.statistics.result());
+                    auto stats = maybe_conv(i32, pipelineStats.statistics.result());
                     canta::drawPipelineStats(stats);
                     ImGui::TreePop();
                 }
@@ -316,9 +316,9 @@ int main() {
 
         auto particleBufferIndex = renderGraph.addExternalBuffer(buffer);
 
-        auto swapchainIndex = TRY_MAIN(renderGraph.acquire(&*swapchain));
+        auto swapchainIndex = maybe_conv(i32, renderGraph.acquire(&*swapchain));
 
-        auto clearedImage = TRY_MAIN(renderGraph.transfer("clear_image").clear(imageIndex));
+        auto clearedImage = maybe_conv(i32, renderGraph.transfer("clear_image").clear(imageIndex));
 
         const auto particlesGroup = renderGraph.addGroup("particles", { 0, 1, 0, 1 });
 
@@ -326,19 +326,19 @@ int main() {
             0, 0, swapchain->width(), swapchain->height(),
         };
 
-        auto movedParticles = TRY_MAIN(renderGraph.compute("particles_move", pipeline, particlesGroup)
+        auto movedParticles = maybe_conv(i32, renderGraph.compute("particles_move", pipeline, particlesGroup)
             .pushConstants(canta::Write(particleBufferIndex), numParticles, static_cast<f32>(dt), bounds)
             .dispatchThreads(numParticles).output<canta::BufferIndex>());
 
-        auto drawnParticles = TRY_MAIN(renderGraph.compute("particles_draw", pipelineDraw, particlesGroup)
+        auto drawnParticles = maybe_conv(i32, renderGraph.compute("particles_draw", pipelineDraw, particlesGroup)
             .addStorageImageWrite(clearedImage)
             .pushConstants(canta::Read(movedParticles), canta::Read(clearedImage), numParticles)
             .dispatchThreads(numParticles).output<canta::ImageIndex>());
 
-        auto blittedSwapchain = TRY_MAIN(renderGraph.graphics("blit_to_swapchain").blit(drawnParticles, swapchainIndex).output<canta::ImageIndex>());
-        auto uiSwapchain = TRY_MAIN(renderGraph.graphics("ui").imgui(imguiContext, blittedSwapchain));
+        auto blittedSwapchain = maybe_conv(i32, renderGraph.graphics("blit_to_swapchain").blit(drawnParticles, swapchainIndex).output<canta::ImageIndex>());
+        auto uiSwapchain = maybe_conv(i32, renderGraph.graphics("ui").imgui(imguiContext, blittedSwapchain));
 
-        auto presentOutput = TRY_MAIN(renderGraph.present(&*swapchain, uiSwapchain));
+        auto presentOutput = maybe_conv(i32, renderGraph.present(&*swapchain, uiSwapchain));
 
         // renderGraph.setRoot(uiSwapchain);
         renderGraph.setRoot(presentOutput);
@@ -354,13 +354,13 @@ int main() {
         auto waits = std::to_array({ canta::SemaphorePair(device->frameSemaphore(), device->framePrevValue()), canta::SemaphorePair(uploadBuffer.timeline()) });
         auto signals = std::to_array({ canta::SemaphorePair(device->frameSemaphore(), device->frameSemaphore()->value())});
 
-        TRY_MAIN(renderGraph.run(waits, signals));
+        maybe_conv(i32, renderGraph.run(waits, signals));
 
         dt = device->endFrame();
         // device->endFrameCapture();
         // printf("frame: %lu\n", device->frameValue());
     }
 
-    TRY_MAIN(device->waitIdle());
+    maybe_conv(i32, device->waitIdle());
     return 0;
 }

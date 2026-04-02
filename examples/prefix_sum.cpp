@@ -8,7 +8,7 @@
 
 int main() {
 
-    auto device = TRY_MAIN(canta::Device::create({
+    auto device = maybe_conv(i32, canta::Device::create({
         .applicationName = "prefix_sum",
         .headless = true,
         .enableMeshShading = false,
@@ -25,7 +25,7 @@ int main() {
         .rootPath = CANTA_SRC_DIR"/examples",
     });
 
-    auto renderGraph = TRY_MAIN(canta::RenderGraph::create({
+    auto renderGraph = maybe_conv(i32, canta::RenderGraph::create({
         .device = device.get(),
         .multiQueue = true,
         // .name = "graph"
@@ -41,11 +41,11 @@ int main() {
     const auto summedValues = canta::prefixSumExclusive(renderGraph, values, N);
     // const auto summedValues = canta::prefixSumInclusive(renderGraph, values, N);
 
-    const auto output = TRY_MAIN(renderGraph.host("data_read").readback(summedValues, outputData));
+    const auto output = maybe_conv(i32, renderGraph.host("data_read").readback(summedValues, outputData));
     renderGraph.setRoot(output);
 
-    TRY_MAIN(renderGraph.compile());
-    TRY_MAIN(renderGraph.run({}, {}, false));
+    maybe_conv(i32, renderGraph.compile());
+    maybe_conv(i32, renderGraph.run({}, {}, false));
 
     // u64 totalTime = 0;
     // for (auto timers = renderGraph.timers(); auto&[name, timer] : timers) {

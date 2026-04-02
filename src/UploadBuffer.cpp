@@ -5,11 +5,11 @@ auto canta::UploadBuffer::create(canta::UploadBuffer::CreateInfo info) -> std::e
     UploadBuffer buffer = {};
 
     buffer._device = info.device;
-    buffer._commandPool = TRY(info.device->createCommandPool({
+    buffer._commandPool = maybe(info.device->createCommandPool({
         .queueType = QueueType::TRANSFER,
         .name = "upload_buffer_command_pool"
     }));
-    buffer._timelineSemaphore = TRY(info.device->createSemaphore({
+    buffer._timelineSemaphore = maybe(info.device->createSemaphore({
         .initialValue = 0,
         .name = "upload_buffer_semaphore"
     }));

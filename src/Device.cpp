@@ -467,7 +467,7 @@ auto canta::Device::create(CreateInfo info) noexcept -> std::expected<std::uniqu
         device->_graphicsQueue->_queue = graphicsQueue;
         device->_graphicsQueue->_familyIndex = graphicsFamilyIndex;
         device->_graphicsQueue->_queueIndex = graphicsQueueIndex;
-        device->_graphicsQueue->_timeline = TRY(device->createSemaphore({
+        device->_graphicsQueue->_timeline = maybe(device->createSemaphore({
             .initialValue = 0,
             .name = "graphics_timeline"
         }));
@@ -480,7 +480,7 @@ auto canta::Device::create(CreateInfo info) noexcept -> std::expected<std::uniqu
         device->_computeQueue->_queue = computeQueue;
         device->_computeQueue->_familyIndex = computeFamilyIndex;
         device->_computeQueue->_queueIndex = computeQueueIndex;
-        device->_computeQueue->_timeline = TRY(device->createSemaphore({
+        device->_computeQueue->_timeline = maybe(device->createSemaphore({
             .initialValue = 0,
             .name = "compute_timeline"
         }));
@@ -495,7 +495,7 @@ auto canta::Device::create(CreateInfo info) noexcept -> std::expected<std::uniqu
         device->_transferQueue->_queue = transferQueue;
         device->_transferQueue->_familyIndex = transferFamilyIndex;
         device->_transferQueue->_queueIndex = transferQueueIndex;
-        device->_transferQueue->_timeline = TRY(device->createSemaphore({
+        device->_transferQueue->_timeline = maybe(device->createSemaphore({
             .initialValue = 0,
             .name = "transfer_timeline"
         }));
@@ -549,16 +549,16 @@ auto canta::Device::create(CreateInfo info) noexcept -> std::expected<std::uniqu
     VK_TRY(vmaCreateAllocator(&allocatorCreateInfo, &device->_allocator));
 
 
-    device->_frameTimeline = TRY(device->createSemaphore({
+    device->_frameTimeline = maybe(device->createSemaphore({
         .initialValue = 0,
         .name = "frameTimelineSemaphore"
     }));
-    device->_immediateTimeline = TRY(device->createSemaphore({
+    device->_immediateTimeline = maybe(device->createSemaphore({
         .initialValue = 0,
         .name = "immediateTimelineSemaphore"
     }));
     if (!info.frameBasedResourceLifetime) {
-        device->_resourceTimeline = TRY(device->createSemaphore({
+        device->_resourceTimeline = maybe(device->createSemaphore({
             .initialValue = 0,
             .name = "resourceTimelineSemaphore"
         }));
@@ -656,7 +656,7 @@ auto canta::Device::create(CreateInfo info) noexcept -> std::expected<std::uniqu
     }
 #endif
 
-    device->_immediatePool = TRY(device->createCommandPool({
+    device->_immediatePool = maybe(device->createCommandPool({
         .queueType = QueueType::GRAPHICS
     }));
 
@@ -801,7 +801,7 @@ void canta::Device::gc() {
 
 auto canta::Device::beginFrame() -> std::expected<bool, VulkanError> {
     const u64 frameValue = std::max(0l, static_cast<i64>(_frameTimeline->increment()) - FRAMES_IN_FLIGHT);
-    TRY(_frameTimeline->wait(frameValue));
+    maybe(_frameTimeline->wait(frameValue));
 
 #ifndef NDEBUG
     _markerOffset = 0;

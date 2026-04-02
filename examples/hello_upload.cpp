@@ -9,7 +9,7 @@
 
 int main() {
 
-    auto device = TRY_MAIN(canta::Device::create({
+    auto device = maybe_conv(i32, canta::Device::create({
         .applicationName = "upload",
         .headless = true,
         .enableMeshShading = false,
@@ -24,7 +24,7 @@ int main() {
 
 
     const auto uploadSize = 1 << 18;
-    auto uploadBuffer = TRY_MAIN(canta::UploadBuffer::create({ .device = device.get(), .size = uploadSize }));
+    auto uploadBuffer = maybe_conv(i32, canta::UploadBuffer::create({ .device = device.get(), .size = uploadSize }));
 
     const auto bufferSize = 1 << 20;
     auto dstBuffer = device->createBuffer({ .size = bufferSize, .usage = canta::BufferUsage::TRANSFER_DST, .type = canta::MemoryType::STAGING, .persistentlyMapped = true, .name = "dst_buffer" });
@@ -120,7 +120,7 @@ void main(
 }
 )";
 
-    commands->bindPipeline(TRY_MAIN(pipelineManager.getPipeline({
+    commands->bindPipeline(maybe_conv(i32, pipelineManager.getPipeline({
         .compute = { .slang = validate_buffer_shader }
     })));
 
@@ -159,7 +159,7 @@ void main(
 }
 )";
 
-    commands->bindPipeline(TRY_MAIN(pipelineManager.getPipeline({
+    commands->bindPipeline(maybe_conv(i32, pipelineManager.getPipeline({
         .compute = { .slang = validate_image_shader }
     })));
 
