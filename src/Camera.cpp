@@ -5,25 +5,25 @@ constexpr inline ende::math::Mat<4, T> perspective(T fov, T aspect, T near, T fa
     const f32 tanHalfFov = std::tan(fov / 2.f);
 
     ende::math::Mat<4, T> result;
-    result[0][0] = 1.f / (tanHalfFov * aspect);
-    result[0][1] = 0.f;
-    result[0][2] = 0.f;
-    result[0][3] = 0.f;
+    result(0, 0) = 1.f / (tanHalfFov * aspect);
+    result(0, 1) = 0.f;
+    result(0, 2) = 0.f;
+    result(0, 3) = 0.f;
 
-    result[1][0] = 0.f;
-    result[1][1] = 1.f / tanHalfFov;
-    result[1][2] = 0.f;
-    result[1][3] = 0.f;
+    result(1, 0) = 0.f;
+    result(1, 1) = 1.f / tanHalfFov;
+    result(1, 2) = 0.f;
+    result(1, 3) = 0.f;
 
-    result[2][0] = 0.f;
-    result[2][1] = 0.f;
-    result[2][2] = 0.f;
-    result[2][3] = T(1);
+    result(2, 0) = 0.f;
+    result(2, 1) = 0.f;
+    result(2, 2) = 0.f;
+    result(2, 3) = T(1);
 
-    result[3][0] = 0.f;
-    result[3][1] = 0.f;
-    result[3][2] = near;
-    result[3][3] = 0.f;
+    result(3, 0) = 0.f;
+    result(3, 1) = 0.f;
+    result(3, 2) = near;
+    result(3, 3) = 0.f;
 
     return result;
 }
@@ -58,7 +58,7 @@ auto canta::Camera::create(canta::Camera::CreateOrthographicInfo info) -> Camera
 auto canta::Camera::view() const -> ende::math::Mat4f {
     auto translation = ende::math::translation<4, f32>(_position);
     auto rotation = _rotation.inverse().toMat();
-    return rotation * translation;
+    return translation * rotation;
 }
 
 void canta::Camera::setNear(f32 near) {
