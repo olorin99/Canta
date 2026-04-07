@@ -426,7 +426,7 @@ namespace canta {
         auto drawMeshTasksIndirect(BufferIndex commands, u32 offset, u32 drawCount, u32 stride = sizeof(VkDrawMeshTasksIndirectCommandEXT)) -> GraphicsPass&;
         auto drawMeshTasksIndirectCount(BufferIndex commands, u32 offset, BufferIndex countBuffer, u32 countOffset, u32 stride = sizeof(VkDrawMeshTasksIndirectCommandEXT)) -> GraphicsPass&;
 
-        auto blit(ImageIndex src, ImageIndex dst, Filter filter = Filter::LINEAR) -> GraphicsPass&;
+        auto blit(ImageIndex src, ImageIndex dst, Filter filter = Filter::LINEAR) -> std::expected<ImageIndex, RenderGraphError>;
 
 
         auto imgui(ImGuiContext& context, ImageIndex image) -> std::expected<ImageIndex, RenderGraphError>;

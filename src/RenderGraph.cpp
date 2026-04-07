@@ -840,7 +840,7 @@ auto canta::GraphicsPass::drawMeshTasksIndirectCount(const BufferIndex commands,
     return *this;
 }
 
-auto canta::GraphicsPass::blit(const ImageIndex src, const ImageIndex dst, const Filter filter) -> GraphicsPass& {
+auto canta::GraphicsPass::blit(const ImageIndex src, const ImageIndex dst, const Filter filter) -> std::expected<ImageIndex, RenderGraphError> {
     addTransferRead(src);
     addTransferRead(dst);
     addTransferWrite(dst);
@@ -854,7 +854,7 @@ auto canta::GraphicsPass::blit(const ImageIndex src, const ImageIndex dst, const
         });
         return true;
     });
-    return *this;
+    return output<ImageIndex>();
 }
 
 auto canta::GraphicsPass::imgui(ImGuiContext &context, ImageIndex image) -> std::expected<ImageIndex, RenderGraphError> {
