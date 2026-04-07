@@ -472,6 +472,11 @@ namespace canta {
             return update(index, std::span<const u8>(reinterpret_cast<const u8*>(std::ranges::data(range)), std::ranges::size(range) * sizeof(std::ranges::range_value_t<Range>)));
         }
 
+        template <typename T>
+        auto update(BufferIndex index, const T& data) -> std::expected<BufferIndex, RenderGraphError> {
+            return update(index, std::span<const u8>(reinterpret_cast<const u8*>(&data), sizeof(data)));
+        }
+
     };
 
     class HostPass : public PassBuilder {
