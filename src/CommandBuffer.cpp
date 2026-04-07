@@ -380,6 +380,10 @@ void canta::CommandBuffer::copyBuffer(canta::CommandBuffer::BufferCopyInfo info)
     vkCmdCopyBuffer(_buffer, info.src->buffer(), info.dst->buffer(), 1, &copy);
 }
 
+void canta::CommandBuffer::updateBuffer(BufferHandle dst, std::span<const u8> data, u32 offset) {
+    vkCmdUpdateBuffer(_buffer, dst->buffer(), offset, data.size(), data.data());
+}
+
 void canta::CommandBuffer::generateMips(canta::ImageHandle image, ImageLayout initalLayout, ImageLayout finalLayout) {
     barrier({
         .image = image,

@@ -465,6 +465,8 @@ namespace canta {
         auto clear(ImageIndex index, const ClearValue& value = std::to_array({0.f, 0.f, 0.f, 1.f})) -> std::expected<ImageIndex, RenderGraphError>;
         auto clear(BufferIndex index, u32 value = 0, u32 offset = 0, u32 size = 0) -> std::expected<BufferIndex, RenderGraphError>;
 
+        auto update(BufferIndex index, std::span<const u8> data, u32 offset = 0) -> std::expected<BufferIndex, RenderGraphError>;
+
     };
 
     class HostPass : public PassBuilder {

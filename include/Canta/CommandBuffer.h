@@ -161,6 +161,8 @@ namespace canta {
         };
         void copyBuffer(BufferCopyInfo info);
 
+        void updateBuffer(BufferHandle dst, std::span<const u8> data, u32 offset = 0);
+
         void generateMips(ImageHandle image, ImageLayout initialLayout, ImageLayout finalLayout);
 
         void barrier(ImageBarrier barrier);

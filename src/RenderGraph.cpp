@@ -997,6 +997,15 @@ auto canta::TransferPass::clear(BufferIndex index, u32 value, u32 offset, u32 si
     return output<BufferIndex>();
 }
 
+auto canta::TransferPass::update(BufferIndex index, std::span<const u8> data, u32 offset) -> std::expected<BufferIndex, RenderGraphError> {
+    addTransferWrite(index);
+    pass().setCallback([index, data, offset] (auto cmd, auto& graph, const auto& push) -> std::expected<bool, RenderGraphError> {
+        cmd->updateBuffer(maybe(graph.getBuffer(index)), data, offset);
+        return true;
+    });
+    return output<BufferIndex>();
+}
+
 canta::HostPass::HostPass(RenderGraph *graph, const u32 index) : PassBuilder(graph, index) {}
 
 auto canta::HostPass::read(const BufferIndex index) -> HostPass & {
