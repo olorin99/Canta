@@ -467,6 +467,11 @@ namespace canta {
 
         auto update(BufferIndex index, std::span<const u8> data, u32 offset = 0) -> std::expected<BufferIndex, RenderGraphError>;
 
+        template <std::ranges::range Range>
+        auto update(BufferIndex index, Range& range) -> std::expected<BufferIndex, RenderGraphError> {
+            return update(index, std::span<const u8>(reinterpret_cast<const u8*>(std::ranges::data(range)), std::ranges::size(range) * sizeof(std::ranges::range_value_t<Range>)));
+        }
+
     };
 
     class HostPass : public PassBuilder {
