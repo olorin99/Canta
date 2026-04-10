@@ -6,7 +6,7 @@
 
 canta::SDLWindow::SDLWindow(const char *title, const u32 width, const u32 height, const u32 flags) {
     _window = SDL_CreateWindow(title, SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, width, height, flags | SDL_WINDOW_VULKAN | SDL_WINDOW_SHOWN);
-    registerEvent(SDL_QUIT, [this] () { _shouldClose = true; });
+    registerEvent(SDL_QUIT, [this] (auto&) { _shouldClose = true; });
 }
 
 canta::SDLWindow::~SDLWindow() {
@@ -35,7 +35,7 @@ auto canta::SDLWindow::extent() -> ende::math::Vec<2, u32> {
     return { static_cast<u32>(width), static_cast<u32>(height) };
 }
 
-void canta::SDLWindow::registerEvent(const u32 event, const std::function<void()> &callback) {
+void canta::SDLWindow::registerEvent(const u32 event, const std::function<void(const SDL_Event&)> &callback) {
     _eventCallbacks[event] = callback;
 }
 
@@ -43,7 +43,7 @@ void canta::SDLWindow::processEvents(ImGuiContext* imguiContext) {
     SDL_Event event;
     while (SDL_PollEvent(&event)) {
         if (auto e = _eventCallbacks.find(event.type); e != _eventCallbacks.end()) {
-            e.value()();
+            e.value()(event);
         }
         imguiContext->processEvent(&event);
     }

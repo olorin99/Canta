@@ -212,7 +212,7 @@ float4 main(
     auto transferPass = graph.graphics("pass_4").blit(maybe_conv(i32, graphicsPass.output<canta::ImageIndex>()), outputImage);
 
 
-    const auto l = maybe_conv(i32, transferPass.output<canta::ImageIndex>());
+    const auto l = maybe_conv(i32, transferPass);
     auto hostPass = graph.host<canta::ImageIndex, canta::BufferIndex, u32, std::string>("pass_3")
         .pushConstants(canta::Read(l), canta::Write(hostBuffer), 100, "hello")
         .setCallback([] (canta::RenderGraph&, const canta::ImageIndex& image, const canta::BufferIndex& buffer, const u32& argA, const std::string& argB) {

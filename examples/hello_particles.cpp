@@ -335,7 +335,7 @@ int main() {
             .pushConstants(canta::Read(movedParticles), canta::Read(clearedImage), numParticles)
             .dispatchThreads(numParticles).output<canta::ImageIndex>());
 
-        auto blittedSwapchain = maybe_conv(i32, renderGraph.graphics("blit_to_swapchain").blit(drawnParticles, swapchainIndex).output<canta::ImageIndex>());
+        auto blittedSwapchain = maybe_conv(i32, renderGraph.graphics("blit_to_swapchain").blit(drawnParticles, swapchainIndex));
         auto uiSwapchain = maybe_conv(i32, renderGraph.graphics("ui").imgui(imguiContext, blittedSwapchain));
 
         auto presentOutput = maybe_conv(i32, renderGraph.present(&*swapchain, uiSwapchain));

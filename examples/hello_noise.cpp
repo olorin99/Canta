@@ -94,7 +94,7 @@ int main() {
 
         auto swapIndex = maybe_conv(i32, renderGraph.acquire(&*swapchain));
 
-        auto uiSwapImage = maybe_conv(i32, renderGraph.graphics("blit_to_swapchain").blit(noiseImage, swapIndex).output<canta::ImageIndex>());
+        auto uiSwapImage = maybe_conv(i32, renderGraph.graphics("blit_to_swapchain").blit(noiseImage, swapIndex));
 
         auto uiImage = maybe_conv(i32, renderGraph.graphics("ui").imgui(imgui, uiSwapImage));
 

@@ -29,7 +29,7 @@ namespace canta {
 
         auto shouldClose() const -> bool { return _shouldClose; }
 
-        void registerEvent(u32 event, const std::function<void()>& callback);
+        void registerEvent(u32 event, const std::function<void(const SDL_Event&)>& callback);
 
         void processEvents(ImGuiContext* imguiContext = nullptr);
 
@@ -40,7 +40,7 @@ namespace canta {
         u32 _width = 0, _height = 0;
 
         bool _shouldClose = false;
-        tsl::robin_map<u32, std::function<void()>> _eventCallbacks = {};
+        tsl::robin_map<u32, std::function<void(const SDL_Event&)>> _eventCallbacks = {};
 
     };
 
