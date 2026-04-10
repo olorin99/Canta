@@ -73,6 +73,8 @@ namespace canta {
         [[nodiscard]] auto frustumCorners() const -> std::array<ende::math::Vec4f, 8>;
         void updateFrustum() { _frustum.update(viewProjection()); }
 
+        void lookAt(const ende::math::Vec3f& dst);
+
     private:
 
         Camera() = default;

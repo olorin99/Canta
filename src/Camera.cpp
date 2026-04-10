@@ -1,3 +1,4 @@
+#include "Ende/math/Quaternion.h"
 #include <Canta/Camera.h>
 
 template <typename T>
@@ -112,4 +113,31 @@ auto canta::Camera::frustumCorners() const -> std::array<ende::math::Vec4f, 8> {
         corners[i] = pt / pt.w();
     }
     return corners;
+}
+
+void canta::Camera::lookAt(const ende::math::Vec3f& dst) {
+    const auto up = ende::math::Vec3f({0, 1, 0});
+
+    const auto direction = dst - _position;
+    const auto right = up.cross(direction * -1);
+    const auto s = 1.f / std::sqrt(std::max(0.00001f, right.dot(right)));
+    const auto b = right * s;
+    const auto c = direction.cross(b);
+
+    auto mat = ende::math::identity<4, f32>();
+    mat(0, 0) = b[0];
+    mat(0, 1) = b[1];
+    mat(0, 2) = b[2];
+
+    mat(1, 0) = c[0];
+    mat(1, 1) = c[1];
+    mat(1, 2) = c[2];
+
+    mat(2, 0) = direction[0];
+    mat(2, 1) = direction[1];
+    mat(2, 2) = direction[2];
+
+    const auto q = ende::math::Quaternion(mat);
+
+    _rotation = q;
 }
