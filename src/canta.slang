@@ -333,6 +333,220 @@ public float3 rand3(uint3 v) {
 
     }
 
+    public struct RandomIterator : Iterator {
+        float state;
+        float min;
+        float max;
+
+        public __init(float state = 1000, float min = 0.f, float max = 1.f) {
+            this.state = state;
+            this.min = min;
+            this.max = max;
+        }
+
+        typedef float Item;
+
+        [mutating]
+        public func next()->Optional<Item> {
+            let x = random.rand(state, min, max);
+            state = x;
+            return state;
+        }
+    }
+
+    public struct FixedSizedIterator<T, let N : uint> : Iterator {
+        uint index;
+        T[N] array;
+
+        public __init(T[N] array) {
+            this.array = array;
+            this.index = 0;
+        }
+
+        typedef T Item;
+
+        [mutating]
+        public func next()->Optional<Item> {
+            if (this.index > array.getCount()) {
+                return none;
+            }
+            return this.array[this.index++];
+        }
+    }
+
+    public struct DynamicIterator<T> : Iterator {
+        uint index;
+        uint length;
+        IArray<T> data;
+
+        public __init(IArray<T> data, int length) {
+            this.data = data;
+            this.index = 0;
+            this.length = length;
+        }
+
+        typedef T Item;
+
+        [mutating]
+        public func next()->Optional<Item> {
+            if (this.index >= this.length) {
+                return none;
+            }
+            return this.data[this.index++];
+        }
+    }
+
+    public struct PtrIterator<T> : Iterator {
+        uint index;
+        uint length;
+        Ptr<T> data;
+
+        public __init(Ptr<T, Access.ReadWrite, AddressSpace.Device, DefaultDataLayout> data, int length) {
+            this.data = data;
+            this.index = 0;
+            this.length = length;
+        }
+
+        typedef T Item;
+
+        [mutating]
+        public func next()->Optional<Item> {
+            if (this.index >= this.length) {
+                return none;
+            }
+            return this.data[this.index++];
+        }
+    }
+
+    public struct Map<I, F, U> : Iterator where I : Iterator where F : IFunc<U, I::Item> {
+
+        I iterator;
+        F mapping;
+
+        __init(I iter, F map) {
+            this.iterator = iter;
+            this.mapping = map;
+        }
+
+        typedef U Item;
+
+        [mutating]
+        public func next()->Optional<Item> {
+            if (let item = this.iterator.next()) {
+                return this.mapping(item);
+            }
+            return none;
+        }
+    }
+
+    public struct Filter<I, F> : Iterator where I : Iterator where F : IFunc<bool, I::Item> {
+
+        I iterator;
+        F callback;
+
+        __init(I iter, F callback) {
+            this.iterator = iter;
+            this.callback = callback;
+        }
+
+        typedef I::Item Item;
+
+        [mutating]
+        public func next()->Optional<Item> {
+            while (true) {
+                if (let item = this.iterator.next()) {
+                    if (this.callback(item)) {
+                        return item;
+                    }
+                } else {
+                    break;
+                }
+            }
+            return none;
+        }
+    }
+
+    public interface Iterator {
+
+        associatedtype Item;
+
+        [mutating]
+        public func next()->Optional<Item>;
+
+        public func map<U, F : IFunc<U, Item>>(F f)->Map<This, F, U> {
+            return Map<This, F, U>(this, f);
+        }
+
+        public func filter<F : IFunc<bool, Item>>(F f)->Filter<This, F> {
+            return Filter<This, F>(this, f);
+        }
+
+        [mutating]
+        public func fold<T : IArithmetic, F : IFunc<T, T, Item>>(T accumulator, F f)->T {
+            while (true) {
+                if (let item = this.next()) {
+                    accumulator = f(accumulator, item);
+                } else {
+                    break;
+                }
+            }
+            return accumulator;
+        }
+
+        [mutating]
+        public func collectInto(IRWArray<Item> collection, uint length)->IRWArray<Item> {
+            for (uint i = 0; i < length; i++) {
+                if (let item = this.next()) {
+                    collection[i] = item;
+                } else {
+                    break;
+                }
+            }
+            return collection;
+        }
+
+        [mutating]
+        public func collectInto(Ptr<Item> collection, uint length)->Ptr<Item> {
+            for (uint i = 0; i < length; i++) {
+                if (let item = this.next()) {
+                    collection[i] = item;
+                } else {
+                    break;
+                }
+            }
+            return collection;
+        }
+    }
+
+    public func iter<T>(T *ptr, uint length)->canta.PtrIterator<T> {
+        return canta.PtrIterator<T>(ptr, length);
+    }
+
+    public struct Stack<T, let N : uint> {
+        private uint index;
+        private T[N] stack;
+
+        public __init() {
+            // this.stack = stack;
+            this.index = 0;
+        }
+
+        [mutating]
+        public func push(T item) {
+            stack[index++] = item;
+        }
+
+        [mutating]
+        public func pop()->Optional<T> {
+            if (empty()) return none;
+            return stack[--index];
+        }
+
+        public func empty()->bool {
+            return index == 0;
+        }
+    }
+
 }
 
 // matrix and vec multiplication overload
@@ -370,4 +584,44 @@ public float4 operator*(float4 vec, float4x4 matrix) {
 
 public float4x4 operator*(float4x4 lhs, float4x4 rhs) {
     return mul(lhs, rhs);
+}
+
+public extension<T, let N : uint> T[N] {
+    public func iter()->canta.FixedSizedIterator<T, N> {
+        return canta.FixedSizedIterator<T, N>(this);
+    }
+}
+
+public extension<T> T where T : IArray<T> {
+    public func iter()->canta.DynamicIterator<T> {
+        return canta.DynamicIterator<T>(this, 1);
+    }
+}
+
+public extension<I : canta.Iterator> I where I::Item : IArithmetic {
+    [mutating]
+    public func sum()->Item {
+        Item total = Item(0);
+        while (true) {
+            if (let item = this.next()) {
+                total = total + item;
+            } else {
+                break;
+            }
+        }
+        return total;
+    }
+
+    [mutating]
+    public func product()->Item {
+        Item total = Item(0);
+        while (true) {
+            if (let item = this.next()) {
+                total = total * item;
+            } else {
+                break;
+            }
+        }
+        return total;
+    }
 }
