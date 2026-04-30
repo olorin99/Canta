@@ -586,6 +586,30 @@ public float4x4 operator*(float4x4 lhs, float4x4 rhs) {
     return mul(lhs, rhs);
 }
 
+public extension<T : __BuiltinFloatingPointType, let N : uint> vector<T, N> {
+    public func dot(vector<T, N> rhs)->T {
+        return dot(this, rhs);
+    }
+}
+
+public extension<T : __BuiltinFloatingPointType> vector<T, 3> {
+    public func cross(vector<T, 3> rhs)->vector<T, 3> {
+        return cross(this, rhs);
+    }
+}
+
+public extension<T : __BuiltinFloatingPointType, let N : uint> matrix<T, N, N> {
+    [require(glsl_spirv, GLSL_400)]
+    public func inverse()->matrix<T, N, N> {
+        __target_switch {
+        case glsl: __intrinsic_asm "inverse";
+        case spirv: return spirv_asm {
+                OpExtInst $$matrix<T,N,N> result glsl450 MatrixInverse $this
+            };
+        }
+    }
+}
+
 public extension<T, let N : uint> T[N] {
     public func iter()->canta.FixedSizedIterator<T, N> {
         return canta.FixedSizedIterator<T, N>(this);

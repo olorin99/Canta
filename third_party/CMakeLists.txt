@@ -16,7 +16,7 @@ FetchContent_Declare(
 FetchContent_Declare(
     vma
     GIT_REPOSITORY  https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator
-    GIT_TAG         "v3.3.0"
+    GIT_TAG         "b3cbbb43ea3a506dffe10759e205a41c27c35ae2"
 )
 
 FetchContent_Declare(
