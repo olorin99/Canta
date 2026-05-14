@@ -1,0 +1,14 @@
+{
+  "lsp": {
+    "slangd": {
+      "settings": {
+        "slang.additionalSearchPaths": [
+          "$ZED_WORKTREE_ROOT/src",
+          "$ZED_WORKTREE_ROOT/build/_deps/canta-src/src",
+        ],
+        "slang.slangdLocation": "$ZED_WORKTREE_ROOT/build/_deps/slang-build/slang-2026.4.2-linux-x86_64/bin/slangd",
+        "slang.format.clangFormatStyle": "file:.clang-format",
+      },
+    },
+  },
+}

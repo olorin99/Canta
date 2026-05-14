@@ -5,10 +5,13 @@ module canta;
 #define CANTA_BINDLESS_STORAGE_IMAGES 2
 #define CANTA_BINDLESS_STORAGE_BUFFERS 3
 
-[[vk::binding(CANTA_BINDLESS_SAMPLERS, 0)]] SamplerState samplers[];
+[[vk::binding(CANTA_BINDLESS_SAMPLERS, 0)]]
+SamplerState samplers[];
 
-[[vk::binding(CANTA_BINDLESS_SAMPLED_IMAGES, 0)]] __DynamicResource g_sampledImages[];
-[[vk::binding(CANTA_BINDLESS_STORAGE_IMAGES, 0)]] __DynamicResource g_storageImages[];
+[[vk::binding(CANTA_BINDLESS_SAMPLED_IMAGES, 0)]]
+__DynamicResource g_sampledImages[];
+[[vk::binding(CANTA_BINDLESS_STORAGE_IMAGES, 0)]]
+__DynamicResource g_storageImages[];
 
 namespace canta {
 
@@ -19,14 +22,13 @@ public struct Sampler {
         index = samplerIndex;
     }
 
-    public func isValid() -> bool {
+    public func isValid()->bool {
         return index >= 0;
     }
 
-    public func get() -> SamplerState {
+    public func get()->SamplerState {
         return samplers[index];
     }
-
 }
 
 public struct Image1D<T : ITexelElement> {
@@ -37,20 +39,20 @@ public struct Image1D<T : ITexelElement> {
         index = imageIndex;
     }
 
-    public __subscript(uint pos) -> T {
+    public __subscript(uint pos)->T {
         get { return Texture1D<T>(g_sampledImages[NonUniformResourceIndex(index)])[pos]; }
         set { static_assert(false, "attempted to write to read only texture"); }
     }
 
-    public func isValid() -> bool {
+    public func isValid()->bool {
         return index >= 0;
     }
 
-    public func get() -> Texture1D<T> {
+    public func get()->Texture1D<T> {
         return Texture1D<T>(g_sampledImages[NonUniformResourceIndex(index)]);
     }
 
-    public func size() -> uint {
+    public func size()->uint {
         uint value = 0;
         get().GetDimensions(value);
         return value;
@@ -65,20 +67,20 @@ public struct RWImage1D<T : ITexelElement> {
         index = imageIndex;
     }
 
-    public __subscript(uint pos) -> T {
+    public __subscript(uint pos)->T {
         get { return RWTexture1D<T>(g_storageImages[NonUniformResourceIndex(index)])[pos]; }
         set { RWTexture1D<T>(g_storageImages[NonUniformResourceIndex(index)])[pos] = newValue; }
     }
 
-    public func isValid() -> bool {
+    public func isValid()->bool {
         return index >= 0;
     }
 
-    public func get() -> RWTexture1D<T> {
+    public func get()->RWTexture1D<T> {
         return RWTexture1D<T>(g_storageImages[NonUniformResourceIndex(index)]);
     }
 
-    public func size() -> uint {
+    public func size()->uint {
         uint value = 0;
         get().GetDimensions(value);
         return value;
@@ -93,20 +95,20 @@ public struct Image2D<T : ITexelElement> {
         index = imageIndex;
     }
 
-    public __subscript(uint2 pos) -> T {
+    public __subscript(uint2 pos)->T {
         get { return Texture2D<T>(g_sampledImages[NonUniformResourceIndex(index)])[pos]; }
         set { static_assert(false, "attempted to write to read only texture"); }
     }
 
-    public func isValid() -> bool {
+    public func isValid()->bool {
         return index >= 0;
     }
 
-    public func get() -> Texture2D<T> {
+    public func get()->Texture2D<T> {
         return Texture2D<T>(g_sampledImages[NonUniformResourceIndex(index)]);
     }
 
-    public func size() -> uint2 {
+    public func size()->uint2 {
         uint2 value = 0;
         get().GetDimensions(value.x, value.y);
         return value;
@@ -121,20 +123,20 @@ public struct RWImage2D<T : ITexelElement> {
         index = imageIndex;
     }
 
-    public __subscript(uint2 pos) -> T {
+    public __subscript(uint2 pos)->T {
         get { return RWTexture2D<T>(g_storageImages[NonUniformResourceIndex(index)])[pos]; }
         set { RWTexture2D<T>(g_storageImages[NonUniformResourceIndex(index)])[pos] = newValue; }
     }
 
-    public func isValid() -> bool {
+    public func isValid()->bool {
         return index >= 0;
     }
 
-    public func get() -> RWTexture2D<T> {
+    public func get()->RWTexture2D<T> {
         return RWTexture2D<T>(g_storageImages[NonUniformResourceIndex(index)]);
     }
 
-    public func size() -> uint2 {
+    public func size()->uint2 {
         uint2 value = 0;
         get().GetDimensions(value.x, value.y);
         return value;
@@ -149,20 +151,20 @@ public struct Image3D<T : ITexelElement> {
         index = imageIndex;
     }
 
-    public __subscript(uint3 pos) -> T {
+    public __subscript(uint3 pos)->T {
         get { return Texture3D<T>(g_sampledImages[NonUniformResourceIndex(index)])[pos]; }
         set { static_assert(false, "attempted to write to read only texture"); }
     }
 
-    public func isValid() -> bool {
+    public func isValid()->bool {
         return index >= 0;
     }
 
-    public func get() -> Texture3D<T> {
+    public func get()->Texture3D<T> {
         return Texture3D<T>(g_sampledImages[NonUniformResourceIndex(index)]);
     }
 
-    public func size() -> uint3 {
+    public func size()->uint3 {
         uint3 value = 0;
         get().GetDimensions(value.x, value.y, value.z);
         return value;
@@ -177,20 +179,20 @@ public struct RWImage3D<T : ITexelElement> {
         index = imageIndex;
     }
 
-    public __subscript(uint3 pos) -> T {
+    public __subscript(uint3 pos)->T {
         get { return RWTexture3D<T>(g_storageImages[NonUniformResourceIndex(index)])[pos]; }
         set { RWTexture3D<T>(g_storageImages[NonUniformResourceIndex(index)])[pos] = newValue; }
     }
 
-    public func isValid() -> bool {
+    public func isValid()->bool {
         return index >= 0;
     }
 
-    public func get() -> RWTexture3D<T> {
+    public func get()->RWTexture3D<T> {
         return RWTexture3D<T>(g_storageImages[NonUniformResourceIndex(index)]);
     }
 
-    public func size() -> uint3 {
+    public func size()->uint3 {
         uint3 value = 0;
         get().GetDimensions(value.x, value.y, value.z);
         return value;
@@ -201,7 +203,7 @@ public struct Frustum {
     private float4 planes[6];
     private float4 corners[8];
 
-    public func check(float3 pos, float radius) -> bool {
+    public func check(float3 pos, float radius)->bool {
         for (int i = 0; i < 6; i++) {
             if (dot(float4(pos, 1.0), planes[i]) + radius < 0.0)
                 return false;
@@ -220,369 +222,370 @@ public struct Camera {
 };
 
 public float rand(float seed) {
-    float noise = fract(sin(dot(float2(seed), float2(12.9898,78.233)*2.0)) * 43758.5453);
+    float noise = fract(sin(dot(float2(seed), float2(12.9898, 78.233) * 2.0)) * 43758.5453);
     return abs(noise.x) * 0.5;
 }
 
 public float rand(float2 uv) {
-    float2 noise = (fract(float2(sin(dot(uv, float2(12.9898,78.233)*2.0)) * 43758.5453)));
+    float2 noise = (fract(float2(sin(dot(uv, float2(12.9898, 78.233) * 2.0)) * 43758.5453)));
     return abs(noise.x + noise.y) * 0.5;
 }
 
 public float2 rand2(float2 uv) {
-    float noiseX = (fract(sin(dot(uv, float2(12.9898,78.233) * 2.0)) * 43758.5453));
+    float noiseX = (fract(sin(dot(uv, float2(12.9898, 78.233) * 2.0)) * 43758.5453));
     float noiseY = sqrt(1 - noiseX * noiseX);
     return float2(noiseX, noiseY);
 }
 
 public float3 rand3(uint3 v) {
-	v = v * 1664525u + 1013904223u;
-	v.x += v.y * v.z;
-	v.y += v.z * v.x;
-	v.z += v.x * v.y;
-	v ^= v >> 16u;
-	v.x += v.y * v.z;
-	v.y += v.z * v.x;
-	v.z += v.x * v.y;
-	return float3(v) * (1.0 / float(0xffffffffu));
+    v = v * 1664525u + 1013904223u;
+    v.x += v.y * v.z;
+    v.y += v.z * v.x;
+    v.z += v.x * v.y;
+    v ^= v >> 16u;
+    v.x += v.y * v.z;
+    v.y += v.z * v.x;
+    v.z += v.x * v.y;
+    return float3(v) * (1.0 / float(0xffffffffu));
 }
 
-    public uint hash(uint x) {
-        x ^= x >> 16;
-        x *= 0x21F0AAADu;
-        x ^= x >> 15;
-        x *= 0xD35A2D97u;
-        x ^= x >> 15;
-        return x;
+public uint hash(uint x) {
+    x ^= x >> 16;
+    x *= 0x21F0AAADu;
+    x ^= x >> 15;
+    x *= 0xD35A2D97u;
+    x ^= x >> 15;
+    return x;
+}
+
+public float uintToNormalizedFloat(uint x) {
+    return asfloat(x >> 9 | 0x3F800000u) - 1.0;
+}
+
+namespace random {
+
+// uints
+public uint rand(uint x) {
+    return hash(x);
+}
+
+public uint rand(uint2 x) {
+    return hash(x.x + hash(x.y));
+}
+
+public uint rand(uint3 x) {
+    return hash(x.x + hash(x.y + hash(x.z)));
+}
+
+public uint rand(uint4 x) {
+    return hash(x.x + hash(x.y + hash(x.z + hash(x.w))));
+}
+
+// floats
+public float rand(float x) {
+    return uintToNormalizedFloat(rand(uint(x)));
+}
+
+public float rand(float2 x) {
+    return uintToNormalizedFloat(rand(uint2(x)));
+}
+
+public float rand(float3 x) {
+    return uintToNormalizedFloat(rand(uint3(x)));
+}
+
+public float rand(float4 x) {
+    return uintToNormalizedFloat(rand(uint4(x)));
+}
+
+public float rand(float x, float min, float max) {
+    let diff = max - min;
+    return uintToNormalizedFloat(rand(uint(x))) * diff + min;
+}
+
+public float rand(float2 x, float min, float max) {
+    let diff = max - min;
+    return uintToNormalizedFloat(rand(uint2(x))) * diff + min;
+}
+
+public float rand(float3 x, float min, float max) {
+    let diff = max - min;
+    return uintToNormalizedFloat(rand(uint3(x))) * diff + min;
+}
+
+public float rand(float4 x, float min, float max) {
+    let diff = max - min;
+    return uintToNormalizedFloat(rand(uint4(x))) * diff + min;
+}
+
+public float4 noise(uint3 seed) {
+    let hash = rand(seed.xy + uint2(seed.z));
+
+    let r = canta.random.rand(float4(seed.xy, hash, canta.random.rand(hash)));
+    let g = canta.random.rand(float4(hash, seed.xy, canta.random.rand(hash)));
+    let b = canta.random.rand(float4(canta.random.rand(hash), seed.xy, hash));
+    let a = canta.random.rand(float4(hash, canta.random.rand(hash), seed.yx));
+
+    return float4(r, g, b, a);
+}
+
+}
+
+public struct RandomIterator : Iterator {
+    float state;
+    float min;
+    float max;
+
+    public __init(float state = 1000, float min = 0.f, float max = 1.f) {
+        this.state = state;
+        this.min = min;
+        this.max = max;
     }
 
-    public float uintToNormalizedFloat(uint x) {
-        return asfloat(x >> 9 | 0x3F800000u) - 1.0;
+    typedef float Item;
+
+    [mutating]
+    public func next()->Optional<Item> {
+        let x = random.rand(state, min, max);
+        state = x;
+        return state;
+    }
+}
+
+public struct FixedSizedIterator<T, let N : uint> : Iterator {
+    uint index;
+    T[N] array;
+
+    public __init(T[N] array) {
+        this.array = array;
+        this.index = 0;
     }
 
-    namespace random {
+    typedef T Item;
 
-        // uints
-        public uint rand(uint x) {
-            return hash(x);
+    [mutating]
+    public func next()->Optional<Item> {
+        if (this.index > array.getCount()) {
+            return none;
         }
+        return this.array[this.index++];
+    }
+}
 
-        public uint rand(uint2 x) {
-            return hash(x.x + hash(x.y));
-        }
+public struct DynamicIterator<T> : Iterator {
+    uint index;
+    uint length;
+    IArray<T> data;
 
-        public uint rand(uint3 x) {
-            return hash(x.x + hash(x.y + hash(x.z)));
-        }
-
-        public uint rand(uint4 x) {
-            return hash(x.x + hash(x.y + hash(x.z + hash(x.w))));
-        }
-
-
-
-        // floats
-        public float rand(float x) {
-            return uintToNormalizedFloat(rand(uint(x)));
-        }
-
-        public float rand(float2 x) {
-            return uintToNormalizedFloat(rand(uint2(x)));
-        }
-
-        public float rand(float3 x) {
-            return uintToNormalizedFloat(rand(uint3(x)));
-        }
-
-        public float rand(float4 x) {
-            return uintToNormalizedFloat(rand(uint4(x)));
-        }
-
-
-
-        public float rand(float x, float min, float max) {
-            let diff = max - min;
-            return uintToNormalizedFloat(rand(uint(x))) * diff + min;
-        }
-
-        public float rand(float2 x, float min, float max) {
-            let diff = max - min;
-            return uintToNormalizedFloat(rand(uint2(x))) * diff + min;
-        }
-
-        public float rand(float3 x, float min, float max) {
-            let diff = max - min;
-            return uintToNormalizedFloat(rand(uint3(x))) * diff + min;
-        }
-
-        public float rand(float4 x, float min, float max) {
-            let diff = max - min;
-            return uintToNormalizedFloat(rand(uint4(x))) * diff + min;
-        }
-
-        public float4 noise(uint3 seed) {
-            let hash = rand(seed.xy + uint2(seed.z));
-
-            let r = canta.random.rand(float4(seed.xy, hash, canta.random.rand(hash)));
-            let g = canta.random.rand(float4(hash, seed.xy, canta.random.rand(hash)));
-            let b = canta.random.rand(float4(canta.random.rand(hash), seed.xy, hash));
-            let a = canta.random.rand(float4(hash, canta.random.rand(hash), seed.yx));
-
-            return float4(r, g, b, a);
-        }
-
+    public __init(IArray<T> data, int length) {
+        this.data = data;
+        this.index = 0;
+        this.length = length;
     }
 
-    public struct RandomIterator : Iterator {
-        float state;
-        float min;
-        float max;
+    typedef T Item;
 
-        public __init(float state = 1000, float min = 0.f, float max = 1.f) {
-            this.state = state;
-            this.min = min;
-            this.max = max;
+    [mutating]
+    public func next()->Optional<Item> {
+        if (this.index >= this.length) {
+            return none;
         }
+        return this.data[this.index++];
+    }
+}
 
-        typedef float Item;
+public struct PtrIterator<T> : Iterator {
+    uint index;
+    uint length;
+    Ptr<T> data;
 
-        [mutating]
-        public func next()->Optional<Item> {
-            let x = random.rand(state, min, max);
-            state = x;
-            return state;
-        }
+    public __init(Ptr<T, Access.ReadWrite, AddressSpace.Device, DefaultDataLayout> data, int length) {
+        this.data = data;
+        this.index = 0;
+        this.length = length;
     }
 
-    public struct FixedSizedIterator<T, let N : uint> : Iterator {
-        uint index;
-        T[N] array;
+    typedef T Item;
 
-        public __init(T[N] array) {
-            this.array = array;
-            this.index = 0;
+    [mutating]
+    public func next()->Optional<Item> {
+        if (this.index >= this.length) {
+            return none;
         }
+        return this.data[this.index++];
+    }
+}
 
-        typedef T Item;
+public struct Map<I, F, U> : Iterator
+    where I : Iterator
+    where F : IFunc<U, I::Item> {
 
-        [mutating]
-        public func next()->Optional<Item> {
-            if (this.index > array.getCount()) {
-                return none;
-            }
-            return this.array[this.index++];
-        }
+    I iterator;
+    F mapping;
+
+    __init(I iter, F map) {
+        this.iterator = iter;
+        this.mapping = map;
     }
 
-    public struct DynamicIterator<T> : Iterator {
-        uint index;
-        uint length;
-        IArray<T> data;
+    typedef U Item;
 
-        public __init(IArray<T> data, int length) {
-            this.data = data;
-            this.index = 0;
-            this.length = length;
+    [mutating]
+    public func next()->Optional<Item> {
+        if (let item = this.iterator.next()) {
+            return this.mapping(item);
         }
+        return none;
+    }
+}
 
-        typedef T Item;
+public struct Filter<I, F> : Iterator
+    where I : Iterator
+    where F : IFunc<bool, I::Item> {
 
-        [mutating]
-        public func next()->Optional<Item> {
-            if (this.index >= this.length) {
-                return none;
-            }
-            return this.data[this.index++];
-        }
+    I iterator;
+    F callback;
+
+    __init(I iter, F callback) {
+        this.iterator = iter;
+        this.callback = callback;
     }
 
-    public struct PtrIterator<T> : Iterator {
-        uint index;
-        uint length;
-        Ptr<T> data;
+    typedef I::Item Item;
 
-        public __init(Ptr<T, Access.ReadWrite, AddressSpace.Device, DefaultDataLayout> data, int length) {
-            this.data = data;
-            this.index = 0;
-            this.length = length;
-        }
-
-        typedef T Item;
-
-        [mutating]
-        public func next()->Optional<Item> {
-            if (this.index >= this.length) {
-                return none;
-            }
-            return this.data[this.index++];
-        }
-    }
-
-    public struct Map<I, F, U> : Iterator where I : Iterator where F : IFunc<U, I::Item> {
-
-        I iterator;
-        F mapping;
-
-        __init(I iter, F map) {
-            this.iterator = iter;
-            this.mapping = map;
-        }
-
-        typedef U Item;
-
-        [mutating]
-        public func next()->Optional<Item> {
+    [mutating]
+    public func next()->Optional<Item> {
+        while (true) {
             if (let item = this.iterator.next()) {
-                return this.mapping(item);
+                if (this.callback(item)) {
+                    return item;
+                }
+            } else {
+                break;
             }
+        }
+        return none;
+    }
+}
+
+public interface Iterator {
+
+    associatedtype Item;
+
+    [mutating]
+    public func next()->Optional<Item>;
+
+    public func map<U, F : IFunc<U, Item>>(F f)->Map<This, F, U> {
+        return Map<This, F, U>(this, f);
+    }
+
+    public func filter<F : IFunc<bool, Item>>(F f)->Filter<This, F> {
+        return Filter<This, F>(this, f);
+    }
+
+    [mutating]
+    public func fold<T : IArithmetic, F : IFunc<T, T, Item>>(T accumulator, F f)->T {
+        while (true) {
+            if (let item = this.next()) {
+                accumulator = f(accumulator, item);
+            } else {
+                break;
+            }
+        }
+        return accumulator;
+    }
+
+    [mutating]
+    public func collectInto(IRWArray<Item> collection, uint length)->IRWArray<Item> {
+        for (uint i = 0; i < length; i++) {
+            if (let item = this.next()) {
+                collection[i] = item;
+            } else {
+                break;
+            }
+        }
+        return collection;
+    }
+
+    [mutating]
+    public func collectInto(Ptr<Item> collection, uint length)->Ptr<Item> {
+        for (uint i = 0; i < length; i++) {
+            if (let item = this.next()) {
+                collection[i] = item;
+            } else {
+                break;
+            }
+        }
+        return collection;
+    }
+}
+
+public func iter<T>(T *ptr, uint length)->canta.PtrIterator<T> {
+    return canta.PtrIterator<T>(ptr, length);
+}
+
+public struct Stack<T, let N : uint> {
+    private uint index;
+    private T[N] stack;
+
+    public __init() {
+        // this.stack = stack;
+        this.index = 0;
+    }
+
+    [mutating]
+    public func push(T item) {
+        stack[index++] = item;
+    }
+
+    [mutating]
+    public func pop()->Optional<T> {
+        if (empty())
             return none;
-        }
+        return stack[--index];
     }
 
-    public struct Filter<I, F> : Iterator where I : Iterator where F : IFunc<bool, I::Item> {
-
-        I iterator;
-        F callback;
-
-        __init(I iter, F callback) {
-            this.iterator = iter;
-            this.callback = callback;
-        }
-
-        typedef I::Item Item;
-
-        [mutating]
-        public func next()->Optional<Item> {
-            while (true) {
-                if (let item = this.iterator.next()) {
-                    if (this.callback(item)) {
-                        return item;
-                    }
-                } else {
-                    break;
-                }
-            }
-            return none;
-        }
+    public func empty()->bool {
+        return index == 0;
     }
-
-    public interface Iterator {
-
-        associatedtype Item;
-
-        [mutating]
-        public func next()->Optional<Item>;
-
-        public func map<U, F : IFunc<U, Item>>(F f)->Map<This, F, U> {
-            return Map<This, F, U>(this, f);
-        }
-
-        public func filter<F : IFunc<bool, Item>>(F f)->Filter<This, F> {
-            return Filter<This, F>(this, f);
-        }
-
-        [mutating]
-        public func fold<T : IArithmetic, F : IFunc<T, T, Item>>(T accumulator, F f)->T {
-            while (true) {
-                if (let item = this.next()) {
-                    accumulator = f(accumulator, item);
-                } else {
-                    break;
-                }
-            }
-            return accumulator;
-        }
-
-        [mutating]
-        public func collectInto(IRWArray<Item> collection, uint length)->IRWArray<Item> {
-            for (uint i = 0; i < length; i++) {
-                if (let item = this.next()) {
-                    collection[i] = item;
-                } else {
-                    break;
-                }
-            }
-            return collection;
-        }
-
-        [mutating]
-        public func collectInto(Ptr<Item> collection, uint length)->Ptr<Item> {
-            for (uint i = 0; i < length; i++) {
-                if (let item = this.next()) {
-                    collection[i] = item;
-                } else {
-                    break;
-                }
-            }
-            return collection;
-        }
-    }
-
-    public func iter<T>(T *ptr, uint length)->canta.PtrIterator<T> {
-        return canta.PtrIterator<T>(ptr, length);
-    }
-
-    public struct Stack<T, let N : uint> {
-        private uint index;
-        private T[N] stack;
-
-        public __init() {
-            // this.stack = stack;
-            this.index = 0;
-        }
-
-        [mutating]
-        public func push(T item) {
-            stack[index++] = item;
-        }
-
-        [mutating]
-        public func pop()->Optional<T> {
-            if (empty()) return none;
-            return stack[--index];
-        }
-
-        public func empty()->bool {
-            return index == 0;
-        }
-    }
+}
 
 }
 
 // matrix and vec multiplication overload
-public float2 operator*(float2x2 matrix, float2 vec) {
+public float2 operator *(float2x2 matrix, float2 vec) {
     return mul(matrix, vec);
 }
 
-public float2 operator*(float2 vec, float2x2 matrix) {
+public float2 operator *(float2 vec, float2x2 matrix) {
     return mul(vec, matrix);
 }
 
-public float2x2 operator*(float2x2 lhs, float2x2 rhs) {
+public float2x2 operator *(float2x2 lhs, float2x2 rhs) {
     return mul(lhs, rhs);
 }
 
-public float3 operator*(float3x3 matrix, float3 vec) {
+public float3 operator *(float3x3 matrix, float3 vec) {
     return mul(matrix, vec);
 }
 
-public float3 operator*(float3 vec, float3x3 matrix) {
+public float3 operator *(float3 vec, float3x3 matrix) {
     return mul(vec, matrix);
 }
 
-public float3x3 operator*(float3x3 lhs, float3x3 rhs) {
+public float3x3 operator *(float3x3 lhs, float3x3 rhs) {
     return mul(lhs, rhs);
 }
 
-public float4 operator*(float4x4 matrix, float4 vec) {
+public float4 operator *(float4x4 matrix, float4 vec) {
     return mul(matrix, vec);
 }
 
-public float4 operator*(float4 vec, float4x4 matrix) {
+public float4 operator *(float4 vec, float4x4 matrix) {
     return mul(vec, matrix);
 }
 
-public float4x4 operator*(float4x4 lhs, float4x4 rhs) {
+public float4x4 operator *(float4x4 lhs, float4x4 rhs) {
     return mul(lhs, rhs);
 }
 
@@ -599,11 +602,18 @@ public extension<T : __BuiltinFloatingPointType> vector<T, 3> {
 }
 
 public extension<T : __BuiltinFloatingPointType, let N : uint> matrix<T, N, N> {
+
+    public func transpose()->matrix<T, N, N> {
+        return transpose(this);
+    }
+
     [require(glsl_spirv, GLSL_400)]
     public func inverse()->matrix<T, N, N> {
         __target_switch {
-        case glsl: __intrinsic_asm "inverse";
-        case spirv: return spirv_asm {
+        case glsl:
+            __intrinsic_asm "inverse";
+        case spirv:
+            return spirv_asm {
                 OpExtInst $$matrix<T,N,N> result glsl450 MatrixInverse $this
             };
         }
@@ -616,13 +626,15 @@ public extension<T, let N : uint> T[N] {
     }
 }
 
-public extension<T> T where T : IArray<T> {
+public extension<T> T
+    where T : IArray<T> {
     public func iter()->canta.DynamicIterator<T> {
         return canta.DynamicIterator<T>(this, 1);
     }
 }
 
-public extension<I : canta.Iterator> I where I::Item : IArithmetic {
+public extension<I : canta.Iterator> I
+    where I::Item : IArithmetic {
     [mutating]
     public func sum()->Item {
         Item total = Item(0);

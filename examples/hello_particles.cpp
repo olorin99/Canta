@@ -142,7 +142,7 @@ int main() {
         window.processEvents(&imguiContext);
 
         // device->startFrameCapture();
-        device->beginFrame();
+        maybe_conv(i32, device->beginFrame());
         device->gc();
         maybe_conv(i32, pipelineManager.reload());
         uploadBuffer.clearSubmitted();
@@ -232,7 +232,7 @@ int main() {
                 ImGui::Text("%s: %f ms", timer.name.data(), maybe_conv(i32, timer.timer.result()) / 1000000.f);
             }
             auto pipelineStatistics = renderGraph.statistics();
-            for (u32 statIndex = 0; auto& pipelineStats : pipelineStatistics) {
+            for (i32 statIndex = 0; auto& pipelineStats : pipelineStatistics) {
                 ImGui::PushID(statIndex++);
                 if (ImGui::TreeNode(pipelineStats.name.data())) {
                     auto stats = maybe_conv(i32, pipelineStats.statistics.result());
