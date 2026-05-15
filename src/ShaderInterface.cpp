@@ -1,4 +1,4 @@
-#include "Canta/ShaderInterface.h"
+#include <Canta/ShaderInterface.h>
 #include <spirv_cross.hpp>
 
 auto typeToMemberType(const spirv_cross::SPIRType& type) {
@@ -192,7 +192,7 @@ auto canta::ShaderInterface::create(std::span<CreateInfo> infos) -> ShaderInterf
             u32 x = compiler.get_execution_mode_argument(spv::ExecutionModeLocalSize, 0);
             u32 y = compiler.get_execution_mode_argument(spv::ExecutionModeLocalSize, 1);
             u32 z = compiler.get_execution_mode_argument(spv::ExecutionModeLocalSize, 2);
-            interface._localSizes.emplace_back(ende::math::Vec<3, u32>{ x, y, z }, info.stage);
+            interface._localSizes.emplace_back(ende::math::uint3{ x, y, z }, info.stage);
         }
 
         for (auto &c : compiler.get_specialization_constants())
@@ -442,7 +442,7 @@ auto canta::ShaderInterface::getTypeList() const -> std::vector<Member> {
     return members;
 }
 
-auto canta::ShaderInterface::localSize(canta::ShaderStage stage) const -> std::optional<ende::math::Vec<3, u32>> {
+auto canta::ShaderInterface::localSize(canta::ShaderStage stage) const -> std::optional<ende::math::uint3> {
     for (auto& sizePair : _localSizes) {
         if (sizePair.second == stage)
             return sizePair.first;

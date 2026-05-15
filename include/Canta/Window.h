@@ -2,7 +2,7 @@
 #define CANTA_WINDOW_H
 
 #include <volk.h>
-#include <Ende/math/Vec.h>
+#include <Ende/math/Mat.h>
 #include <vector>
 
 namespace canta {
@@ -18,7 +18,7 @@ namespace canta {
 
         virtual auto surface(Device&) -> VkSurfaceKHR = 0;
 
-        virtual auto extent() -> ende::math::Vec<2, u32> = 0;
+        virtual auto extent() -> ende::math::uint2 = 0;
 
     };
 

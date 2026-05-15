@@ -1,4 +1,4 @@
-#include "Canta/Device.h"
+#include <Canta/Device.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
 #include <spdlog/sinks/basic_file_sink.h>
 #ifdef CANTA_RENDERDOC
@@ -1004,7 +1004,7 @@ auto canta::Device::createPipeline(Pipeline::CreateInfo info, const PipelineHand
         }
     }
 
-    std::optional<ende::math::Vec<3, u32>> localSize;
+    std::optional<ende::math::uint3> localSize;
     std::ranges::sort(info.specializationConstants, [](const auto& lhs, const auto& rhs) {
         return lhs.id < rhs.id;
     });

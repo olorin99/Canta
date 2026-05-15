@@ -1,4 +1,4 @@
-#include <../../include/Canta/debug/RenderGraphDebugger.h>
+#include <Canta/debug/RenderGraphDebugger.h>
 #include <imgui/imgui.h>
 
 #include "imnodes.h"
@@ -222,10 +222,10 @@ void canta::RenderGraphDebugger::render() {
                 ImGui::Checkbox("Copy", &_copyResource);
                 ImGui::Text("Bounds");
 
-                ImGui::SliderInt("Offset X", &_viewportOffset[0], 0, 1920);
-                ImGui::SliderInt("Offset Y", &_viewportOffset[1], 0, 1080);
-                ImGui::SliderInt("Width X", &_viewportSize[0], 0, 1920);
-                ImGui::SliderInt("Height Y", &_viewportSize[1], 0, 1080);
+                ImGui::SliderInt("Offset X", &_viewportOffset[0][0], 0, 1920);
+                ImGui::SliderInt("Offset Y", &_viewportOffset[1][0], 0, 1080);
+                ImGui::SliderInt("Width X", &_viewportSize[0][0], 0, 1920);
+                ImGui::SliderInt("Height Y", &_viewportSize[1][0], 0, 1080);
 
             } else {
                 const auto buffer = _renderGraph->getBufferInfo({ .index = index });

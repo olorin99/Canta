@@ -43,7 +43,7 @@ namespace canta {
         ShaderDescription callable = {};
         ShaderDescription task = {};
         ShaderDescription mesh = {};
-        std::optional<ende::math::Vec<3, u32>> localSize = {};
+        std::optional<ende::math::uint3> localSize = {};
         std::vector<SpecializationConstant> specializationConstants = {};
         RasterState rasterState = {};
         DepthState depthState = {};

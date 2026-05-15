@@ -48,8 +48,8 @@ namespace canta {
 
         bool _copyResource = false;
 
-        ende::math::Vec<2, i32> _viewportSize = {};
-        ende::math::Vec<2, i32> _viewportOffset = {};
+        ende::math::int2 _viewportSize = {};
+        ende::math::int2 _viewportOffset = {};
     };
 
 }

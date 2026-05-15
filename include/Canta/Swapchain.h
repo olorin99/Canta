@@ -47,7 +47,7 @@ namespace canta {
         auto height() const -> u32 { return _extent.height; }
         auto index() const -> u32 { return _index; }
 
-        auto extent() const -> ende::math::Vec<2, u32> { return { _extent.width, _extent.height }; }
+        auto extent() const -> ende::math::uint2 { return { _extent.width, _extent.height }; }
 
         void resize(u32 width, u32 height);
 

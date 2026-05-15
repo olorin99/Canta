@@ -2,7 +2,7 @@
 #define CANTA_PIPELINE_H
 
 #include <Canta/Enums.h>
-#include <Ende/math/Vec.h>
+#include <Ende/math/Mat.h>
 #include <Canta/ResourceList.h>
 #include <Canta/ShaderInterface.h>
 
@@ -103,7 +103,7 @@ namespace canta {
             ShaderInfo callable = {};
             ShaderInfo task = {};
             ShaderInfo mesh = {};
-            std::optional<ende::math::Vec<3, u32>> localSize = {};
+            std::optional<ende::math::uint3> localSize = {};
             std::vector<SpecializationConstant> specializationConstants = {};
             RasterState rasterState = {};
             DepthState depthState = {};
@@ -129,7 +129,7 @@ namespace canta {
         [[nodiscard]] auto mode() const -> PipelineMode { return _mode; }
         [[nodiscard]] auto interface() const -> const ShaderInterface& { return _interface; }
         [[nodiscard]] auto info() const -> const CreateInfo& { return _info; }
-        [[nodiscard]] auto localSize(ShaderStage stage) const -> std::optional<ende::math::Vec<3, u32>>;
+        [[nodiscard]] auto localSize(ShaderStage stage) const -> std::optional<ende::math::uint3>;
 
     private:
         friend Device;
@@ -141,7 +141,7 @@ namespace canta {
         ShaderInterface _interface = {};
         std::string _name = {};
         CreateInfo _info = {};
-        std::optional<ende::math::Vec<3, u32>> _size;
+        std::optional<ende::math::uint3> _size;
 
 
     };

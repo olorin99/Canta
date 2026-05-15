@@ -1,30 +1,16 @@
+#include "Ende/math/Mat.h"
 #include "Ende/math/Quaternion.h"
 #include <Canta/Camera.h>
 
 template <typename T>
-constexpr inline ende::math::Mat<4, T> perspective(T fov, T aspect, T near, T far) {
+constexpr inline ende::math::Matrix<T, 4> perspective(T fov, T aspect, T near, T far) {
     const f32 tanHalfFov = std::tan(fov / 2.f);
 
-    ende::math::Mat<4, T> result;
-    result(0, 0) = 1.f / (tanHalfFov * aspect);
-    result(0, 1) = 0.f;
-    result(0, 2) = 0.f;
-    result(0, 3) = 0.f;
-
-    result(1, 0) = 0.f;
-    result(1, 1) = 1.f / tanHalfFov;
-    result(1, 2) = 0.f;
-    result(1, 3) = 0.f;
-
-    result(2, 0) = 0.f;
-    result(2, 1) = 0.f;
-    result(2, 2) = 0.f;
-    result(2, 3) = T(1);
-
-    result(3, 0) = 0.f;
-    result(3, 1) = 0.f;
-    result(3, 2) = near;
-    result(3, 3) = 0.f;
+    ende::math::Matrix<T, 4> result;
+    result[0][0] = 1.f / (tanHalfFov * aspect);
+    result[1][1] = 1.f / tanHalfFov;
+    result[3][2] = T(1);
+    result[2][3] = near;
 
     return result;
 }
@@ -56,8 +42,8 @@ auto canta::Camera::create(canta::Camera::CreateOrthographicInfo info) -> Camera
     return camera;
 }
 
-auto canta::Camera::view() const -> ende::math::Mat4f {
-    auto translation = ende::math::translation<4, f32>(_position);
+auto canta::Camera::view() const -> ende::math::float4x4 {
+    auto translation = ende::math::translation<f32, 4>(_position);
     auto rotation = _rotation.toMat();
     return translation * rotation;
 }
@@ -96,15 +82,15 @@ auto canta::Camera::gpuCamera() const -> GPUCamera {
     };
 }
 
-auto canta::Camera::frustumCorners() const -> std::array<ende::math::Vec4f, 8> {
+auto canta::Camera::frustumCorners() const -> std::array<ende::math::float4, 8> {
     const auto inverseViewProjection = (ende::math::perspective(_fov, _width / _height, _near, _far) * view()).inverse();
-    std::array<ende::math::Vec4f, 8> corners = {};
-    constexpr std::array offsets = {
-            ende::math::Vec<2, f32>{-1,  1}, ende::math::Vec<2, f32>{-1, -1}, ende::math::Vec<2, f32>{1, -1}, ende::math::Vec<2, f32>{1,  1},
-            ende::math::Vec<2, f32>{1,  1}, ende::math::Vec<2, f32>{-1,  1}, ende::math::Vec<2, f32>{-1, -1}, ende::math::Vec<2, f32>{1, -1}
+    std::array<ende::math::float4, 8> corners = {};
+    std::array offsets = {
+            ende::math::float2(-1,  1), ende::math::float2(-1, -1), ende::math::float2(1, -1), ende::math::float2(1,  1),
+            ende::math::float2(1,  1), ende::math::float2(-1,  1), ende::math::float2(-1, -1), ende::math::float2(1, -1)
     };
     for (u32 i = 0; i < 8; i++) {
-        const auto pt = inverseViewProjection.transform(ende::math::Vec4f{
+        const auto pt = inverseViewProjection * (ende::math::float4{
             offsets[i].x(),
             offsets[i].y(),
             i > 4 ? 0.f : 1.f,
@@ -115,26 +101,14 @@ auto canta::Camera::frustumCorners() const -> std::array<ende::math::Vec4f, 8> {
     return corners;
 }
 
-void canta::Camera::lookAt(const ende::math::Vec3f& dst) {
-    const auto up = ende::math::Vec3f({0, 1, 0});
+void canta::Camera::lookAt(const ende::math::float3& dst) {
+    const auto up = ende::math::float3({0, 1, 0});
 
     const auto forwards = (dst - _position).unit();
     const auto right = up.cross(forwards * -1).unit();
     const auto upwards = forwards.cross(right).unit();
 
-    auto mat = ende::math::identity<4, f32>();
-
-    mat(0, 0) = right[0];
-    mat(0, 1) = right[1];
-    mat(0, 2) = right[2];
-
-    mat(1, 0) = upwards[0];
-    mat(1, 1) = upwards[1];
-    mat(1, 2) = upwards[2];
-
-    mat(2, 0) = forwards[0];
-    mat(2, 1) = forwards[1];
-    mat(2, 2) = forwards[2];
+    const auto mat = ende::math::lookAt(_position, dst, up);
 
     const auto q = ende::math::Quaternion(mat);
 

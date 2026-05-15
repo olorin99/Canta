@@ -1,4 +1,4 @@
-#include "Canta/CommandBuffer.h"
+#include <Canta/CommandBuffer.h>
 #include <Canta/Device.h>
 #include <Canta/Pipeline.h>
 #include <Canta/Buffer.h>
@@ -86,7 +86,7 @@ void canta::CommandBuffer::endRendering() {
     vkCmdEndRendering(_buffer);
 }
 
-void canta::CommandBuffer::setViewport(const ende::math::Vec<2, f32> &size, const ende::math::Vec<2, f32> &offset, bool scissor) {
+void canta::CommandBuffer::setViewport(const ende::math::float2 &size, const ende::math::float2 &offset, bool scissor) {
     VkViewport viewport = {
             .x = offset.x(),
             .y = offset.y(),
@@ -100,7 +100,7 @@ void canta::CommandBuffer::setViewport(const ende::math::Vec<2, f32> &size, cons
         setScissor({ static_cast<u32>(size.x()), static_cast<u32>(size.y()) }, { static_cast<i32>(offset.x()), static_cast<i32>(offset.y()) });
 }
 
-void canta::CommandBuffer::setScissor(const ende::math::Vec<2, u32> &size, const ende::math::Vec<2, i32> &offset) {
+void canta::CommandBuffer::setScissor(const ende::math::uint2 &size, const ende::math::int2 &offset) {
     VkRect2D scissor = {
             .offset = { offset.x(), offset.y() },
             .extent = { size.x(), size.y() }
@@ -227,7 +227,7 @@ void canta::CommandBuffer::drawMeshTasksWorkgroups(u32 x, u32 y, u32 z) {
 }
 
 void canta::CommandBuffer::drawMeshTasksThreads(u32 x, u32 y, u32 z) {
-    std::optional<ende::math::Vec<3, u32>> localSize;
+    std::optional<ende::math::uint3> localSize;
     if (_currentPipeline->interface().stagePresent(ShaderStage::TASK))
         localSize = _currentPipeline->localSize(ShaderStage::TASK);
     else

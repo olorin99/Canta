@@ -4,7 +4,7 @@
 #include <Ende/platform.h>
 #include <span>
 #include <Canta/Enums.h>
-#include <Ende/math/Vec.h>
+#include <Ende/math/Mat.h>
 #include <vector>
 #include <tsl/robin_map.h>
 
@@ -111,7 +111,7 @@ namespace canta {
 
         [[nodiscard]] auto bindingCount(u32 set) const -> u32 { return _sets[set].bindingCount; }
 
-        [[nodiscard]] auto localSize(ShaderStage stage) const -> std::optional<ende::math::Vec<3, u32>>;
+        [[nodiscard]] auto localSize(ShaderStage stage) const -> std::optional<ende::math::uint3>;
 
         [[nodiscard]] auto stagePresent(ShaderStage stage) const -> bool;
 
@@ -123,7 +123,7 @@ namespace canta {
 
         std::vector<PushRange> _pushRanges = {};
         std::vector<SpecConstant> _specConstants = {};
-        std::vector<std::pair<ende::math::Vec<3, u32>, ShaderStage>> _localSizes = {};
+        std::vector<std::pair<ende::math::uint3, ShaderStage>> _localSizes = {};
         ShaderStage _stages = ShaderStage::NONE;
         tsl::robin_map<std::string, Member> _types = {};
 

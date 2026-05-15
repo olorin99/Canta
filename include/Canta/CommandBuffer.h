@@ -6,7 +6,7 @@
 #include <Canta/Semaphore.h>
 #include <span>
 #include <Canta/ResourceList.h>
-#include <Ende/math/Vec.h>
+#include <Ende/math/Mat.h>
 #include <Canta/util.h>
 
 namespace canta {
@@ -33,8 +33,8 @@ namespace canta {
     };
 
     struct RenderingInfo {
-        ende::math::Vec<2, u32> size = { 0, 0 };
-        ende::math::Vec<2, i32> offset = { 0, 0 };
+        ende::math::uint2 size = { 0, 0 };
+        ende::math::int2 offset = { 0, 0 };
         std::span<const Attachment> colourAttachments = {};
         Attachment depthAttachment = {};
     };
@@ -90,8 +90,8 @@ namespace canta {
         void beginRendering(RenderingInfo info);
         void endRendering();
 
-        void setViewport(const ende::math::Vec<2, f32>& size, const ende::math::Vec<2, f32>& offset = { 0, 0 }, bool setScissor = true);
-        void setScissor(const ende::math::Vec<2, u32>& size, const ende::math::Vec<2, i32>& offset = { 0, 0 });
+        void setViewport(const ende::math::float2& size, const ende::math::float2& offset = { 0, 0 }, bool setScissor = true);
+        void setScissor(const ende::math::uint2& size, const ende::math::int2& offset = { 0, 0 });
 
         auto bindPipeline(PipelineHandle pipeline) -> bool;
 
@@ -123,14 +123,14 @@ namespace canta {
             u32 srcMip = 0;
             u32 srcLayer = 0;
             u32 srcLayerCount = 0;
-            ende::math::Vec<3, i32> srcSize = { 0, 0, 0 };
-            ende::math::Vec<3, i32> srcOffset = { 0, 0, 0 };
+            ende::math::int3 srcSize = { 0, 0, 0 };
+            ende::math::int3 srcOffset = { 0, 0, 0 };
             ImageHandle dst = {};
             u32 dstMip = 0;
             u32 dstLayer = 0;
             u32 dstLayerCount = 0;
-            ende::math::Vec<3, i32> dstSize = { 0, 0, 0 };
-            ende::math::Vec<3, i32> dstOffset = { 0, 0, 0 };
+            ende::math::int3 dstSize = { 0, 0, 0 };
+            ende::math::int3 dstOffset = { 0, 0, 0 };
             ImageLayout srcLayout = ImageLayout::UNDEFINED;
             ImageLayout dstLayout = ImageLayout::UNDEFINED;
             Filter filter = Filter::LINEAR;
@@ -142,8 +142,8 @@ namespace canta {
             BufferHandle buffer = {};
             ImageHandle image = {};
             ImageLayout dstLayout = ImageLayout::TRANSFER_DST;
-            ende::math::Vec<3, u32> dstDimensions = { 0, 0, 0 };
-            ende::math::Vec<3, u32> dstOffsets = { 0, 0, 0 };
+            ende::math::uint3 dstDimensions = { 0, 0, 0 };
+            ende::math::int3 dstOffsets = { 0, 0, 0 };
             u32 dstMipLevel = 0;
             u32 dstLayer = 0;
             u32 dstLayerCount = 1;

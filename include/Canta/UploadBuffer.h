@@ -82,8 +82,8 @@ namespace canta {
         std::vector<StagedBufferInfo> _pendingStagedBufferCopies = {};
         struct StagedImageInfo {
             ImageHandle dst = {};
-            ende::math::Vec<3, u32> dstDimensions = { 0, 0, 0 };
-            ende::math::Vec<3, u32> dstOffsets = { 0, 0, 0 };
+            ende::math::uint3 dstDimensions = { 0, 0, 0 };
+            ende::math::int3 dstOffsets = { 0, 0, 0 };
             u32 dstMipLevel = 0;
             u32 dstLayer = 0;
             u32 dstLayerCount = 1;

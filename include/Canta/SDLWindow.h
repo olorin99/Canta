@@ -23,7 +23,7 @@ namespace canta {
 
         [[nodiscard]] auto surface(Device& device) -> VkSurfaceKHR override;
 
-        [[nodiscard]] auto extent() -> ende::math::Vec<2, u32> override;
+        [[nodiscard]] auto extent() -> ende::math::uint2 override;
 
         [[nodiscard]] auto window() const -> SDL_Window* { return _window; }
 

@@ -29,7 +29,7 @@ auto canta::SDLWindow::surface(Device& device) -> VkSurfaceKHR {
     return _surface;
 }
 
-auto canta::SDLWindow::extent() -> ende::math::Vec<2, u32> {
+auto canta::SDLWindow::extent() -> ende::math::uint2 {
     i32 width, height;
     SDL_GetWindowSize(_window, &width, &height);
     return { static_cast<u32>(width), static_cast<u32>(height) };

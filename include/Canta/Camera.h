@@ -8,13 +8,13 @@
 namespace canta {
 
     struct Frustum {
-        ende::math::Vec4f planes[6] = {};
-        ende::math::Vec4f corners[8] = {};
+        ende::math::float4 planes[6] = {};
+        ende::math::float4 corners[8] = {};
     };
     struct GPUCamera {
-        ende::math::Mat4f projection;
-        ende::math::Mat4f view;
-        ende::math::Vec3f position;
+        ende::math::float4x4 projection;
+        ende::math::float4x4 view;
+        ende::math::float3 position;
         f32 near;
         f32 far;
         Frustum frustum;
@@ -24,7 +24,7 @@ namespace canta {
     public:
 
         struct CreatePerspectiveInfo {
-            ende::math::Vec3f position = { 0, 0, 0 };
+            ende::math::float3 position = { 0, 0, 0 };
             ende::math::Quaternion rotation = { 0, 0, 0, 1 };
             f32 fov = ende::math::rad(45);
             f32 width = 1;
@@ -35,7 +35,7 @@ namespace canta {
         static auto create(CreatePerspectiveInfo info) -> Camera;
 
         struct CreateOrthographicInfo {
-            ende::math::Vec3f position = { 0, 0, 0 };
+            ende::math::float3 position = { 0, 0, 0 };
             ende::math::Quaternion rotation = { 0, 0, 0, 1 };
             f32 left = 0;
             f32 right = 0;
@@ -46,14 +46,14 @@ namespace canta {
         };
         static auto create(CreateOrthographicInfo info) -> Camera;
 
-        [[nodiscard]] auto view() const -> ende::math::Mat4f;
-        [[nodiscard]] auto projection() const -> const ende::math::Mat4f& { return _projection; }
-        [[nodiscard]] auto viewProjection() const -> ende::math::Mat4f { return projection() * view(); }
+        [[nodiscard]] auto view() const -> ende::math::float4x4;
+        [[nodiscard]] auto projection() const -> const ende::math::float4x4& { return _projection; }
+        [[nodiscard]] auto viewProjection() const -> ende::math::float4x4 { return projection() * view(); }
 
-        void setProjection(const ende::math::Mat4f& projection) { _projection = projection; }
+        void setProjection(const ende::math::float4x4& projection) { _projection = projection; }
 
-        void setPosition(const ende::math::Vec3f& pos) { _position = pos; }
-        [[nodiscard]] auto position() const -> const ende::math::Vec3f& { return _position; }
+        void setPosition(const ende::math::float3& pos) { _position = pos; }
+        [[nodiscard]] auto position() const -> const ende::math::float3& { return _position; }
 
         void setRotation(const ende::math::Quaternion& rot) { _rotation = rot; }
         [[nodiscard]] auto rotation() const -> const ende::math::Quaternion& { return _rotation; }
@@ -70,17 +70,17 @@ namespace canta {
         [[nodiscard]] auto gpuCamera() const -> GPUCamera;
 
         [[nodiscard]] auto frustum() const -> const ende::math::Frustum& { return _frustum; }
-        [[nodiscard]] auto frustumCorners() const -> std::array<ende::math::Vec4f, 8>;
+        [[nodiscard]] auto frustumCorners() const -> std::array<ende::math::float4, 8>;
         void updateFrustum() { _frustum.update(viewProjection()); }
 
-        void lookAt(const ende::math::Vec3f& dst);
+        void lookAt(const ende::math::float3& dst);
 
     private:
 
         Camera() = default;
 
-        ende::math::Mat4f _projection = {};
-        ende::math::Vec3f _position = {};
+        ende::math::float4x4 _projection = {};
+        ende::math::float3 _position = {};
         ende::math::Quaternion _rotation = {};
         f32 _fov = 0;
         f32 _width = 0;

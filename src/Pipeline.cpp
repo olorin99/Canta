@@ -1,4 +1,4 @@
-#include "Canta/Pipeline.h"
+#include <Canta/Pipeline.h>
 #include <Canta/Device.h>
 
 canta::Pipeline::~Pipeline() {
@@ -29,10 +29,10 @@ auto canta::Pipeline::operator=(canta::Pipeline &&rhs) noexcept -> Pipeline & {
     return *this;
 }
 
-auto canta::Pipeline::localSize(ShaderStage stage) const -> std::optional<ende::math::Vec<3, u32>> {
+auto canta::Pipeline::localSize(ShaderStage stage) const -> std::optional<ende::math::uint3> {
     const auto interfaceLocalSize = _interface.localSize(stage);
 
-    auto localSize = interfaceLocalSize ? interfaceLocalSize : ende::math::Vec<3, u32>{1, 1, 1};
+    auto localSize = interfaceLocalSize ? interfaceLocalSize : ende::math::uint3{1, 1, 1};
 
     if (const auto specializationLocalSize = _size) {
         if (specializationLocalSize->x() != 1)

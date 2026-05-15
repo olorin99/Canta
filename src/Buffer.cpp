@@ -1,4 +1,4 @@
-#include "Canta/Buffer.h"
+#include <Canta/Buffer.h>
 #include <Canta/Device.h>
 #include <cstring>
 

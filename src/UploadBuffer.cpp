@@ -100,7 +100,7 @@ u32 roundUp(u32 num, u32 multiple) {
 auto canta::UploadBuffer::upload(canta::ImageHandle dstHandle, std::span<const u8> data, canta::UploadBuffer::ImageInfo info) -> u32 {
     u32 uploadOffset = 0;
     u32 uploadSizeRemaining = data.size() - uploadOffset;
-    ende::math::Vec<3, u32> dstOffset = { 0, 0, 0 };
+    ende::math::int3 dstOffset = { 0, 0, 0 };
 
     //TODO: support loading 3d images
 
@@ -171,16 +171,16 @@ auto canta::UploadBuffer::upload(canta::ImageHandle dstHandle, std::span<const u
             uploadOffset += allocationSize;
             uploadSizeRemaining = data.size() - uploadOffset;
 
-            u32 index = (data.size() - uploadSizeRemaining) / formatSize(info.format);
-            u32 z = 0;
+            i32 index = (data.size() - uploadSizeRemaining) / formatSize(info.format);
+            i32 z = 0;
             if (info.depth > 1) {
                 z = index / (info.width * info.height);
                 index -= (z * (info.width * info.height));
             }
-            u32 y = 0;
+            i32 y = 0;
             if (info.height > 1)
                 y = index / info.width;
-            u32 x = index % info.width;
+            i32 x = index % info.width;
 
             dstOffset = { x, y, z };
 

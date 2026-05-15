@@ -1,4 +1,4 @@
-#include "Canta/Image.h"
+#include <Canta/Image.h>
 #include <Canta/Device.h>
 
 canta::Image::~Image() {

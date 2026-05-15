@@ -118,7 +118,7 @@ namespace canta {
             u32 size = 0;
         };
 
-        auto dimensions() const -> ende::math::Vec<2, u32> { return _dimensions; }
+        auto dimensions() const -> ende::math::uint2 { return _dimensions; }
 
         auto type() const -> Type { return _type; }
 
@@ -207,7 +207,7 @@ namespace canta {
         std::function<std::expected<bool, RenderGraphError>(CommandHandle, RenderGraph&, const PushData&)> _callback = {};
         std::vector<ResourceAccess> _accesses = {};
 
-        ende::math::Vec<2, u32> _dimensions = { 0, 0 };
+        ende::math::uint2 _dimensions = { 0, 0 };
         struct Attachment {
             i32 index = -1;
             ImageLayout layout = ImageLayout::UNDEFINED;
@@ -434,8 +434,8 @@ namespace canta {
 
     struct ImageCopy {
         ImageLayout layout = ImageLayout::TRANSFER_DST;
-        ende::math::Vec<3, u32> dimensions = { 0, 0, 0 };
-        ende::math::Vec<3, u32> offsets = { 0, 0, 0 };
+        ende::math::uint3 dimensions = { 0, 0, 0 };
+        ende::math::int3 offsets = { 0, 0, 0 };
         u32 mipLevel = 0;
         u32 layer = 0;
         u32 layerCount = 1;
@@ -454,7 +454,7 @@ namespace canta {
         auto addTransferWrite(ImageIndex index) -> TransferPass&;
 
         auto copy(BufferIndex src, BufferIndex dst, u32 srcOffset = 0, u32 dstOffset = 0, u32 size = 0) -> std::expected<BufferIndex, RenderGraphError>;
-        
+
         auto copy(BufferIndex src, ImageIndex dst, const ImageCopy& info = {
             .layout = ImageLayout::TRANSFER_DST,
         }) -> std::expected<ImageIndex, RenderGraphError>;
