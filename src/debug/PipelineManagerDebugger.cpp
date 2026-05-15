@@ -2,7 +2,7 @@
 
 #include "imgui.h"
 
-auto canta::PipelineManagerDebugger::create(const CreateInfo& info) -> PipelineManagerDebugger {
+auto canta::PipelineManagerDebugger::create(const CreateInfo &info) -> PipelineManagerDebugger {
     PipelineManagerDebugger debugger;
     debugger._pipelineManager = info.pipelineManager;
     return debugger;
@@ -11,7 +11,7 @@ auto canta::PipelineManagerDebugger::create(const CreateInfo& info) -> PipelineM
 void canta::PipelineManagerDebugger::render() {
     if (ImGui::Begin("Pipeline Manager")) {
         // if (ImGui::Button("Reload All")) {
-            // _pipelineManager->reloadAll(true);
+        // _pipelineManager->reloadAll(true);
         // }
 
         // for (auto& pipeline : _pipelineManager->pipelines()) {

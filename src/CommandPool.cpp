@@ -1,7 +1,8 @@
 #include <Canta/CommandPool.h>
 #include <Canta/Device.h>
 
-template<> u32 canta::CommandHandle ::s_hash = 0;
+template <>
+u32 canta::CommandHandle ::s_hash = 0;
 
 canta::CommandPool::~CommandPool() {
     if (!_device)
@@ -29,7 +30,7 @@ auto canta::CommandPool::operator=(CommandPool &&rhs) noexcept -> CommandPool & 
 }
 
 void canta::CommandPool::reset() {
-    _commandBuffers.clearQueue([this] (auto& buffer) {
+    _commandBuffers.clearQueue([this](auto &buffer) {
         auto b = buffer.buffer();
         vkFreeCommandBuffers(_device->logicalDevice(), _pool, 1, &b);
     });

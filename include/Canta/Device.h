@@ -1,38 +1,39 @@
 #ifndef CANTA_DEVICE_H
 #define CANTA_DEVICE_H
 
-#include <Ende/platform.h>
-#include <volk.h>
-#include <expected>
-#include <string>
-#include <functional>
-#include <span>
-#include <memory>
-#include <utility>
-#include <Canta/Enums.h>
-#include <Canta/Swapchain.h>
-#include <Canta/Semaphore.h>
-#include <Canta/CommandPool.h>
-#include <Canta/ResourceList.h>
-#include <Canta/Pipeline.h>
-#include <Canta/Image.h>
 #include <Canta/Buffer.h>
-#include <Canta/Sampler.h>
-#include <Canta/Timer.h>
+#include <Canta/CommandPool.h>
+#include <Canta/Enums.h>
+#include <Canta/Image.h>
+#include <Canta/Pipeline.h>
 #include <Canta/PipelineStatistics.h>
 #include <Canta/Queue.h>
-#include <Ende/time/StopWatch.h>
+#include <Canta/ResourceList.h>
+#include <Canta/Sampler.h>
+#include <Canta/Semaphore.h>
+#include <Canta/Swapchain.h>
+#include <Canta/Timer.h>
 #include <Canta/util.h>
+#include <Ende/platform.h>
+#include <Ende/time/StopWatch.h>
+#include <expected>
+#include <functional>
+#include <memory>
+#include <span>
 #include <spdlog/spdlog.h>
+#include <string>
+#include <utility>
+#include <volk.h>
 
 #define VMA_STATIC_VULKAN_FUNCTIONS 0
 #define VMA_DYNAMIC_VULKAN_FUNCTIONS 0
 #include <vk_mem_alloc.h>
 
-#define VK_TRY(x) { \
-    VkResult tryResult = x; \
-    assert(tryResult == VK_SUCCESS); \
-}
+#define VK_TRY(x)                        \
+    {                                    \
+        VkResult tryResult = x;          \
+        assert(tryResult == VK_SUCCESS); \
+    }
 
 #define CANTA_BINDLESS_SAMPLERS 0
 #define CANTA_BINDLESS_SAMPLED_IMAGES 1
@@ -41,371 +42,362 @@
 
 namespace canta {
 
-    using PipelineHandle = Handle<Pipeline, ResourceList<Pipeline>>;
-    using ImageHandle = Handle<Image, ResourceList<Image>>;
-    using ImageViewHandle = Handle<ImageView, ResourceList<ImageView>>;
-    using BufferHandle = Handle<Buffer, ResourceList<Buffer>>;
-    using SamplerHandle = Handle<Sampler, ResourceList<Sampler>>;
-    using SemaphoreHandle = Handle<Semaphore, ResourceList<Semaphore>>;
+using PipelineHandle = Handle<Pipeline, ResourceList<Pipeline>>;
+using ImageHandle = Handle<Image, ResourceList<Image>>;
+using ImageViewHandle = Handle<ImageView, ResourceList<ImageView>>;
+using BufferHandle = Handle<Buffer, ResourceList<Buffer>>;
+using SamplerHandle = Handle<Sampler, ResourceList<Sampler>>;
+using SemaphoreHandle = Handle<Semaphore, ResourceList<Semaphore>>;
 
-    struct Limits {
-        u32 maxImageDimensions1D = 0;
-        u32 maxImageDimensions2D = 0;
-        u32 maxImageDimensions3D = 0;
-        u32 maxImageDimensionsCube = 0;
+struct Limits {
+    u32 maxImageDimensions1D = 0;
+    u32 maxImageDimensions2D = 0;
+    u32 maxImageDimensions3D = 0;
+    u32 maxImageDimensionsCube = 0;
 
-        u32 maxDescriptorSetSamplers = 0;
-        u32 maxDescriptorSetUniformBuffers = 0;
-        u32 maxDescriptorSetStorageBuffers = 0;
-        u32 maxDescriptorSetSampledImages = 0;
-        u32 maxDescriptorSetStorageImages = 0;
+    u32 maxDescriptorSetSamplers = 0;
+    u32 maxDescriptorSetUniformBuffers = 0;
+    u32 maxDescriptorSetStorageBuffers = 0;
+    u32 maxDescriptorSetSampledImages = 0;
+    u32 maxDescriptorSetStorageImages = 0;
 
-        u32 maxBindlessSamplers = 0;
-        u32 maxBindlessUniformBuffers = 0;
-        u32 maxBindlessStorageBuffers = 0;
-        u32 maxBindlessSampledImages = 0;
-        u32 maxBindlessStorageImages = 0;
+    u32 maxBindlessSamplers = 0;
+    u32 maxBindlessUniformBuffers = 0;
+    u32 maxBindlessStorageBuffers = 0;
+    u32 maxBindlessSampledImages = 0;
+    u32 maxBindlessStorageImages = 0;
 
-        f32 maxSamplerAnisotropy = 0;
+    f32 maxSamplerAnisotropy = 0;
 
-        f32 timestampPeriod = 0;
+    f32 timestampPeriod = 0;
 
-        u32 maxTaskWorkGroupTotalCount = 0;
-        u32 maxTaskWorkGroupCount[3] = {};
-        u32 maxTaskWorkGroupInvocations = 0;
-        u32 maxTaskWorkGroupSize[3] = {};
-        u32 maxTaskPayloadSize = 0;
-        u32 maxTaskSharedMemorySize = 0;
-        u32 maxTaskPayloadAndSharedMemorySize = 0;
-        u32 maxMeshWorkGroupTotalCount = 0;
-        u32 maxMeshWorkGroupCount[3] = {};
-        u32 maxMeshWorkGroupInvocations = 0;
-        u32 maxMeshWorkGroupSize[3] = {};
-        u32 maxMeshSharedMemorySize = 0;
-        u32 maxMeshPayloadAndSharedMemorySize = 0;
-        u32 maxMeshOutputMemorySize = 0;
-        u32 maxMeshPayloadAndOutputMemorySize = 0;
-        u32 maxMeshOutputComponents = 0;
-        u32 maxMeshOutputVertices = 0;
-        u32 maxMeshOutputPrimitives = 0;
-        u32 maxMeshOutputLayers = 0;
-        u32 maxMeshMultiviewViewCount = 0;
-        u32 meshOutputPerVertexGranularity = 0;
-        u32 meshOutputPerPrimitiveGranularity = 0;
-        u32 maxPreferredTaskWorkGroupInvocations = 0;
-        u32 maxPreferredMeshWorkGroupInvocations = 0;
-        bool prefersLocalInvocationVertexOutput = false;
-        bool prefersLocalInvocationPrimitiveOutput = false;
-        bool prefersCompactVertexOutput = false;
-        bool prefersCompactPrimitiveOutput = false;
+    u32 maxTaskWorkGroupTotalCount = 0;
+    u32 maxTaskWorkGroupCount[3] = {};
+    u32 maxTaskWorkGroupInvocations = 0;
+    u32 maxTaskWorkGroupSize[3] = {};
+    u32 maxTaskPayloadSize = 0;
+    u32 maxTaskSharedMemorySize = 0;
+    u32 maxTaskPayloadAndSharedMemorySize = 0;
+    u32 maxMeshWorkGroupTotalCount = 0;
+    u32 maxMeshWorkGroupCount[3] = {};
+    u32 maxMeshWorkGroupInvocations = 0;
+    u32 maxMeshWorkGroupSize[3] = {};
+    u32 maxMeshSharedMemorySize = 0;
+    u32 maxMeshPayloadAndSharedMemorySize = 0;
+    u32 maxMeshOutputMemorySize = 0;
+    u32 maxMeshPayloadAndOutputMemorySize = 0;
+    u32 maxMeshOutputComponents = 0;
+    u32 maxMeshOutputVertices = 0;
+    u32 maxMeshOutputPrimitives = 0;
+    u32 maxMeshOutputLayers = 0;
+    u32 maxMeshMultiviewViewCount = 0;
+    u32 meshOutputPerVertexGranularity = 0;
+    u32 meshOutputPerPrimitiveGranularity = 0;
+    u32 maxPreferredTaskWorkGroupInvocations = 0;
+    u32 maxPreferredMeshWorkGroupInvocations = 0;
+    bool prefersLocalInvocationVertexOutput = false;
+    bool prefersLocalInvocationPrimitiveOutput = false;
+    bool prefersCompactVertexOutput = false;
+    bool prefersCompactPrimitiveOutput = false;
+};
+
+struct Properties {
+    u32 apiVersion;
+    u32 driverVersion;
+    u32 vendorID;
+    std::string vendorName;
+    u32 deviceID;
+    PhysicalDeviceType deviceType;
+    std::string deviceName;
+    Limits limits;
+};
+
+struct SemaphorePair {
+    explicit SemaphorePair(SemaphoreHandle handle)
+        : semaphore(handle),
+          value(handle->value()) {}
+
+    SemaphorePair(SemaphoreHandle handle, const u64 val)
+        : semaphore(std::move(handle)),
+          value(val) {}
+
+    SemaphoreHandle semaphore = {};
+    u64 value = 0;
+};
+
+template <typename T>
+class Ptr {
+  public:
+    explicit Ptr(BufferHandle buffer) : _buffer(std::move(buffer)) {}
+
+    auto operator[](const std::size_t index) -> T & {
+        assert(index < (_buffer->size() / sizeof(T)));
+        return _buffer->mapped().as<T>()[index];
+    }
+
+    auto operator->() -> T * {
+        return _buffer->mapped().as<T>();
+    }
+
+  private:
+    friend Device;
+    BufferHandle _buffer = {};
+};
+
+constexpr const u32 FRAMES_IN_FLIGHT = 2;
+
+class Device {
+  public:
+    struct CreateInfo {
+        std::string applicationName = {};
+        u32 applicationVersion = 0;
+        std::function<u32(const Properties &)> selector = {};
+        bool headless = false;
+        bool enableMeshShading = true;
+        bool enableTaskShading = false;
+        bool enableAsyncComputeQueue = true;
+        bool enableAsyncTransferQueue = true;
+        bool frameBasedResourceLifetime = true;
+        u32 resourceDestructionDelay = 3;
+        u64 memoryLimit = 1000000000;
+        std::span<const char *const> instanceExtensions = {};
+        std::span<const char *const> deviceExtensions = {};
+        spdlog::level::level_enum logLevel = spdlog::level::info;
+        bool enableRenderDoc = false;
     };
 
-    struct Properties {
-        u32 apiVersion;
-        u32 driverVersion;
-        u32 vendorID;
-        std::string vendorName;
-        u32 deviceID;
-        PhysicalDeviceType deviceType;
-        std::string deviceName;
-        Limits limits;
+    [[nodiscard]] static auto create(CreateInfo info) noexcept -> std::expected<std::unique_ptr<Device>, VulkanError>;
+
+    ~Device();
+
+    Device(Device &&rhs) noexcept;
+    auto operator=(Device &&rhs) noexcept -> Device &;
+
+    void gc();
+
+    auto beginFrame() -> std::expected<bool, VulkanError>;
+    auto endFrame() -> f64;
+
+    template <typename Func>
+    void immediate(Func func, QueueType queueType = QueueType::GRAPHICS) {
+        auto cmd = _immediatePool.getBuffer(); // TODO: allocate from pool associated with queueType
+        cmd->begin();
+        func(cmd);
+        cmd->end();
+        auto wait = std::to_array({SemaphorePair(_immediateTimeline)});
+        auto signal = std::to_array({SemaphorePair(_immediateTimeline, _immediateTimeline->increment())});
+        queue(queueType)->submit({&cmd, 1}, wait, signal).and_then([&](auto result) {
+            return _immediateTimeline->wait(_immediateTimeline->value());
+        });
+    }
+
+    template <typename Func>
+    void deferred(Func func) {
+        _deferredCommands.push_back(func);
+    }
+
+    [[nodiscard]] auto frameSemaphore() -> SemaphoreHandle { return _frameTimeline; }
+    [[nodiscard]] auto frameValue() const -> u64 { return _frameTimeline->value(); }
+    [[nodiscard]] auto framePrevValue() const -> u64 { return std::max(0l, static_cast<i64>(_frameTimeline->value()) - 1); }
+    [[nodiscard]] auto flyingIndex() const -> u32 { return _frameTimeline->value() % FRAMES_IN_FLIGHT; }
+    [[nodiscard]] auto prevFlyingIndex() const -> u32 { return (static_cast<i32>(flyingIndex()) - 1) % FRAMES_IN_FLIGHT; }
+
+    [[nodiscard]] auto resourceTimeline() const -> SemaphoreHandle { return _resourceTimeline; }
+
+    [[nodiscard]] auto instance() const -> VkInstance { return _instance; }
+    [[nodiscard]] auto physicalDevice() const -> VkPhysicalDevice { return _physicalDevice; }
+    [[nodiscard]] auto logicalDevice() const -> VkDevice { return _logicalDevice; }
+    [[nodiscard]] auto allocator() const -> VmaAllocator { return _allocator; }
+
+    [[nodiscard]] auto properties() const -> const Properties & { return _properties; }
+    [[nodiscard]] auto limits() const -> const Limits & { return _properties.limits; }
+    // avoid - loops all supported extensions
+    [[nodiscard]] auto isExtensionEnabled(std::string_view extensionName) -> bool;
+    [[nodiscard]] auto meshShadersEnabled() const -> bool { return _meshShadersEnabled; }
+    [[nodiscard]] auto taskShadersEnabled() const -> bool { return _taskShadersEnabled; }
+
+    [[nodiscard]] auto bindlessSet() const -> VkDescriptorSet { return _bindlessSets[flyingIndex()]; }
+
+    [[nodiscard]] auto queue(QueueType type) -> std::shared_ptr<Queue>;
+
+    [[nodiscard]] auto queueEnabled(QueueType type) -> bool;
+
+    [[nodiscard]] auto waitIdle() const -> std::expected<bool, VulkanError>;
+
+    [[nodiscard]] auto createSwapchain(Swapchain::CreateInfo info) -> std::expected<Swapchain, VulkanError>;
+
+    [[nodiscard]] auto createSemaphore(Semaphore::CreateInfo info) -> std::expected<SemaphoreHandle, VulkanError>;
+
+    [[nodiscard]] auto createCommandPool(CommandPool::CreateInfo info) -> std::expected<CommandPool, VulkanError>;
+
+    [[nodiscard]] auto createPipeline(Pipeline::CreateInfo info, const PipelineHandle &oldHandle = {}) -> PipelineHandle;
+    [[nodiscard]] auto createImage(Image::CreateInfo info, ImageHandle oldHandle = {}) -> ImageHandle;
+    [[nodiscard]] auto createImageView(ImageView::CreateInfo info, ImageViewHandle oldHandle = {}) -> ImageViewHandle;
+    [[nodiscard]] auto createBuffer(Buffer::CreateInfo info, BufferHandle oldHandle = {}) -> BufferHandle;
+    [[nodiscard]] auto createSampler(Sampler::CreateInfo info, SamplerHandle oldHandle = {}) -> SamplerHandle;
+
+    [[nodiscard]] auto registerImage(Image::CreateInfo info, VkImage image, VkImageView view) -> ImageHandle;
+    [[nodiscard]] auto resizeBuffer(BufferHandle handle, u32 newSize) -> BufferHandle;
+
+    [[nodiscard]] auto swapImageBindings(ImageHandle oldHandle, ImageHandle newHandle) -> ImageHandle;
+
+    template <typename T = u8>
+    [[nodiscard]] auto alloc(const std::size_t count, const BufferUsage usage = BufferUsage::STORAGE | BufferUsage::TRANSFER_DST | BufferUsage::TRANSFER_SRC) -> Ptr<T> {
+        const auto buffer = createBuffer({
+            .size = static_cast<u32>(count * sizeof(T)),
+            .usage = usage,
+            .type = MemoryType::STAGING,
+            .persistentlyMapped = true,
+        });
+        return Ptr<T>(buffer);
+    }
+
+    void setDebugName(u32 type, u64 object, std::string_view name) const;
+
+    [[nodiscard]] auto timestampPools() -> std::span<VkQueryPool> { return _timestampPools; }
+
+    [[nodiscard]] auto createTimer() -> Timer;
+    void destroyTimer(u32 poolIndex, u32 queryIndex);
+
+    [[nodiscard]] auto pipelineStatisticsPools() -> std::span<VkQueryPool> { return _pipelineStatisticsPools; }
+
+    [[nodiscard]] auto createPipelineStatistics() -> PipelineStatistics;
+    void destroyPipelineStatistics(u32 poolIndex, u32 queryIndex);
+
+    struct ResourceStats {
+        u32 shaderCount = 0;
+        u32 shaderAllocated = 0;
+        u32 pipelineCount = 0;
+        u32 pipelineAllocated = 0;
+        u32 imageCount = 0;
+        u32 imageAllocated = 0;
+        u32 bufferCount = 0;
+        u32 bufferAllocated = 0;
+        u32 samplerCount = 0;
+        u32 samplerAllocated = 0;
+        u32 timestampQueryPools = 0;
+        u32 pipelineStatsPools = 0;
+    };
+    [[nodiscard]] auto resourceStats() const -> ResourceStats;
+
+    struct MemoryUsage {
+        u64 budget = 0;
+        u64 usage = 0;
     };
 
-    struct SemaphorePair {
-        explicit SemaphorePair(SemaphoreHandle handle)
-            : semaphore(handle),
-            value(handle->value())
-        {}
+    // memory info retrieved by vma
+    [[nodiscard]] auto memoryUsage() const -> MemoryUsage;
+    // memory info tracked by engine. less accurate
+    [[nodiscard]] auto softMemoryUsage() const -> MemoryUsage;
 
-        SemaphorePair(SemaphoreHandle handle, const u64 val)
-            : semaphore(std::move(handle)),
-            value(val)
-        {}
+    void setMemoryLimit(u64 limit) { _memoryLimit = limit; }
 
-        SemaphoreHandle semaphore = {};
-        u64 value = 0;
+    [[nodiscard]] auto getFrameDebugMarkers(u8 frame) const -> const std::vector<std::array<u8, util::debugMarkerSize>> & {
+        assert(frame < FRAMES_IN_FLIGHT);
+        return _markerCommands[frame];
+    }
+
+    [[nodiscard]] auto logger() -> spdlog::logger & { return *_logger; }
+
+    void startFrameCapture() const;
+    ;
+
+    void endFrameCapture() const;
+
+    void triggerCapture() const;
+
+    void updateBindlessDescriptors();
+
+  private:
+    friend CommandBuffer;
+
+    Device() = default;
+
+    void updateBindlessImage(u32 index, ImageViewHandle image, bool sampled, bool storage);
+    void updateBindlessBuffer(u32 index, BufferHandle buffer);
+    void updateBindlessSampler(u32 index, SamplerHandle sampler);
+
+    VkInstance _instance = VK_NULL_HANDLE;
+    VkPhysicalDevice _physicalDevice = VK_NULL_HANDLE;
+    VkDevice _logicalDevice = VK_NULL_HANDLE;
+
+    VkDebugUtilsMessengerEXT _debugMessenger = VK_NULL_HANDLE;
+
+    std::shared_ptr<spdlog::logger> _logger = std::make_shared<spdlog::logger>("logger");
+    void *_renderDocAPI = nullptr;
+
+    Properties _properties = {};
+    std::vector<std::string> _enabledExtensions = {};
+
+    bool _meshShadersEnabled = false;
+    bool _taskShadersEnabled = false;
+
+    std::shared_ptr<Queue> _graphicsQueue = {};
+    std::shared_ptr<Queue> _computeQueue = {};
+    std::shared_ptr<Queue> _transferQueue = {};
+
+    std::vector<u32> _enabledQueueFamilies = {};
+
+    VmaAllocator _allocator = VK_NULL_HANDLE;
+    VkPhysicalDeviceMemoryProperties2 _memoryProperties = {};
+    u64 _memoryLimit = 1000000000;
+    u64 _memoryUsage = 0;
+
+    ende::time::StopWatch _frameClock = {};
+    std::chrono::high_resolution_clock::duration _lastFrameDuration = {};
+
+    CommandPool _immediatePool = {};
+
+    std::vector<VkQueryPool> _timestampPools = {};
+    u32 _lastPoolQueryCount = 0;
+    struct FreeTimer {
+        u32 poolIndex = 0;
+        u32 queryIndex = 0;
     };
+    std::vector<FreeTimer> _freeTimers = {};
 
-    template <typename T>
-    class Ptr {
-    public:
-        explicit Ptr(BufferHandle buffer) : _buffer(std::move(buffer)) {}
-
-        auto operator[](const std::size_t index) -> T& {
-            assert(index < (_buffer->size() / sizeof(T)));
-            return _buffer->mapped().as<T>()[index];
-        }
-
-        auto operator->() -> T* {
-            return _buffer->mapped().as<T>();
-        }
-
-    private:
-        friend Device;
-        BufferHandle _buffer = {};
+    std::vector<VkQueryPool> _pipelineStatisticsPools = {};
+    u32 _lastStatPoolQueryCount = 0;
+    struct FreeStat {
+        u32 poolIndex = 0;
+        u32 queryIndex = 0;
     };
+    std::vector<FreeStat> _freePipelineStats = {};
 
-    constexpr const u32 FRAMES_IN_FLIGHT = 2;
+    std::array<BufferHandle, FRAMES_IN_FLIGHT> _markerBuffers = {};
+    std::vector<std::array<u8, util::debugMarkerSize>> _markerCommands[FRAMES_IN_FLIGHT] = {};
+    u32 _markerOffset = 0;
+    u32 _marker = 0;
 
-    class Device {
-    public:
+    SemaphoreHandle _frameTimeline = {};
+    SemaphoreHandle _immediateTimeline = {};
+    SemaphoreHandle _resourceTimeline = {};
 
-        struct CreateInfo {
-            std::string applicationName = {};
-            u32 applicationVersion = 0;
-            std::function<u32(const Properties&)> selector = {};
-            bool headless = false;
-            bool enableMeshShading = true;
-            bool enableTaskShading = false;
-            bool enableAsyncComputeQueue = true;
-            bool enableAsyncTransferQueue = true;
-            bool frameBasedResourceLifetime = true;
-            u32 resourceDestructionDelay = 3;
-            u64 memoryLimit = 1000000000;
-            std::span<const char* const> instanceExtensions = {};
-            std::span<const char* const> deviceExtensions = {};
-            spdlog::level::level_enum logLevel = spdlog::level::info;
-            bool enableRenderDoc = false;
-        };
-
-        [[nodiscard]] static auto create(CreateInfo info) noexcept -> std::expected<std::unique_ptr<Device>, VulkanError>;
-
-        ~Device();
-
-        Device(Device&& rhs) noexcept;
-        auto operator=(Device&& rhs) noexcept -> Device&;
-
-        void gc();
-
-        auto beginFrame() -> std::expected<bool, VulkanError>;
-        auto endFrame() -> f64;
-
-        template <typename Func>
-        void immediate(Func func, QueueType queueType = QueueType::GRAPHICS) {
-            auto cmd = _immediatePool.getBuffer(); //TODO: allocate from pool associated with queueType
-            cmd->begin();
-            func(cmd);
-            cmd->end();
-            auto wait = std::to_array({
-                SemaphorePair(_immediateTimeline)
-            });
-            auto signal = std::to_array({
-                SemaphorePair(_immediateTimeline, _immediateTimeline->increment())
-            });
-            queue(queueType)->submit({ &cmd, 1 }, wait, signal).and_then([&](auto result) {
-                return _immediateTimeline->wait(_immediateTimeline->value());
-            });
-        }
-
-        template <typename Func>
-        void deferred(Func func) {
-            _deferredCommands.push_back(func);
-        }
-
-        [[nodiscard]] auto frameSemaphore() -> SemaphoreHandle { return _frameTimeline; }
-        [[nodiscard]] auto frameValue() const -> u64 { return _frameTimeline->value(); }
-        [[nodiscard]] auto framePrevValue() const -> u64 { return std::max(0l, static_cast<i64>(_frameTimeline->value()) - 1); }
-        [[nodiscard]] auto flyingIndex() const -> u32 { return _frameTimeline->value() % FRAMES_IN_FLIGHT; }
-        [[nodiscard]] auto prevFlyingIndex() const -> u32 { return (static_cast<i32>(flyingIndex()) - 1) % FRAMES_IN_FLIGHT; }
-
-        [[nodiscard]] auto resourceTimeline() const -> SemaphoreHandle { return _resourceTimeline; }
-
-        [[nodiscard]] auto instance() const -> VkInstance { return _instance; }
-        [[nodiscard]] auto physicalDevice() const -> VkPhysicalDevice { return _physicalDevice; }
-        [[nodiscard]] auto logicalDevice() const -> VkDevice { return _logicalDevice; }
-        [[nodiscard]] auto allocator() const -> VmaAllocator { return _allocator; }
-
-        [[nodiscard]] auto properties() const -> const Properties& { return _properties; }
-        [[nodiscard]] auto limits() const -> const Limits& { return _properties.limits; }
-        // avoid - loops all supported extensions
-        [[nodiscard]] auto isExtensionEnabled(std::string_view extensionName) -> bool;
-        [[nodiscard]] auto meshShadersEnabled() const -> bool { return _meshShadersEnabled; }
-        [[nodiscard]] auto taskShadersEnabled() const -> bool { return _taskShadersEnabled; }
-
-        [[nodiscard]] auto bindlessSet() const -> VkDescriptorSet { return _bindlessSets[flyingIndex()]; }
-
-        [[nodiscard]] auto queue(QueueType type) -> std::shared_ptr<Queue>;
-
-        [[nodiscard]] auto queueEnabled(QueueType type) -> bool;
-
-        [[nodiscard]] auto waitIdle() const -> std::expected<bool, VulkanError>;
-
-
-        [[nodiscard]] auto createSwapchain(Swapchain::CreateInfo info) -> std::expected<Swapchain, VulkanError>;
-
-        [[nodiscard]] auto createSemaphore(Semaphore::CreateInfo info) -> std::expected<SemaphoreHandle, VulkanError>;
-
-        [[nodiscard]] auto createCommandPool(CommandPool::CreateInfo info) -> std::expected<CommandPool, VulkanError>;
-
-
-        [[nodiscard]] auto createPipeline(Pipeline::CreateInfo info, const PipelineHandle& oldHandle = {}) -> PipelineHandle;
-        [[nodiscard]] auto createImage(Image::CreateInfo info, ImageHandle oldHandle = {}) -> ImageHandle;
-        [[nodiscard]] auto createImageView(ImageView::CreateInfo info, ImageViewHandle oldHandle = {}) -> ImageViewHandle;
-        [[nodiscard]] auto createBuffer(Buffer::CreateInfo info, BufferHandle oldHandle = {}) -> BufferHandle;
-        [[nodiscard]] auto createSampler(Sampler::CreateInfo info, SamplerHandle oldHandle = {}) -> SamplerHandle;
-
-        [[nodiscard]] auto registerImage(Image::CreateInfo info, VkImage image, VkImageView view) -> ImageHandle;
-        [[nodiscard]] auto resizeBuffer(BufferHandle handle, u32 newSize) -> BufferHandle;
-
-        [[nodiscard]] auto swapImageBindings(ImageHandle oldHandle, ImageHandle newHandle) -> ImageHandle;
-
-        template <typename T = u8>
-        [[nodiscard]] auto alloc(const std::size_t count, const BufferUsage usage = BufferUsage::STORAGE | BufferUsage::TRANSFER_DST | BufferUsage::TRANSFER_SRC) -> Ptr<T> {
-            const auto buffer = createBuffer({
-                .size = static_cast<u32>(count * sizeof(T)),
-                .usage = usage,
-                .type = MemoryType::STAGING,
-                .persistentlyMapped = true,
-            });
-            return Ptr<T>(buffer);
-        }
-
-        void setDebugName(u32 type, u64 object, std::string_view name) const;
-
-        [[nodiscard]] auto timestampPools() -> std::span<VkQueryPool> { return _timestampPools; }
-
-        [[nodiscard]] auto createTimer() -> Timer;
-        void destroyTimer(u32 poolIndex, u32 queryIndex);
-
-        [[nodiscard]] auto pipelineStatisticsPools() -> std::span<VkQueryPool> { return _pipelineStatisticsPools; }
-
-        [[nodiscard]] auto createPipelineStatistics() -> PipelineStatistics;
-        void destroyPipelineStatistics(u32 poolIndex, u32 queryIndex);
-
-        struct ResourceStats {
-            u32 shaderCount = 0;
-            u32 shaderAllocated = 0;
-            u32 pipelineCount = 0;
-            u32 pipelineAllocated = 0;
-            u32 imageCount = 0;
-            u32 imageAllocated = 0;
-            u32 bufferCount = 0;
-            u32 bufferAllocated = 0;
-            u32 samplerCount = 0;
-            u32 samplerAllocated = 0;
-            u32 timestampQueryPools = 0;
-            u32 pipelineStatsPools = 0;
-        };
-        [[nodiscard]] auto resourceStats() const -> ResourceStats;
-
-        struct MemoryUsage {
-            u64 budget = 0;
-            u64 usage = 0;
-        };
-
-        // memory info retrieved by vma
-        [[nodiscard]] auto memoryUsage() const -> MemoryUsage;
-        // memory info tracked by engine. less accurate
-        [[nodiscard]] auto softMemoryUsage() const -> MemoryUsage;
-
-        void setMemoryLimit(u64 limit) { _memoryLimit = limit; }
-
-        [[nodiscard]] auto getFrameDebugMarkers(u8 frame) const -> const std::vector<std::array<u8, util::debugMarkerSize>>& {
-            assert(frame < FRAMES_IN_FLIGHT);
-            return _markerCommands[frame];
-        }
-
-        [[nodiscard]] auto logger() -> spdlog::logger& { return *_logger; }
-
-        void startFrameCapture() const;;
-
-        void endFrameCapture() const;
-
-        void triggerCapture() const;
-
-        void updateBindlessDescriptors();
-
-    private:
-        friend CommandBuffer;
-
-        Device() = default;
-
-        void updateBindlessImage(u32 index, ImageViewHandle image, bool sampled, bool storage);
-        void updateBindlessBuffer(u32 index, BufferHandle buffer);
-        void updateBindlessSampler(u32 index, SamplerHandle sampler);
-
-        VkInstance _instance = VK_NULL_HANDLE;
-        VkPhysicalDevice _physicalDevice = VK_NULL_HANDLE;
-        VkDevice _logicalDevice = VK_NULL_HANDLE;
-
-        VkDebugUtilsMessengerEXT _debugMessenger = VK_NULL_HANDLE;
-
-        std::shared_ptr<spdlog::logger> _logger = std::make_shared<spdlog::logger>("logger");
-        void* _renderDocAPI = nullptr;
-
-        Properties _properties = {};
-        std::vector<std::string> _enabledExtensions = {};
-
-        bool _meshShadersEnabled = false;
-        bool _taskShadersEnabled = false;
-
-        std::shared_ptr<Queue> _graphicsQueue = {};
-        std::shared_ptr<Queue> _computeQueue = {};
-        std::shared_ptr<Queue> _transferQueue = {};
-
-        std::vector<u32> _enabledQueueFamilies = {};
-
-        VmaAllocator _allocator = VK_NULL_HANDLE;
-        VkPhysicalDeviceMemoryProperties2 _memoryProperties = {};
-        u64 _memoryLimit = 1000000000;
-        u64 _memoryUsage = 0;
-
-        ende::time::StopWatch _frameClock = {};
-        std::chrono::high_resolution_clock::duration _lastFrameDuration = {};
-
-        CommandPool _immediatePool = {};
-
-        std::vector<VkQueryPool> _timestampPools = {};
-        u32 _lastPoolQueryCount = 0;
-        struct FreeTimer {
-            u32 poolIndex = 0;
-            u32 queryIndex = 0;
-        };
-        std::vector<FreeTimer> _freeTimers = {};
-
-        std::vector<VkQueryPool> _pipelineStatisticsPools = {};
-        u32 _lastStatPoolQueryCount = 0;
-        struct FreeStat {
-            u32 poolIndex = 0;
-            u32 queryIndex = 0;
-        };
-        std::vector<FreeStat> _freePipelineStats = {};
-
-        std::array<BufferHandle, FRAMES_IN_FLIGHT> _markerBuffers = {};
-        std::vector<std::array<u8, util::debugMarkerSize>> _markerCommands[FRAMES_IN_FLIGHT] = {};
-        u32 _markerOffset = 0;
-        u32 _marker = 0;
-
-        SemaphoreHandle _frameTimeline = {};
-        SemaphoreHandle _immediateTimeline = {};
-        SemaphoreHandle _resourceTimeline = {};
-
-        VkDescriptorPool _bindlessPool = VK_NULL_HANDLE;
-        VkDescriptorSetLayout _bindlessLayout = VK_NULL_HANDLE;
-        std::array<VkDescriptorSet, FRAMES_IN_FLIGHT> _bindlessSets = {};
-        struct DescriptorUpdate {
-            u32 index = 0;
-            ImageViewHandle imageView = {};
-            bool sampled = false;
-            bool storage = false;
-            BufferHandle buffer = {};
-            SamplerHandle sampler = {};
-            u64 endFrame = 0;
-        };
-        std::vector<DescriptorUpdate> _descriptorUpdates = {};
-        std::mutex _descriptorMutex = {};
-
-        ResourceList<Pipeline> _pipelineList = {};
-        ResourceList<Image> _imageList = {};
-        ResourceList<ImageView> _imageViewList = {};
-        ResourceList<Buffer> _bufferList = {};
-        ResourceList<Sampler> _samplerList = {};
-        ResourceList<Semaphore> _semaphoreList = {};
-
-        std::vector<std::function<void(CommandHandle)>> _deferredCommands = {};
-
+    VkDescriptorPool _bindlessPool = VK_NULL_HANDLE;
+    VkDescriptorSetLayout _bindlessLayout = VK_NULL_HANDLE;
+    std::array<VkDescriptorSet, FRAMES_IN_FLIGHT> _bindlessSets = {};
+    struct DescriptorUpdate {
+        u32 index = 0;
+        ImageViewHandle imageView = {};
+        bool sampled = false;
+        bool storage = false;
+        BufferHandle buffer = {};
+        SamplerHandle sampler = {};
+        u64 endFrame = 0;
     };
+    std::vector<DescriptorUpdate> _descriptorUpdates = {};
+    std::mutex _descriptorMutex = {};
 
-}
+    ResourceList<Pipeline> _pipelineList = {};
+    ResourceList<Image> _imageList = {};
+    ResourceList<ImageView> _imageViewList = {};
+    ResourceList<Buffer> _bufferList = {};
+    ResourceList<Sampler> _samplerList = {};
+    ResourceList<Semaphore> _semaphoreList = {};
 
-#endif //CANTA_DEVICE_H
+    std::vector<std::function<void(CommandHandle)>> _deferredCommands = {};
+};
+
+} // namespace canta
+
+#endif // CANTA_DEVICE_H

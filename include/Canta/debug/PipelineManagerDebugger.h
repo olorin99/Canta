@@ -5,21 +5,19 @@
 
 namespace canta {
 
-    class PipelineManagerDebugger {
-    public:
-
-        struct CreateInfo {
-            PipelineManager* pipelineManager;
-        };
-
-        static auto create(const CreateInfo& info) -> PipelineManagerDebugger;
-
-        void render();
-
-    private:
-        PipelineManager* _pipelineManager = nullptr;
-
+class PipelineManagerDebugger {
+  public:
+    struct CreateInfo {
+        PipelineManager *pipelineManager;
     };
-}
 
-#endif //CANTA_PIPELINEMANAGERDEBUGGER_H
+    static auto create(const CreateInfo &info) -> PipelineManagerDebugger;
+
+    void render();
+
+  private:
+    PipelineManager *_pipelineManager = nullptr;
+};
+} // namespace canta
+
+#endif // CANTA_PIPELINEMANAGERDEBUGGER_H

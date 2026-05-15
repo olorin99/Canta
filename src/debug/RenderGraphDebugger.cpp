@@ -20,26 +20,25 @@ auto idToColour(const i32 id) -> ImColor {
         std::clamp(r * 255, 0.0f, 255.0f),
         std::clamp(g * 255, 0.0f, 255.0f),
         std::clamp(b * 255, 0.0f, 255.0f),
-        255
-    );
+        255);
 }
 
 auto queueToColour(const canta::QueueType queue) -> ImColor {
     switch (queue) {
-        case canta::QueueType::NONE:
-            return IM_COL32(255, 0, 0, 255);
-        case canta::QueueType::GRAPHICS:
-            return IM_COL32(0, 255, 0, 255);
-        case canta::QueueType::COMPUTE:
-            return IM_COL32(0, 0, 255, 255);
-        case canta::QueueType::TRANSFER:
-            return IM_COL32(127, 127, 0, 255);
-        default:
-            return IM_COL32(255, 255, 255, 255);
+    case canta::QueueType::NONE:
+        return IM_COL32(255, 0, 0, 255);
+    case canta::QueueType::GRAPHICS:
+        return IM_COL32(0, 255, 0, 255);
+    case canta::QueueType::COMPUTE:
+        return IM_COL32(0, 0, 255, 255);
+    case canta::QueueType::TRANSFER:
+        return IM_COL32(127, 127, 0, 255);
+    default:
+        return IM_COL32(255, 255, 255, 255);
     }
 }
 
-auto groupToColour(const canta::RenderGroup& group) -> ImColor {
+auto groupToColour(const canta::RenderGroup &group) -> ImColor {
     return idToColour(group.id);
 }
 
@@ -47,7 +46,6 @@ struct GetResourceIndex {
 
     auto operator()(canta::BufferIndex index) const -> i32 { return index.index; }
     auto operator()(canta::ImageIndex index) const -> i32 { return index.index; }
-
 };
 
 void canta::RenderGraphDebugger::drawRenderGraph() {
@@ -64,7 +62,7 @@ void canta::RenderGraphDebugger::drawRenderGraph() {
         ImVec2 pos = ImGui::GetCursorScreenPos();
         ImVec2 originalPos = pos;
 
-        for (i32 i = 0; const auto& pass : _renderGraph->passes()) {
+        for (i32 i = 0; const auto &pass : _renderGraph->passes()) {
             const i32 passId = 100 * i;
 
             if (frame < 10) {
@@ -80,11 +78,10 @@ void canta::RenderGraphDebugger::drawRenderGraph() {
             pos.x += ImGui::CalcTextSize(std::format("{}", pass.name().data()).c_str()).x * 1.5;
             pos.y = (i % 2 == 0) ? originalPos.y : 100;
 
-
             ImNodes::PushColorStyle(ImNodesCol_TitleBar, queueToColour(pass.queue()));
             ImNodes::PushColorStyle(ImNodesCol_NodeBackground, groupToColour(pass.group()));
 
-            for (auto& input : pass.inputs) {
+            for (auto &input : pass.inputs) {
                 auto index = std::visit(GetResourceIndex{}, input);
                 const auto resource = *_renderGraph->getResourceName(index);
 
@@ -94,7 +91,7 @@ void canta::RenderGraphDebugger::drawRenderGraph() {
                 ImNodes::EndInputAttribute();
             }
 
-            for (auto& output : pass.outputs) {
+            for (auto &output : pass.outputs) {
                 auto index = std::visit(GetResourceIndex{}, output);
                 const auto resource = *_renderGraph->getResourceName(index);
 
@@ -106,7 +103,7 @@ void canta::RenderGraphDebugger::drawRenderGraph() {
                 auto nextAccess = _renderGraph->getNextAccess(i, index);
                 if (nextAccess.passIndex < 0)
                     continue;
-                links.push_back({ passId + id, nextAccess.passIndex * 100 + nextAccess.access.id });
+                links.push_back({passId + id, nextAccess.passIndex * 100 + nextAccess.access.id});
             }
 
             ImNodes::EndNode();
@@ -119,14 +116,12 @@ void canta::RenderGraphDebugger::drawRenderGraph() {
             ImNodes::Link(i, links[i].first, links[i].second);
         }
 
-
         ImNodes::MiniMap();
         ImNodes::EndNodeEditor();
         frame++;
     }
     ImGui::End();
 }
-
 
 void canta::RenderGraphDebugger::render() {
 
@@ -144,18 +139,18 @@ void canta::RenderGraphDebugger::render() {
                 }
 
                 switch (pass.queue()) {
-                    case QueueType::GRAPHICS:
-                        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1, 0, 0, 1));
-                        break;
-                    case QueueType::COMPUTE:
-                        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0, 1, 0, 1));
-                        break;
-                    case QueueType::TRANSFER:
-                        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0, 0, 1, 1));
-                        break;
-                    default:
-                        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0, 0, 0, 1));
-                        break;
+                case QueueType::GRAPHICS:
+                    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1, 0, 0, 1));
+                    break;
+                case QueueType::COMPUTE:
+                    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0, 1, 0, 1));
+                    break;
+                case QueueType::TRANSFER:
+                    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0, 0, 1, 1));
+                    break;
+                default:
+                    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0, 0, 0, 1));
+                    break;
                 }
                 if (ImGui::Selectable(pass.name().data(), _selectedPass == pass.name())) {
                     _selectedPass = pass.name();
@@ -181,14 +176,14 @@ void canta::RenderGraphDebugger::render() {
                 return;
             };
             ImGui::Text("Inputs:");
-            for (auto& input : pass->inputs) {
+            for (auto &input : pass->inputs) {
                 auto index = std::visit(GetResourceIndex{}, input);
                 if (const auto resource = _renderGraph->getResourceName(index); ImGui::Selectable(std::format("\t{}_input", resource->data()).c_str(), std::visit(GetResourceIndex{}, _selectedResource) == index)) {
                     _selectedResource = input;
                 }
             }
             ImGui::Text("Outputs:");
-            for (auto& output : pass->outputs) {
+            for (auto &output : pass->outputs) {
                 auto index = std::visit(GetResourceIndex{}, output);
                 if (const auto resource = _renderGraph->getResourceName(index); ImGui::Selectable(std::format("\t{}_output", resource->data()).c_str(), std::visit(GetResourceIndex{}, _selectedResource) == index)) {
                     _selectedResource = output;
@@ -205,7 +200,7 @@ void canta::RenderGraphDebugger::render() {
             const auto resource = *_renderGraph->getResource(index);
             ImGui::Text("Name: %s", resource.name.data());
             if (std::holds_alternative<ImageInfo>(resource.info)) {
-                const auto image = _renderGraph->getImageInfo({ .index = index });
+                const auto image = _renderGraph->getImageInfo({.index = index});
                 ImGui::Text("Image");
                 ImGui::Text("Id: %u, Index: %u", id, index);
                 ImGui::Text("Is swapchain: %b", image->swapchainImage);
@@ -228,7 +223,7 @@ void canta::RenderGraphDebugger::render() {
                 ImGui::SliderInt("Height Y", &_viewportSize[1][0], 0, 1080);
 
             } else {
-                const auto buffer = _renderGraph->getBufferInfo({ .index = index });
+                const auto buffer = _renderGraph->getBufferInfo({.index = index});
                 ImGui::Text("Buffer");
                 ImGui::Text("Id: %u, Index: %u", id, index);
                 ImGui::Text("Size: %u b", buffer->size);
@@ -245,10 +240,11 @@ void canta::RenderGraphDebugger::render() {
 
 void canta::RenderGraphDebugger::drawResourceUsage() {
     auto passes = _renderGraph->passes();
-    auto& resources = _renderGraph->_resources;
+    auto &resources = _renderGraph->_resources;
     auto indices = _renderGraph->getResourceIndices(passes);
 
-    if (passes.size() == 0 || resources.size() == 0) return;
+    if (passes.size() == 0 || resources.size() == 0)
+        return;
 
     if (ImGui::Begin("Render Graph Resource Usage")) {
 
@@ -267,7 +263,7 @@ void canta::RenderGraphDebugger::drawResourceUsage() {
 
                 ImGui::Text("%s", resourceName.data());
 
-                auto& resourceIndices = indices[resourceIndex];
+                auto &resourceIndices = indices[resourceIndex];
 
                 for (i32 i = resourceIndices.first; i <= resourceIndices.second; i++) {
                     ImGui::TableSetColumnIndex(i + 1);
@@ -276,7 +272,6 @@ void canta::RenderGraphDebugger::drawResourceUsage() {
             }
         }
         ImGui::EndTable();
-
     }
     ImGui::End();
 }

@@ -9,41 +9,38 @@
 
 namespace canta {
 
-    class Device;
-    class ImGuiContext;
+class Device;
+class ImGuiContext;
 
-    class SDLWindow : public Window {
-    public:
+class SDLWindow : public Window {
+  public:
+    SDLWindow(const char *title, u32 width, u32 height, u32 flags = 0);
 
-        SDLWindow(const char* title, u32 width, u32 height, u32 flags = 0);
+    ~SDLWindow() override;
 
-        ~SDLWindow() override;
+    [[nodiscard]] auto requiredExtensions() -> std::vector<const char *> override;
 
-        [[nodiscard]] auto requiredExtensions() -> std::vector<const char*> override;
+    [[nodiscard]] auto surface(Device &device) -> VkSurfaceKHR override;
 
-        [[nodiscard]] auto surface(Device& device) -> VkSurfaceKHR override;
+    [[nodiscard]] auto extent() -> ende::math::uint2 override;
 
-        [[nodiscard]] auto extent() -> ende::math::uint2 override;
+    [[nodiscard]] auto window() const -> SDL_Window * { return _window; }
 
-        [[nodiscard]] auto window() const -> SDL_Window* { return _window; }
+    auto shouldClose() const -> bool { return _shouldClose; }
 
-        auto shouldClose() const -> bool { return _shouldClose; }
+    void registerEvent(u32 event, const std::function<void(const SDL_Event &)> &callback);
 
-        void registerEvent(u32 event, const std::function<void(const SDL_Event&)>& callback);
+    void processEvents(ImGuiContext *imguiContext = nullptr);
 
-        void processEvents(ImGuiContext* imguiContext = nullptr);
+  private:
+    SDL_Window *_window = nullptr;
+    VkSurfaceKHR _surface = VK_NULL_HANDLE;
+    u32 _width = 0, _height = 0;
 
-    private:
+    bool _shouldClose = false;
+    tsl::robin_map<u32, std::function<void(const SDL_Event &)>> _eventCallbacks = {};
+};
 
-        SDL_Window* _window = nullptr;
-        VkSurfaceKHR _surface = VK_NULL_HANDLE;
-        u32 _width = 0, _height = 0;
+} // namespace canta
 
-        bool _shouldClose = false;
-        tsl::robin_map<u32, std::function<void(const SDL_Event&)>> _eventCallbacks = {};
-
-    };
-
-}
-
-#endif //CANTA_SDLWINDOW_H
+#endif // CANTA_SDLWINDOW_H

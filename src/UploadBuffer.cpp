@@ -1,32 +1,25 @@
-#include <cstring>
 #include <Canta/UploadBuffer.h>
+#include <cstring>
 
 auto canta::UploadBuffer::create(canta::UploadBuffer::CreateInfo info) -> std::expected<UploadBuffer, VulkanError> {
     UploadBuffer buffer = {};
 
     buffer._device = info.device;
-    buffer._commandPool = maybe(info.device->createCommandPool({
-        .queueType = QueueType::TRANSFER,
-        .name = "upload_buffer_command_pool"
-    }));
-    buffer._timelineSemaphore = maybe(info.device->createSemaphore({
-        .initialValue = 0,
-        .name = "upload_buffer_semaphore"
-    }));
-    buffer._buffer = info.device->createBuffer({
-        .size = info.size,
-        .usage = BufferUsage::TRANSFER_SRC | BufferUsage::TRANSFER_DST,
-        .type = MemoryType::STAGING,
-        .persistentlyMapped = true,
-        .name = "upload_buffer"
-    });
+    buffer._commandPool = maybe(info.device->createCommandPool({.queueType = QueueType::TRANSFER,
+                                                                .name = "upload_buffer_command_pool"}));
+    buffer._timelineSemaphore = maybe(info.device->createSemaphore({.initialValue = 0,
+                                                                    .name = "upload_buffer_semaphore"}));
+    buffer._buffer = info.device->createBuffer({.size = info.size,
+                                                .usage = BufferUsage::TRANSFER_SRC | BufferUsage::TRANSFER_DST,
+                                                .type = MemoryType::STAGING,
+                                                .persistentlyMapped = true,
+                                                .name = "upload_buffer"});
     buffer._mutex = std::make_unique<std::mutex>();
 
     return buffer;
 }
 
 canta::UploadBuffer::~UploadBuffer() {
-
 }
 
 canta::UploadBuffer::UploadBuffer(canta::UploadBuffer &&rhs) noexcept {
@@ -64,14 +57,12 @@ auto canta::UploadBuffer::upload(canta::BufferHandle dstHandle, std::span<const 
         u32 allocationSize = std::min(availableSize, static_cast<u32>(uploadSizeRemaining));
 
         if (allocationSize > 0) {
-            std::memcpy(static_cast<u8*>(_buffer->mapped().address()) + _offset, data.data() + uploadOffset, allocationSize);
+            std::memcpy(static_cast<u8 *>(_buffer->mapped().address()) + _offset, data.data() + uploadOffset, allocationSize);
 
-            _pendingStagedBufferCopies.push_back({
-                .dst = dstHandle,
-                .dstOffset = dstOffset,
-                .srcSize = allocationSize,
-                .srcOffset = _offset
-            });
+            _pendingStagedBufferCopies.push_back({.dst = dstHandle,
+                                                  .dstOffset = dstOffset,
+                                                  .srcSize = allocationSize,
+                                                  .srcOffset = _offset});
 
             _offset += allocationSize;
             uploadOffset += allocationSize;
@@ -100,9 +91,9 @@ u32 roundUp(u32 num, u32 multiple) {
 auto canta::UploadBuffer::upload(canta::ImageHandle dstHandle, std::span<const u8> data, canta::UploadBuffer::ImageInfo info) -> u32 {
     u32 uploadOffset = 0;
     u32 uploadSizeRemaining = data.size() - uploadOffset;
-    ende::math::int3 dstOffset = { 0, 0, 0 };
+    ende::math::int3 dstOffset = {0, 0, 0};
 
-    //TODO: support loading 3d images
+    // TODO: support loading 3d images
 
     while (uploadSizeRemaining > 0) {
         std::unique_lock lock(*_mutex);
@@ -152,20 +143,18 @@ auto canta::UploadBuffer::upload(canta::ImageHandle dstHandle, std::span<const u
             if (remainder != 0)
                 offset += (formatSize(info.format) - remainder);
 
-            std::memcpy(static_cast<u8*>(_buffer->mapped().address()) + offset, data.data() + uploadOffset, allocationSize);
+            std::memcpy(static_cast<u8 *>(_buffer->mapped().address()) + offset, data.data() + uploadOffset, allocationSize);
 
-            _pendingStagedImageCopies.push_back({
-                .dst = dstHandle,
-                .dstDimensions = { rWidth, rHeight, info.depth },
-                .dstOffsets = dstOffset,
-                .dstMipLevel = info.mipLevel,
-                .dstLayer = info.layer,
-                .dstLayerCount = 1,
-                .srcSize = allocationSize,
-                .srcOffset = offset,
-                .firstTransfer = (dstOffset.x() + dstOffset.y() + dstOffset.z()) == 0,
-                .finalTransfer = (data.size() - (uploadOffset + allocationSize) == 0) && info.final
-            });
+            _pendingStagedImageCopies.push_back({.dst = dstHandle,
+                                                 .dstDimensions = {rWidth, rHeight, info.depth},
+                                                 .dstOffsets = dstOffset,
+                                                 .dstMipLevel = info.mipLevel,
+                                                 .dstLayer = info.layer,
+                                                 .dstLayerCount = 1,
+                                                 .srcSize = allocationSize,
+                                                 .srcOffset = offset,
+                                                 .firstTransfer = (dstOffset.x() + dstOffset.y() + dstOffset.z()) == 0,
+                                                 .finalTransfer = (data.size() - (uploadOffset + allocationSize) == 0) && info.final});
 
             _offset = offset + allocationSize;
             uploadOffset += allocationSize;
@@ -182,7 +171,7 @@ auto canta::UploadBuffer::upload(canta::ImageHandle dstHandle, std::span<const u
                 y = index / info.width;
             i32 x = index % info.width;
 
-            dstOffset = { x, y, z };
+            dstOffset = {x, y, z};
 
         } else {
             lock.unlock();
@@ -193,55 +182,49 @@ auto canta::UploadBuffer::upload(canta::ImageHandle dstHandle, std::span<const u
     return data.size();
 }
 
-auto canta::UploadBuffer::flushStagedData() -> UploadBuffer& {
+auto canta::UploadBuffer::flushStagedData() -> UploadBuffer & {
     std::unique_lock lock(*_mutex);
     if (!_pendingStagedBufferCopies.empty() || !_pendingStagedImageCopies.empty()) {
         auto commandBuffer = _commandPool.getBuffer();
         commandBuffer->begin();
         if (!_pendingStagedBufferCopies.empty()) {
-            for (auto& staged : _pendingStagedBufferCopies) {
-                commandBuffer->copyBuffer({
-                    .src = _buffer,
-                    .dst = staged.dst,
-                    .srcOffset = staged.srcOffset,
-                    .dstOffset = staged.dstOffset,
-                    .size = staged.srcSize
-                });
+            for (auto &staged : _pendingStagedBufferCopies) {
+                commandBuffer->copyBuffer({.src = _buffer,
+                                           .dst = staged.dst,
+                                           .srcOffset = staged.srcOffset,
+                                           .dstOffset = staged.dstOffset,
+                                           .size = staged.srcSize});
             }
         }
         if (!_pendingStagedImageCopies.empty()) {
-            for (auto& staged : _pendingStagedImageCopies) {
-                //TODO: manager barriers
-                commandBuffer->barrier({
-                    .image = staged.dst,
-                    .srcStage = staged.firstTransfer ? PipelineStage::TOP : PipelineStage::TRANSFER,
-                    .dstStage = PipelineStage::TRANSFER,
-                    .srcAccess = staged.firstTransfer ? Access::NONE : Access::TRANSFER_WRITE,
-                    .dstAccess = Access::TRANSFER_WRITE,
-                    .srcLayout = staged.firstTransfer ? ImageLayout::UNDEFINED : ImageLayout::TRANSFER_DST,
-                    .dstLayout = ImageLayout::TRANSFER_DST
-                });
-                commandBuffer->copyBufferToImage({
-                    .buffer = _buffer,
-                    .image = staged.dst,
-                    .dstLayout = ImageLayout::TRANSFER_DST,
-                    .dstDimensions = staged.dstDimensions,
-                    .dstOffsets = staged.dstOffsets,
-                    .dstMipLevel = staged.dstMipLevel,
-                    .dstLayer = staged.dstLayer,
-                    .dstLayerCount = staged.dstLayerCount,
-                    .size = staged.srcSize,
-                    .srcOffset = staged.srcOffset
-                });
+            for (auto &staged : _pendingStagedImageCopies) {
+                // TODO: manager barriers
+                commandBuffer->barrier({.image = staged.dst,
+                                        .srcStage = staged.firstTransfer ? PipelineStage::TOP : PipelineStage::TRANSFER,
+                                        .dstStage = PipelineStage::TRANSFER,
+                                        .srcAccess = staged.firstTransfer ? Access::NONE : Access::TRANSFER_WRITE,
+                                        .dstAccess = Access::TRANSFER_WRITE,
+                                        .srcLayout = staged.firstTransfer ? ImageLayout::UNDEFINED : ImageLayout::TRANSFER_DST,
+                                        .dstLayout = ImageLayout::TRANSFER_DST});
+                commandBuffer->copyBufferToImage({.buffer = _buffer,
+                                                  .image = staged.dst,
+                                                  .dstLayout = ImageLayout::TRANSFER_DST,
+                                                  .dstDimensions = staged.dstDimensions,
+                                                  .dstOffsets = staged.dstOffsets,
+                                                  .dstMipLevel = staged.dstMipLevel,
+                                                  .dstLayer = staged.dstLayer,
+                                                  .dstLayerCount = staged.dstLayerCount,
+                                                  .size = staged.srcSize,
+                                                  .srcOffset = staged.srcOffset});
                 if (staged.finalTransfer) {
-                    auto barrier = ImageBarrier {
-                            .image = staged.dst,
-                            .srcStage = PipelineStage::TRANSFER,
-                            .dstStage = PipelineStage::BOTTOM,
-                            .srcAccess = Access::TRANSFER_WRITE,
-                            .dstAccess = Access::MEMORY_READ,
-                            .srcLayout = ImageLayout::TRANSFER_DST,
-                            .dstLayout = ImageLayout::SHADER_READ_ONLY,
+                    auto barrier = ImageBarrier{
+                        .image = staged.dst,
+                        .srcStage = PipelineStage::TRANSFER,
+                        .dstStage = PipelineStage::BOTTOM,
+                        .srcAccess = Access::TRANSFER_WRITE,
+                        .dstAccess = Access::MEMORY_READ,
+                        .srcLayout = ImageLayout::TRANSFER_DST,
+                        .dstLayout = ImageLayout::SHADER_READ_ONLY,
                     };
                     commandBuffer->barrier(barrier);
                     _releasedFromQueue.push_back(barrier);
@@ -249,13 +232,9 @@ auto canta::UploadBuffer::flushStagedData() -> UploadBuffer& {
             }
         }
         commandBuffer->end();
-        auto waits = std::to_array({
-            SemaphorePair(_timelineSemaphore)
-        });
-        auto signals = std::to_array({
-             SemaphorePair(_timelineSemaphore, _timelineSemaphore->increment())
-        });
-        if (!_device->queue(QueueType::TRANSFER)->submit({ &commandBuffer, 1 }, waits, signals)) {
+        auto waits = std::to_array({SemaphorePair(_timelineSemaphore)});
+        auto signals = std::to_array({SemaphorePair(_timelineSemaphore, _timelineSemaphore->increment())});
+        if (!_device->queue(QueueType::TRANSFER)->submit({&commandBuffer, 1}, waits, signals)) {
             _device->logger().error("Failed to submit queue");
             return *this;
         }

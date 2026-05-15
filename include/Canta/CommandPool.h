@@ -1,53 +1,51 @@
 #ifndef CANTA_COMMANDPOOL_H
 #define CANTA_COMMANDPOOL_H
 
-#include <Ende/platform.h>
-#include <volk.h>
-#include <Canta/Enums.h>
-#include <vector>
 #include <Canta/CommandBuffer.h>
+#include <Canta/Enums.h>
+#include <Ende/platform.h>
+#include <vector>
+#include <volk.h>
 
 namespace canta {
 
-    class Device;
-    class Queue;
+class Device;
+class Queue;
 
-    using CommandHandle = Handle<CommandBuffer, ResourceList<CommandBuffer>>;
+using CommandHandle = Handle<CommandBuffer, ResourceList<CommandBuffer>>;
 
-    class CommandPool {
-    public:
-
-        struct CreateInfo {
-            QueueType queueType = QueueType::GRAPHICS;
-            std::string_view name = {};
-        };
-
-        CommandPool() = default;
-
-        ~CommandPool();
-
-        CommandPool(CommandPool&& rhs) noexcept;
-        auto operator=(CommandPool&& rhs) noexcept -> CommandPool&;
-
-        void reset();
-
-        [[nodiscard]] auto getBuffer() -> CommandHandle;
-
-        auto bufferCount() const -> u32 { return _commandBuffers.used(); }
-
-        auto queue() -> std::shared_ptr<Queue>;
-
-    private:
-        friend Device;
-
-        Device* _device = nullptr;
-        VkCommandPool _pool = VK_NULL_HANDLE;
-        QueueType _queueType = QueueType::NONE;
-        u32 _index = 0;
-        ResourceList<CommandBuffer> _commandBuffers = {};
-
+class CommandPool {
+  public:
+    struct CreateInfo {
+        QueueType queueType = QueueType::GRAPHICS;
+        std::string_view name = {};
     };
 
-}
+    CommandPool() = default;
 
-#endif //CANTA_COMMANDPOOL_H
+    ~CommandPool();
+
+    CommandPool(CommandPool &&rhs) noexcept;
+    auto operator=(CommandPool &&rhs) noexcept -> CommandPool &;
+
+    void reset();
+
+    [[nodiscard]] auto getBuffer() -> CommandHandle;
+
+    auto bufferCount() const -> u32 { return _commandBuffers.used(); }
+
+    auto queue() -> std::shared_ptr<Queue>;
+
+  private:
+    friend Device;
+
+    Device *_device = nullptr;
+    VkCommandPool _pool = VK_NULL_HANDLE;
+    QueueType _queueType = QueueType::NONE;
+    u32 _index = 0;
+    ResourceList<CommandBuffer> _commandBuffers = {};
+};
+
+} // namespace canta
+
+#endif // CANTA_COMMANDPOOL_H

@@ -39,7 +39,7 @@ auto canta::PipelineStatistics::result() -> std::expected<Stats, VulkanError> {
     u64 _stats[_queryCount];
     auto pool = _device->pipelineStatisticsPools()[_queryPoolIndex];
     vkGetQueryPoolResults(_device->logicalDevice(), pool, _index * _queryCount, 1, _queryCount * sizeof(u64), _stats, sizeof(u64), VK_QUERY_RESULT_64_BIT);
-    return Stats {
+    return Stats{
         _stats[0],
         _stats[1],
         _stats[2],

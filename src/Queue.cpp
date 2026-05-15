@@ -6,7 +6,7 @@ auto canta::Queue::submit(std::span<CommandHandle> commandBuffers, std::span<Sem
     VkSemaphoreSubmitInfo signalInfos[signals.size() + 1];
 
     for (u32 i = 0; i < waits.size(); i++) {
-        auto& wait = waits[i];
+        auto &wait = waits[i];
         waitInfos[i].sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
         waitInfos[i].semaphore = wait.semaphore->semaphore();
         waitInfos[i].value = wait.value;
@@ -16,7 +16,7 @@ auto canta::Queue::submit(std::span<CommandHandle> commandBuffers, std::span<Sem
     }
     u32 signalCount = 0;
     for (; signalCount < signals.size(); signalCount++) {
-        auto& signal = signals[signalCount];
+        auto &signal = signals[signalCount];
         signalInfos[signalCount].sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
         signalInfos[signalCount].semaphore = signal.semaphore->semaphore();
         signalInfos[signalCount].value = signal.value;
@@ -37,7 +37,7 @@ auto canta::Queue::submit(std::span<CommandHandle> commandBuffers, std::span<Sem
 
     VkCommandBufferSubmitInfo commandInfos[commandBuffers.size()];
     for (u32 i = 0; i < commandBuffers.size(); i++) {
-        auto& commandBuffer = commandBuffers[i];
+        auto &commandBuffer = commandBuffers[i];
         commandBuffer->end();
         commandInfos[i].sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO;
         commandInfos[i].commandBuffer = commandBuffer->buffer();

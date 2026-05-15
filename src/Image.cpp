@@ -1,5 +1,5 @@
-#include <Canta/Image.h>
 #include <Canta/Device.h>
+#include <Canta/Image.h>
 
 canta::Image::~Image() {
     if (!_device || !_allocation)
@@ -72,11 +72,9 @@ auto canta::Image::mipView(u32 mip) -> ImageViewHandle {
 
     u32 i = 1;
     while (_views.size() <= mip) {
-        _views.push_back(createView({
-            .image = this,
-            .mipLevel = i++,
-            .levelCount = 1
-        }));
+        _views.push_back(createView({.image = this,
+                                     .mipLevel = i++,
+                                     .levelCount = 1}));
     }
     return _views[mip];
 }

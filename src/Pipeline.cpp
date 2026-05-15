@@ -1,5 +1,5 @@
-#include <Canta/Pipeline.h>
 #include <Canta/Device.h>
+#include <Canta/Pipeline.h>
 
 canta::Pipeline::~Pipeline() {
     if (!_device)

@@ -5,12 +5,12 @@
 
 namespace canta {
 
-    auto drawPipelineStats(const PipelineStatistics::Stats& stats, std::string_view name = {}) -> bool;
+auto drawPipelineStats(const PipelineStatistics::Stats &stats, std::string_view name = {}) -> bool;
 
-    auto drawResourceStats(const Device::ResourceStats& stats, std::string_view name = {}) -> bool;
+auto drawResourceStats(const Device::ResourceStats &stats, std::string_view name = {}) -> bool;
 
-    auto drawMemoryUsage(const Device::MemoryUsage& usage, std::string_view name = {}) -> bool;
+auto drawMemoryUsage(const Device::MemoryUsage &usage, std::string_view name = {}) -> bool;
 
-}
+} // namespace canta
 
-#endif //CANTA_UI_H
+#endif // CANTA_UI_H

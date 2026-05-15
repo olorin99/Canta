@@ -5,10 +5,10 @@
 
 namespace canta {
 
-    auto prefixSumExclusive(RenderGraph& graph, BufferIndex values, u32 count) -> BufferIndex;
+auto prefixSumExclusive(RenderGraph &graph, BufferIndex values, u32 count) -> BufferIndex;
 
-    auto prefixSumInclusive(RenderGraph& graph, BufferIndex values, u32 count) -> BufferIndex;
+auto prefixSumInclusive(RenderGraph &graph, BufferIndex values, u32 count) -> BufferIndex;
 
-}
+} // namespace canta
 
-#endif //CANTA_PREFIXSUM_H
+#endif // CANTA_PREFIXSUM_H

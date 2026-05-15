@@ -1,7 +1,7 @@
-#include <Canta/Swapchain.h>
 #include <Canta/Device.h>
-#include <numeric>
+#include <Canta/Swapchain.h>
 #include <format>
+#include <numeric>
 #include <utility>
 
 VkSurfaceCapabilitiesKHR getCapabilities(VkPhysicalDevice device, VkSurfaceKHR surface) {
@@ -18,7 +18,7 @@ VkSurfaceFormatKHR getSurfaceFormat(VkPhysicalDevice device, VkSurfaceKHR surfac
 
     if (formats.size() == 1 && formats[0].format == VK_FORMAT_UNDEFINED)
         return {VK_FORMAT_B8G8R8_UNORM, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR};
-    for (auto& format : formats) {
+    for (auto &format : formats) {
         if (format.format == VK_FORMAT_B8G8R8_UNORM && format.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR)
             return format;
     }
@@ -31,22 +31,22 @@ VkPresentModeKHR getValidPresentMode(VkPhysicalDevice device, VkSurfaceKHR surfa
     std::vector<VkPresentModeKHR> modes(count);
     vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &count, modes.data());
 
-    for (const auto& mode : modes) {
+    for (const auto &mode : modes) {
         if (mode == preference)
             return mode;
     }
-    for (const auto& mode : modes) {
+    for (const auto &mode : modes) {
         if (mode == VK_PRESENT_MODE_MAILBOX_KHR)
             return mode;
     }
-    for (const auto& mode : modes) {
+    for (const auto &mode : modes) {
         if (mode == VK_PRESENT_MODE_IMMEDIATE_KHR)
             return mode;
     }
     return VK_PRESENT_MODE_FIFO_KHR;
 }
 
-VkExtent2D getExtent(const VkSurfaceCapabilitiesKHR& capabilities, u32 width, u32 height) {
+VkExtent2D getExtent(const VkSurfaceCapabilitiesKHR &capabilities, u32 width, u32 height) {
     if (capabilities.currentExtent.width != std::numeric_limits<u32>::max())
         return capabilities.currentExtent;
 
@@ -56,12 +56,11 @@ VkExtent2D getExtent(const VkSurfaceCapabilitiesKHR& capabilities, u32 width, u3
     return extent;
 }
 
-
 canta::Swapchain::~Swapchain() {
     if (!_device)
         return;
 
-    for (auto& view : _imageViews)
+    for (auto &view : _imageViews)
         vkDestroyImageView(_device->logicalDevice(), view, nullptr);
 
     vkDestroySwapchainKHR(_device->logicalDevice(), _swapchain, nullptr);
@@ -105,25 +104,21 @@ auto canta::Swapchain::acquire(SemaphoreHandle timeline) -> std::expected<ImageH
     _semaphoreIndex = (_semaphoreIndex % _semaphores.size());
     auto acquireSemaphore = _semaphores[_semaphoreIndex].acquire;
     switch (const auto result = vkAcquireNextImageKHR(_device->logicalDevice(), _swapchain, std::numeric_limits<u64>::max(), acquireSemaphore->semaphore(), VK_NULL_HANDLE, &_index)) {
-        case VK_SUCCESS:
-            break;
-        case VK_ERROR_OUT_OF_DATE_KHR:
-            recreate();
-            break;
-        case VK_SUBOPTIMAL_KHR:
-            // recreate();
-            break;
-        default:
-            return std::unexpected(static_cast<VulkanError>(result));
+    case VK_SUCCESS:
+        break;
+    case VK_ERROR_OUT_OF_DATE_KHR:
+        recreate();
+        break;
+    case VK_SUBOPTIMAL_KHR:
+        // recreate();
+        break;
+    default:
+        return std::unexpected(static_cast<VulkanError>(result));
     }
 
     if (timeline) {
-        auto waits = std::to_array({
-            SemaphorePair(acquireSemaphore)
-        });
-        auto signals = std::to_array({
-            SemaphorePair(timeline, timeline->increment())
-        });
+        auto waits = std::to_array({SemaphorePair(acquireSemaphore)});
+        auto signals = std::to_array({SemaphorePair(timeline, timeline->increment())});
 
         maybe(_device->queue(QueueType::PRESENT)->submit({}, waits, signals));
     }
@@ -137,11 +132,9 @@ auto canta::Swapchain::present(std::span<SemaphoreHandle> timelines) -> std::exp
 
     if (!timelines.empty()) {
         std::vector<SemaphorePair> waits = {};
-        for (auto& timeline : timelines)
+        for (auto &timeline : timelines)
             waits.emplace_back(timeline);
-        auto signals = std::to_array({
-            SemaphorePair(presentSemaphore)
-        });
+        auto signals = std::to_array({SemaphorePair(presentSemaphore)});
 
         maybe(_device->queue(QueueType::PRESENT)->submit({}, waits, signals));
     }
@@ -160,14 +153,14 @@ auto canta::Swapchain::present(std::span<SemaphoreHandle> timelines) -> std::exp
     presentInfo.pResults = nullptr;
 
     switch (auto result = vkQueuePresentKHR(_device->queue(QueueType::GRAPHICS)->queue(), &presentInfo)) {
-        case VK_SUCCESS:
-            break;
-        case VK_ERROR_OUT_OF_DATE_KHR:
-        case VK_SUBOPTIMAL_KHR:
-            recreate();
-            break;
-        default:
-            return std::unexpected(static_cast<VulkanError>(result));
+    case VK_SUCCESS:
+        break;
+    case VK_ERROR_OUT_OF_DATE_KHR:
+    case VK_SUBOPTIMAL_KHR:
+        recreate();
+        break;
+    default:
+        return std::unexpected(static_cast<VulkanError>(result));
     }
     return _index;
 }
@@ -252,7 +245,6 @@ void canta::Swapchain::createSwapchain() {
     _extent = extent;
     _format = static_cast<Format>(format.format);
 
-
     _imageViews.resize(_images.size());
     for (u32 i = 0; i < _imageViews.size(); i++) {
         VkImageViewCreateInfo imageViewCreateInfo = {};
@@ -278,16 +270,15 @@ void canta::Swapchain::createSwapchain() {
 
     _imageHandles.resize(_images.size());
     for (u32 i = 0; i < _imageHandles.size(); i++) {
-        _imageHandles[i] = _device->registerImage({
-            .width = _extent.width,
-            .height = _extent.height,
-            .depth = 1,
-            .format = _format,
-            .mipLevels = 1,
-            .layers = 1,
-            .usage = ImageUsage::COLOUR_ATTACHMENT | ImageUsage::TRANSFER_DST | ImageUsage::TRANSFER_SRC,
-            .name = std::format("swapchain_image_{}", i)
-        }, _images[i], _imageViews[i]);
+        _imageHandles[i] = _device->registerImage({.width = _extent.width,
+                                                   .height = _extent.height,
+                                                   .depth = 1,
+                                                   .format = _format,
+                                                   .mipLevels = 1,
+                                                   .layers = 1,
+                                                   .usage = ImageUsage::COLOUR_ATTACHMENT | ImageUsage::TRANSFER_DST | ImageUsage::TRANSFER_SRC,
+                                                   .name = std::format("swapchain_image_{}", i)},
+                                                  _images[i], _imageViews[i]);
     }
 }
 
@@ -296,19 +287,15 @@ void canta::Swapchain::createSemaphores() {
         return;
 
     for (u32 i = 0; i < _imageViews.size(); i++) {
-        auto acquire = _device->createSemaphore({
-            .name = std::format("swapchain_semaphore_{}_acquire", i)
-        }).value();
-        auto present = _device->createSemaphore({
-            .name = std::format("swapchain_semaphore_{}_present", i)
-        }).value();
-        _semaphores.push_back({ std::move(acquire), std::move(present) });
+        auto acquire = _device->createSemaphore({.name = std::format("swapchain_semaphore_{}_acquire", i)}).value();
+        auto present = _device->createSemaphore({.name = std::format("swapchain_semaphore_{}_present", i)}).value();
+        _semaphores.push_back({std::move(acquire), std::move(present)});
     }
 }
 
 void canta::Swapchain::recreate() {
     vkDeviceWaitIdle(_device->logicalDevice());
-    for (const auto& view : _imageViews)
+    for (const auto &view : _imageViews)
         vkDestroyImageView(_device->logicalDevice(), view, nullptr);
 
     createSwapchain();

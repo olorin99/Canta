@@ -2,319 +2,319 @@
 #define CANTA_RESOURCELIST_H
 
 #include <Ende/platform.h>
-#include <utility>
-#include <vector>
-#include <memory>
-#include <functional>
 #include <atomic>
 #include <cassert>
+#include <functional>
+#include <memory>
 #include <mutex>
 #include <spdlog/spdlog.h>
+#include <utility>
+#include <vector>
 
 namespace canta {
 
-    template <typename T, typename List>
-    class Handle {
-    public:
-
-        struct Data {
-            i32 index = -1;
-            std::atomic<i32> count = 0;
-            std::function<void(i32)> deleter = {};
-        };
-
-        static auto create(List* list, std::weak_ptr<Data> data) -> Handle {
-            Handle handle = {};
-            handle._list = list;
-            handle._data = data;
-            handle._hash = s_hash++;
-            return handle;
-        }
-
-        Handle() = default;
-        ~Handle() {
-            decrement(_data);
-        }
-
-        Handle(const Handle& rhs)
-            : _list(rhs._list),
-            _data(rhs._data),
-            _hash(rhs._hash)
-        {
-            increment(_data);
-        }
-
-        Handle(Handle&& rhs) noexcept {
-            std::swap(_list, rhs._list);
-            std::swap(_data, rhs._data);
-            std::swap(_hash, rhs._hash);
-        }
-
-        auto operator=(const Handle& rhs) -> Handle& {
-            if (this == &rhs) return *this;
-
-            auto tmp = _data;
-            _list = rhs._list;
-            _data = rhs._data;
-            _hash = rhs._hash;
-            increment(_data);
-            decrement(tmp);
-            return *this;
-        }
-
-        auto operator=(Handle&& rhs) noexcept -> Handle& {
-            std::swap(_list, rhs._list);
-            std::swap(_data, rhs._data);
-            std::swap(_hash, rhs._hash);
-            return *this;
-        }
-
-        auto operator==(const Handle& rhs) const noexcept -> bool {
-            return _list == rhs._list && _data.lock() == rhs._data.lock();
-        }
-
-        explicit operator bool() const noexcept {
-            auto d = _data.lock();
-            return _list && (!d || d->index >= 0);
-        }
-
-        auto operator*() noexcept -> T& {
-            auto d = _data.lock();
-            assert(_list && d);
-            return _list->_resources[d->index]->first;
-        }
-
-        auto operator->() noexcept -> T* {
-            auto d = _data.lock();
-            assert(_list && d);
-            return &_list->_resources[d->index]->first;
-        }
-
-        auto operator*() const noexcept -> const T& {
-            auto d = _data.lock();
-            assert(_list && d);
-            return _list->_resources[d->index]->first;
-        }
-
-        auto operator->() const noexcept -> const T* {
-            auto d = _data.lock();
-            assert(_list && d);
-            return &_list->_resources[d->index]->first;
-        }
-
-        auto index() const -> i32 {
-            if (auto d = _data.lock())
-                return d->index;
-            return -1;
-        }
-
-        auto count() const -> i32 {
-            if (auto d = _data.lock())
-                return d->count;
-            return 0;
-        }
-
-        auto release() -> Data* {
-            auto tmp = _data;
-            _data = nullptr;
-            return tmp;
-        }
-
-        auto hash() const -> u32 { return _hash; }
-
-    private:
-        friend List;
-
-        static inline auto increment(std::weak_ptr<Data> data) -> i32 {
-            if (auto d = data.lock()) {
-                return ++d->count;
-            }
-            return -1;
-        }
-
-        static inline auto decrement(std::weak_ptr<Data> data) -> i32 {
-            if (auto d = data.lock()) {
-                const i32 newCount = --d->count;
-                if (newCount < 1) {
-                    d->deleter(d->index);
-                }
-                return newCount;
-            }
-            return -1;
-        }
-
-        List* _list = nullptr;
-        std::weak_ptr<Data> _data = {};
-
-        u32 _hash = 0;
-        static u32 s_hash;
-
+template <typename T, typename List>
+class Handle {
+  public:
+    struct Data {
+        i32 index = -1;
+        std::atomic<i32> count = 0;
+        std::function<void(i32)> deleter = {};
     };
 
-    template <typename T>
-    class ResourceList {
-    public:
-        using ResourceHandle =  Handle<T, ResourceList>;
-        using ResourceData = ResourceHandle::Data;
+    static auto create(List *list, std::weak_ptr<Data> data) -> Handle {
+        Handle handle = {};
+        handle._list = list;
+        handle._data = data;
+        handle._hash = s_hash++;
+        return handle;
+    }
 
-        ResourceList() = default;
+    Handle() = default;
+    ~Handle() {
+        decrement(_data);
+    }
 
-        ~ResourceList() {
-            clearAll();
-        }
+    Handle(const Handle &rhs)
+        : _list(rhs._list),
+          _data(rhs._data),
+          _hash(rhs._hash) {
+        increment(_data);
+    }
 
-        ResourceList(ResourceList&& rhs) noexcept {
-            std::swap(_resources, rhs._resources);
-            std::swap(_freeResources, rhs._freeResources);
-            std::swap(_destroyQueue, rhs._destroyQueue);
-            std::swap(_destructionDelay, rhs._destructionDelay);
-            std::swap(_getTimelineValue, rhs._getTimelineValue);
-            std::swap(_logger, rhs._logger);
-        }
+    Handle(Handle &&rhs) noexcept {
+        std::swap(_list, rhs._list);
+        std::swap(_data, rhs._data);
+        std::swap(_hash, rhs._hash);
+    }
 
-        auto operator=(ResourceList&& rhs) noexcept -> ResourceList& {
-            std::swap(_resources, rhs._resources);
-            std::swap(_freeResources, rhs._freeResources);
-            std::swap(_destroyQueue, rhs._destroyQueue);
-            std::swap(_destructionDelay, rhs._destructionDelay);
-            std::swap(_getTimelineValue, rhs._getTimelineValue);
-            std::swap(_logger, rhs._logger);
+    auto operator=(const Handle &rhs) -> Handle & {
+        if (this == &rhs)
             return *this;
-        }
 
-        [[nodiscard]] static auto create(i32 destructionDelay = 3, std::weak_ptr<spdlog::logger> logger = {}, std::function<u64()> getTimelineValue = [] { return 0; }) -> ResourceList<T> {
-            ResourceList<T> list = {};
-            list._destructionDelay = destructionDelay;
-            list._logger = std::move(logger);
-            list._getTimelineValue = std::move(getTimelineValue);
-            return list;
-        }
+        auto tmp = _data;
+        _list = rhs._list;
+        _data = rhs._data;
+        _hash = rhs._hash;
+        increment(_data);
+        decrement(tmp);
+        return *this;
+    }
 
-        void setLogger(const std::weak_ptr<spdlog::logger> &logger) {
-            _logger = logger;
-        }
+    auto operator=(Handle &&rhs) noexcept -> Handle & {
+        std::swap(_list, rhs._list);
+        std::swap(_data, rhs._data);
+        std::swap(_hash, rhs._hash);
+        return *this;
+    }
 
-        void setDestructionDelay(const u32 delay) {
-            _destructionDelay = delay;
-        }
+    auto operator==(const Handle &rhs) const noexcept -> bool {
+        return _list == rhs._list && _data.lock() == rhs._data.lock();
+    }
 
-        void setGetTimelineValue(const std::function<u64()> &getTimelineValue) {
-            _getTimelineValue = getTimelineValue;
-        }
+    explicit operator bool() const noexcept {
+        auto d = _data.lock();
+        return _list && (!d || d->index >= 0);
+    }
 
-        [[nodiscard]] auto allocate() -> ResourceHandle {
-            i32 index = -1;
-            std::unique_lock lock(_mutex);
-            if (!_freeResources.empty()) {
-                index = _freeResources.back();
-                _freeResources.pop_back();
-                _resources[index] = std::make_unique<std::pair<T, std::shared_ptr<ResourceData>>>();
-                _resources[index]->second = std::make_shared<ResourceData>();
-                _resources[index]->second->index = index;
-                _resources[index]->second->deleter = [this](i32 index) {
-                    std::unique_lock lock(_mutex);
-                    const auto timelineValue = _getTimelineValue();
-                    _destroyQueue.emplace_back(timelineValue, index);
-                    if (const auto logger = _logger.lock()) logger->info("Resource {} at index {} destroyed", typeid(T).name(), index);
-                };
-            } else {
-                index = _resources.size();
-                _resources.emplace_back(std::make_unique<std::pair<T, std::shared_ptr<ResourceData>>>());
-                _resources[index]->second = std::make_shared<ResourceData>();
-                _resources.back()->second->index = index;
-                _resources.back()->second->deleter = [this](i32 index) {
-                    std::unique_lock lock(_mutex);
-                    const auto timelineValue = _getTimelineValue();
-                    _destroyQueue.emplace_back(timelineValue, index);
-                    if (const auto logger = _logger.lock()) logger->info("Resource {} at index {} destroyed", typeid(T).name(), index);
-                };
+    auto operator*() noexcept -> T & {
+        auto d = _data.lock();
+        assert(_list && d);
+        return _list->_resources[d->index]->first;
+    }
+
+    auto operator->() noexcept -> T * {
+        auto d = _data.lock();
+        assert(_list && d);
+        return &_list->_resources[d->index]->first;
+    }
+
+    auto operator*() const noexcept -> const T & {
+        auto d = _data.lock();
+        assert(_list && d);
+        return _list->_resources[d->index]->first;
+    }
+
+    auto operator->() const noexcept -> const T * {
+        auto d = _data.lock();
+        assert(_list && d);
+        return &_list->_resources[d->index]->first;
+    }
+
+    auto index() const -> i32 {
+        if (auto d = _data.lock())
+            return d->index;
+        return -1;
+    }
+
+    auto count() const -> i32 {
+        if (auto d = _data.lock())
+            return d->count;
+        return 0;
+    }
+
+    auto release() -> Data * {
+        auto tmp = _data;
+        _data = nullptr;
+        return tmp;
+    }
+
+    auto hash() const -> u32 { return _hash; }
+
+  private:
+    friend List;
+
+    static inline auto increment(std::weak_ptr<Data> data) -> i32 {
+        if (auto d = data.lock()) {
+            return ++d->count;
+        }
+        return -1;
+    }
+
+    static inline auto decrement(std::weak_ptr<Data> data) -> i32 {
+        if (auto d = data.lock()) {
+            const i32 newCount = --d->count;
+            if (newCount < 1) {
+                d->deleter(d->index);
             }
-            return getHandle(index);
+            return newCount;
         }
+        return -1;
+    }
 
-        [[nodiscard]] auto reallocate(ResourceHandle handle) -> ResourceHandle {
-            i32 oldIndex = handle.index();
-            auto newHandle = allocate();
-            std::unique_lock lock(_mutex);
-            auto newIndex = newHandle.index();
-            _resources[newIndex].swap(_resources[oldIndex]);
-            _resources[oldIndex]->first = std::move(_resources[newIndex]->first);
-            _resources[newIndex]->second->index = newIndex;
-            _resources[oldIndex]->second->index = oldIndex;
-            return getHandle(newIndex);
+    List *_list = nullptr;
+    std::weak_ptr<Data> _data = {};
+
+    u32 _hash = 0;
+    static u32 s_hash;
+};
+
+template <typename T>
+class ResourceList {
+  public:
+    using ResourceHandle = Handle<T, ResourceList>;
+    using ResourceData = ResourceHandle::Data;
+
+    ResourceList() = default;
+
+    ~ResourceList() {
+        clearAll();
+    }
+
+    ResourceList(ResourceList &&rhs) noexcept {
+        std::swap(_resources, rhs._resources);
+        std::swap(_freeResources, rhs._freeResources);
+        std::swap(_destroyQueue, rhs._destroyQueue);
+        std::swap(_destructionDelay, rhs._destructionDelay);
+        std::swap(_getTimelineValue, rhs._getTimelineValue);
+        std::swap(_logger, rhs._logger);
+    }
+
+    auto operator=(ResourceList &&rhs) noexcept -> ResourceList & {
+        std::swap(_resources, rhs._resources);
+        std::swap(_freeResources, rhs._freeResources);
+        std::swap(_destroyQueue, rhs._destroyQueue);
+        std::swap(_destructionDelay, rhs._destructionDelay);
+        std::swap(_getTimelineValue, rhs._getTimelineValue);
+        std::swap(_logger, rhs._logger);
+        return *this;
+    }
+
+    [[nodiscard]] static auto create(i32 destructionDelay = 3, std::weak_ptr<spdlog::logger> logger = {}, std::function<u64()> getTimelineValue = [] { return 0; }) -> ResourceList<T> {
+        ResourceList<T> list = {};
+        list._destructionDelay = destructionDelay;
+        list._logger = std::move(logger);
+        list._getTimelineValue = std::move(getTimelineValue);
+        return list;
+    }
+
+    void setLogger(const std::weak_ptr<spdlog::logger> &logger) {
+        _logger = logger;
+    }
+
+    void setDestructionDelay(const u32 delay) {
+        _destructionDelay = delay;
+    }
+
+    void setGetTimelineValue(const std::function<u64()> &getTimelineValue) {
+        _getTimelineValue = getTimelineValue;
+    }
+
+    [[nodiscard]] auto allocate() -> ResourceHandle {
+        i32 index = -1;
+        std::unique_lock lock(_mutex);
+        if (!_freeResources.empty()) {
+            index = _freeResources.back();
+            _freeResources.pop_back();
+            _resources[index] = std::make_unique<std::pair<T, std::shared_ptr<ResourceData>>>();
+            _resources[index]->second = std::make_shared<ResourceData>();
+            _resources[index]->second->index = index;
+            _resources[index]->second->deleter = [this](i32 index) {
+                std::unique_lock lock(_mutex);
+                const auto timelineValue = _getTimelineValue();
+                _destroyQueue.emplace_back(timelineValue, index);
+                if (const auto logger = _logger.lock())
+                    logger->info("Resource {} at index {} destroyed", typeid(T).name(), index);
+            };
+        } else {
+            index = _resources.size();
+            _resources.emplace_back(std::make_unique<std::pair<T, std::shared_ptr<ResourceData>>>());
+            _resources[index]->second = std::make_shared<ResourceData>();
+            _resources.back()->second->index = index;
+            _resources.back()->second->deleter = [this](i32 index) {
+                std::unique_lock lock(_mutex);
+                const auto timelineValue = _getTimelineValue();
+                _destroyQueue.emplace_back(timelineValue, index);
+                if (const auto logger = _logger.lock())
+                    logger->info("Resource {} at index {} destroyed", typeid(T).name(), index);
+            };
         }
+        return getHandle(index);
+    }
 
-        auto swap(ResourceHandle oldHandle, ResourceHandle newHandle) -> ResourceHandle  {
-            i32 oldIndex = oldHandle.index();
-            i32 newIndex = newHandle.index();
-            std::unique_lock lock(_mutex);
-            _resources[newIndex].swap(_resources[oldIndex]);
-            std::swap(_resources[oldIndex]->second->index, _resources[newIndex]->second->index);
-            return oldHandle;
-        }
+    [[nodiscard]] auto reallocate(ResourceHandle handle) -> ResourceHandle {
+        i32 oldIndex = handle.index();
+        auto newHandle = allocate();
+        std::unique_lock lock(_mutex);
+        auto newIndex = newHandle.index();
+        _resources[newIndex].swap(_resources[oldIndex]);
+        _resources[oldIndex]->first = std::move(_resources[newIndex]->first);
+        _resources[newIndex]->second->index = newIndex;
+        _resources[oldIndex]->second->index = oldIndex;
+        return getHandle(newIndex);
+    }
 
-        void clearQueue(std::function<void(T&)> func = [](auto& resource) { resource = {}; }) {
-            std::unique_lock lock(_mutex);
-            const auto timelineValue = _getTimelineValue();
-            for (auto it = _destroyQueue.begin(); it != _destroyQueue.end(); ++it) {
-                if ((it->first + _destructionDelay) < timelineValue) {
-                    _resources[it->second]->second->deleter = {};
-                    func(_resources[it->second]->first);
-                    if (const auto logger = _logger.lock()) logger->info("GPU Resource {} at index {} destroyed. Timeline({} <= {})", typeid(T).name(), it->second, it->first, timelineValue);
-                    _freeResources.push_back(it->second);
-                    _destroyQueue.erase(it--);
-                }
+    auto swap(ResourceHandle oldHandle, ResourceHandle newHandle) -> ResourceHandle {
+        i32 oldIndex = oldHandle.index();
+        i32 newIndex = newHandle.index();
+        std::unique_lock lock(_mutex);
+        _resources[newIndex].swap(_resources[oldIndex]);
+        std::swap(_resources[oldIndex]->second->index, _resources[newIndex]->second->index);
+        return oldHandle;
+    }
+
+    void clearQueue(std::function<void(T &)> func = [](auto &resource) { resource = {}; }) {
+        std::unique_lock lock(_mutex);
+        const auto timelineValue = _getTimelineValue();
+        for (auto it = _destroyQueue.begin(); it != _destroyQueue.end(); ++it) {
+            if ((it->first + _destructionDelay) < timelineValue) {
+                _resources[it->second]->second->deleter = {};
+                func(_resources[it->second]->first);
+                if (const auto logger = _logger.lock())
+                    logger->info("GPU Resource {} at index {} destroyed. Timeline({} <= {})", typeid(T).name(), it->second, it->first, timelineValue);
+                _freeResources.push_back(it->second);
+                _destroyQueue.erase(it--);
             }
         }
+    }
 
-        void clearAll(std::function<void(T&)> func = [](auto& resource) { resource = {}; }) {
-            std::unique_lock lock(_mutex);
-            for (auto& resource : _resources) {
-                resource->second->deleter = {};
-                func(resource->first);
-            }
-            _resources.clear();
-            _destroyQueue.clear();
-            _freeResources.clear();
+    void clearAll(std::function<void(T &)> func = [](auto &resource) { resource = {}; }) {
+        std::unique_lock lock(_mutex);
+        for (auto &resource : _resources) {
+            resource->second->deleter = {};
+            func(resource->first);
         }
+        _resources.clear();
+        _destroyQueue.clear();
+        _freeResources.clear();
+    }
 
-        // destroys the resources but not the handle itself
-        // use for cyclic dependencies
-        void destroyAll(std::function<void(T&)> func = [](auto& resource) { resource = {}; }) {
-            std::unique_lock lock(_mutex);
-            for (auto& resource : _resources) {
-                func(resource->first);
-            }
+    // destroys the resources but not the handle itself
+    // use for cyclic dependencies
+    void destroyAll(std::function<void(T &)> func = [](auto &resource) { resource = {}; }) {
+        std::unique_lock lock(_mutex);
+        for (auto &resource : _resources) {
+            func(resource->first);
         }
+    }
 
-        [[nodiscard]] auto getHandle(i32 index) -> ResourceHandle {
-            if (index >= _resources.size())
-                return {};
-            ++_resources[index]->second->count;
-            return ResourceHandle::create(this, _resources[index]->second);
-        }
+    [[nodiscard]] auto getHandle(i32 index) -> ResourceHandle {
+        if (index >= _resources.size())
+            return {};
+        ++_resources[index]->second->count;
+        return ResourceHandle::create(this, _resources[index]->second);
+    }
 
-        auto allocated() const -> u32 { return _resources.size(); }
+    auto allocated() const -> u32 { return _resources.size(); }
 
-        auto toDestroy() const -> u32 { return _destroyQueue.size(); }
+    auto toDestroy() const -> u32 { return _destroyQueue.size(); }
 
-        auto free() const -> u32 { return _freeResources.size(); }
+    auto free() const -> u32 { return _freeResources.size(); }
 
-        auto used() const -> u32 { return allocated() - free(); }
+    auto used() const -> u32 { return allocated() - free(); }
 
-    private:
-        friend Handle<T, ResourceList>;
+  private:
+    friend Handle<T, ResourceList>;
 
-        std::vector<std::unique_ptr<std::pair<T, std::shared_ptr<ResourceData>>>> _resources = {};
-        std::vector<u32> _freeResources = {};
-        std::vector<std::pair<u64, i32>> _destroyQueue = {};
-        u32 _destructionDelay = 3;
-        std::function<u64()> _getTimelineValue = [] { return 0; };
-        std::mutex _mutex = {};
-        std::weak_ptr<spdlog::logger> _logger = {};
+    std::vector<std::unique_ptr<std::pair<T, std::shared_ptr<ResourceData>>>> _resources = {};
+    std::vector<u32> _freeResources = {};
+    std::vector<std::pair<u64, i32>> _destroyQueue = {};
+    u32 _destructionDelay = 3;
+    std::function<u64()> _getTimelineValue = [] { return 0; };
+    std::mutex _mutex = {};
+    std::weak_ptr<spdlog::logger> _logger = {};
+};
 
-    };
+} // namespace canta
 
-}
-
-#endif //CANTA_RESOURCELIST_H
+#endif // CANTA_RESOURCELIST_H

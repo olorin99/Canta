@@ -66,19 +66,19 @@ auto canta::Buffer::map(u32 offset, u32 size) -> Mapped {
         size = _size - offset;
 
     assert(_size >= size + offset);
-    void* address = nullptr;
+    void *address = nullptr;
     VK_TRY(vmaMapMemory(_device->allocator(), _allocation, &address));
     assert(address);
     Mapped mapped = {};
     mapped._device = _device;
-    mapped._address = static_cast<char*>(address) + offset;
+    mapped._address = static_cast<char *>(address) + offset;
     mapped._buffer = this;
     return mapped;
 }
 
 auto canta::Buffer::_data(std::span<const u8> data, u32 offset) -> u32 {
     if (_mapped._address)
-        std::memcpy(static_cast<char*>(_mapped.address()) + offset, data.data(), data.size());
+        std::memcpy(static_cast<char *>(_mapped.address()) + offset, data.data(), data.size());
     else {
         auto mapped = map(offset, data.size());
         std::memcpy(mapped.address(), data.data(), data.size());

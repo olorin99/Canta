@@ -1,6 +1,6 @@
 #include <Canta/Device.h>
-#include <spdlog/sinks/stdout_color_sinks.h>
 #include <spdlog/sinks/basic_file_sink.h>
+#include <spdlog/sinks/stdout_color_sinks.h>
 #ifdef CANTA_RENDERDOC
 #include <renderdoc_app.h>
 #endif
@@ -9,54 +9,59 @@
 #define VMA_IMPLEMENTATION
 #define VMA_STATIC_VULKAN_FUNCTIONS 0
 #define VMA_DYNAMIC_VULKAN_FUNCTIONS 0
-#include <vk_mem_alloc.h>
 #include <dlfcn.h>
+#include <vk_mem_alloc.h>
 
 #define EMBEDDED_SHADERS_NO_REGISTER
 #include "embedded_shaders_Canta.h"
 
-template<> u32 canta::PipelineHandle::s_hash = 0;
-template<> u32 canta::ImageHandle::s_hash = 0;
-template<> u32 canta::ImageViewHandle::s_hash = 0;
-template<> u32 canta::BufferHandle::s_hash = 0;
-template<> u32 canta::SamplerHandle::s_hash = 0;
-template<> u32 canta::SemaphoreHandle ::s_hash = 0;
+template <>
+u32 canta::PipelineHandle::s_hash = 0;
+template <>
+u32 canta::ImageHandle::s_hash = 0;
+template <>
+u32 canta::ImageViewHandle::s_hash = 0;
+template <>
+u32 canta::BufferHandle::s_hash = 0;
+template <>
+u32 canta::SamplerHandle::s_hash = 0;
+template <>
+u32 canta::SemaphoreHandle ::s_hash = 0;
 
 template <typename T, typename U>
-void appendFeatureChain(T* start, U* next) {
-    auto* oldNext = start->pNext;
+void appendFeatureChain(T *start, U *next) {
+    auto *oldNext = start->pNext;
     start->pNext = next;
     next->pNext = oldNext;
 }
 
 static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
-        VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
-        VkDebugUtilsMessageTypeFlagsEXT messageType,
-        const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
-        void* pUserData
-) {
+    VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
+    VkDebugUtilsMessageTypeFlagsEXT messageType,
+    const VkDebugUtilsMessengerCallbackDataEXT *pCallbackData,
+    void *pUserData) {
     if (messageSeverity == VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT)
         return VK_FALSE;
-    canta::Device* device = reinterpret_cast<canta::Device*>(pUserData);
+    canta::Device *device = reinterpret_cast<canta::Device *>(pUserData);
     switch (messageSeverity) {
-        case VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT:
-//            spdlog::info("{}", pCallbackData->pMessage);
-            device->logger().info("{}", pCallbackData->pMessage);
-            break;
-        case VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT:
-//            spdlog::info("{}", pCallbackData->pMessage);
-            device->logger().info("{}", pCallbackData->pMessage);
-            break;
-        case VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT:
-//            spdlog::warn("{}", pCallbackData->pMessage);
-            device->logger().warn("{}", pCallbackData->pMessage);
-            break;
-        case VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT:
-//            spdlog::error("{}", pCallbackData->pMessage);
-            device->logger().error("{}", pCallbackData->pMessage);
-            break;
-        default:
-            break;
+    case VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT:
+        //            spdlog::info("{}", pCallbackData->pMessage);
+        device->logger().info("{}", pCallbackData->pMessage);
+        break;
+    case VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT:
+        //            spdlog::info("{}", pCallbackData->pMessage);
+        device->logger().info("{}", pCallbackData->pMessage);
+        break;
+    case VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT:
+        //            spdlog::warn("{}", pCallbackData->pMessage);
+        device->logger().warn("{}", pCallbackData->pMessage);
+        break;
+    case VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT:
+        //            spdlog::error("{}", pCallbackData->pMessage);
+        device->logger().error("{}", pCallbackData->pMessage);
+        break;
+    default:
+        break;
     }
     return VK_FALSE;
 }
@@ -82,24 +87,24 @@ canta::Properties getPhysicalDeviceProperties(VkPhysicalDevice deviceProperties)
     properties.driverVersion = deviceProperties2.properties.driverVersion;
     properties.vendorID = deviceProperties2.properties.vendorID;
     switch (deviceProperties2.properties.vendorID) {
-        case 0x1002:
-            properties.vendorName = "AMD";
-            break;
-        case 0x1010:
-            properties.vendorName = "ImgTec";
-            break;
-        case 0x10DE:
-            properties.vendorName = "NVIDIA";
-            break;
-        case 0x13B5:
-            properties.vendorName = "ARM";
-            break;
-        case 0x5143:
-            properties.vendorName = "Qualcomm";
-            break;
-        case 0x8086:
-            properties.vendorName = "INTEL";
-            break;
+    case 0x1002:
+        properties.vendorName = "AMD";
+        break;
+    case 0x1010:
+        properties.vendorName = "ImgTec";
+        break;
+    case 0x10DE:
+        properties.vendorName = "NVIDIA";
+        break;
+    case 0x13B5:
+        properties.vendorName = "ARM";
+        break;
+    case 0x5143:
+        properties.vendorName = "Qualcomm";
+        break;
+    case 0x8086:
+        properties.vendorName = "INTEL";
+        break;
     }
     properties.deviceID = deviceProperties2.properties.deviceID;
     properties.deviceType = static_cast<canta::PhysicalDeviceType>(deviceProperties2.properties.deviceType);
@@ -128,7 +133,6 @@ canta::Properties getPhysicalDeviceProperties(VkPhysicalDevice deviceProperties)
     properties.limits.maxSamplerAnisotropy = deviceProperties2.properties.limits.maxSamplerAnisotropy;
 
     properties.limits.timestampPeriod = deviceProperties2.properties.limits.timestampPeriod;
-
 
     properties.limits.maxTaskWorkGroupTotalCount = meshShaderProperties.maxTaskWorkGroupTotalCount;
     properties.limits.maxTaskWorkGroupCount[0] = meshShaderProperties.maxTaskWorkGroupCount[0];
@@ -170,15 +174,13 @@ canta::Properties getPhysicalDeviceProperties(VkPhysicalDevice deviceProperties)
     return properties;
 }
 
-
-
 auto canta::Device::create(CreateInfo info) noexcept -> std::expected<std::unique_ptr<Device>, VulkanError> {
 
     std::unique_ptr<Device> device(new Device());
 
     auto consoleSink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
     auto fileSink = std::make_shared<spdlog::sinks::basic_file_sink_mt>("logs/canta.log");
-    std::vector<spdlog::sink_ptr> sinks{ consoleSink, fileSink };
+    std::vector<spdlog::sink_ptr> sinks{consoleSink, fileSink};
     device->_logger = std::make_shared<spdlog::logger>("Canta Logger", sinks.begin(), sinks.end());
     device->logger().set_level(info.logLevel);
 
@@ -188,7 +190,7 @@ auto canta::Device::create(CreateInfo info) noexcept -> std::expected<std::uniqu
 
 #ifdef CANTA_RENDERDOC
     if (info.enableRenderDoc) {
-        if (void* mod = dlopen("librenderdoc.so", RTLD_NOW); mod) {
+        if (void *mod = dlopen("librenderdoc.so", RTLD_NOW); mod) {
             pRENDERDOC_GetAPI RENDERDOC_GetAPI = reinterpret_cast<pRENDERDOC_GetAPI>(dlsym(mod, "RENDERDOC_GetAPI"));
             i32 ret = RENDERDOC_GetAPI(eRENDERDOC_API_Version_1_6_0, &device->_renderDocAPI);
             assert(ret == 1);
@@ -196,7 +198,7 @@ auto canta::Device::create(CreateInfo info) noexcept -> std::expected<std::uniqu
             device->logger().warn("Unable to start renderdoc API");
         }
         if (device->_renderDocAPI) {
-            static_cast<RENDERDOC_API_1_6_0*>(device->_renderDocAPI)->SetCaptureFilePathTemplate("capture");
+            static_cast<RENDERDOC_API_1_6_0 *>(device->_renderDocAPI)->SetCaptureFilePathTemplate("capture");
         }
     }
 #endif
@@ -209,14 +211,14 @@ auto canta::Device::create(CreateInfo info) noexcept -> std::expected<std::uniqu
     applicationInfo.engineVersion = VK_MAKE_VERSION(1, 0, 0);
     applicationInfo.apiVersion = VK_API_VERSION_1_3;
 
-    std::vector<const char*> instanceExtensions;
+    std::vector<const char *> instanceExtensions;
     instanceExtensions.insert(instanceExtensions.end(), info.instanceExtensions.begin(), info.instanceExtensions.end());
 #ifndef NDEBUG
     instanceExtensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
 #endif
     instanceExtensions.push_back(VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME);
 
-    std::vector<VkValidationFeatureEnableEXT>  enabledValidationFeatures = {VK_VALIDATION_FEATURE_ENABLE_DEBUG_PRINTF_EXT};
+    std::vector<VkValidationFeatureEnableEXT> enabledValidationFeatures = {VK_VALIDATION_FEATURE_ENABLE_DEBUG_PRINTF_EXT};
     VkValidationFeaturesEXT validationFeatures = {};
     validationFeatures.sType = VK_STRUCTURE_TYPE_VALIDATION_FEATURES_EXT;
     validationFeatures.pEnabledValidationFeatures = enabledValidationFeatures.data();
@@ -253,12 +255,12 @@ auto canta::Device::create(CreateInfo info) noexcept -> std::expected<std::uniqu
     std::vector<VkPhysicalDevice> physicalDevices(physicalDeviceCount);
     VK_TRY(vkEnumeratePhysicalDevices(device->_instance, &physicalDeviceCount, physicalDevices.data()));
 
-    const auto defaultDeviceSelector = [](const Properties& properties) -> u32 {
+    const auto defaultDeviceSelector = [](const Properties &properties) -> u32 {
         switch (properties.deviceType) {
-            case PhysicalDeviceType::DISCRETE:
-                return 1000;
-            case PhysicalDeviceType::INTEGRATED:
-                return 100;
+        case PhysicalDeviceType::DISCRETE:
+            return 1000;
+        case PhysicalDeviceType::INTEGRATED:
+            return 100;
         }
         return 0;
     };
@@ -278,14 +280,13 @@ auto canta::Device::create(CreateInfo info) noexcept -> std::expected<std::uniqu
     if (device->_physicalDevice == VK_NULL_HANDLE)
         return std::unexpected(VulkanError::INVALID_GPU);
 
-
     // queue creation infos
     u32 queueCount = 0;
     vkGetPhysicalDeviceQueueFamilyProperties(device->_physicalDevice, &queueCount, nullptr);
     std::vector<VkQueueFamilyProperties> familyProperties(queueCount);
     vkGetPhysicalDeviceQueueFamilyProperties(device->_physicalDevice, &queueCount, familyProperties.data());
 
-    i32 maxQueueCount = std::max_element(familyProperties.begin(), familyProperties.end(), [](auto& lhs, auto& rhs) { return lhs.queueCount < rhs.queueCount; })->queueCount;
+    i32 maxQueueCount = std::max_element(familyProperties.begin(), familyProperties.end(), [](auto &lhs, auto &rhs) { return lhs.queueCount < rhs.queueCount; })->queueCount;
 
     std::vector<f32> queuePriorities(maxQueueCount, 1.f);
 
@@ -294,7 +295,7 @@ auto canta::Device::create(CreateInfo info) noexcept -> std::expected<std::uniqu
         u32 flags = static_cast<u32>(type);
         u32 rejectFlags = static_cast<u32>(reject);
         i32 i = 0;
-        for (auto& queueFamily : familyProperties) {
+        for (auto &queueFamily : familyProperties) {
             if ((queueFamily.queueFlags & rejectFlags) != 0) {
                 i++;
                 continue;
@@ -336,7 +337,7 @@ auto canta::Device::create(CreateInfo info) noexcept -> std::expected<std::uniqu
 
         assert(familyQueueCount <= familyProperties[i].queueCount);
 
-        queueCreateInfo.queueCount = familyQueueCount; //TODO: ensure enough queues for both async compute and transfer
+        queueCreateInfo.queueCount = familyQueueCount; // TODO: ensure enough queues for both async compute and transfer
         queueCreateInfo.pQueuePriorities = queuePriorities.data();
         if (familyQueueCount == 0)
             continue;
@@ -344,24 +345,23 @@ auto canta::Device::create(CreateInfo info) noexcept -> std::expected<std::uniqu
         device->_enabledQueueFamilies.push_back(i);
     }
 
-
     u32 supportedDeviceExtensionCount = 0;
     vkEnumerateDeviceExtensionProperties(device->physicalDevice(), nullptr, &supportedDeviceExtensionCount, nullptr);
     std::vector<VkExtensionProperties> supportedExtensions(supportedDeviceExtensionCount);
     vkEnumerateDeviceExtensionProperties(device->physicalDevice(), nullptr, &supportedDeviceExtensionCount, supportedExtensions.data());
 
     const auto isExtensionSupported = [&](std::string_view extensionName) {
-        for (auto& extension : supportedExtensions) {
+        for (auto &extension : supportedExtensions) {
             if (strcmp(extension.extensionName, extensionName.data()) == 0)
                 return true;
         }
         return false;
     };
 
-#define REQUIRE_EXTENSION(extension, extensionList)             \
-    if (isExtensionSupported(extension))                        \
-        (extensionList).push_back(extension);                   \
-    else                                                        \
+#define REQUIRE_EXTENSION(extension, extensionList) \
+    if (isExtensionSupported(extension))            \
+        (extensionList).push_back(extension);       \
+    else                                            \
         return std::unexpected(VulkanError::EXTENSION_NOT_PRESENT);
 
 #define ENABLE_EXTENSION(extension, extensionList) \
@@ -369,8 +369,8 @@ auto canta::Device::create(CreateInfo info) noexcept -> std::expected<std::uniqu
         (extensionList).push_back(extension);
 
     // init logical device
-    std::vector<const char*> deviceExtensions;
-    for (auto& extension : info.deviceExtensions) {
+    std::vector<const char *> deviceExtensions;
+    for (auto &extension : info.deviceExtensions) {
         REQUIRE_EXTENSION(extension, deviceExtensions);
     }
     if (!info.headless) {
@@ -386,7 +386,7 @@ auto canta::Device::create(CreateInfo info) noexcept -> std::expected<std::uniqu
 
     VkPhysicalDeviceFeatures2 deviceFeatures2 = {};
     deviceFeatures2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
-    //TODO: choose manually dont enable all
+    // TODO: choose manually dont enable all
     vkGetPhysicalDeviceFeatures2(device->_physicalDevice, &deviceFeatures2);
 
     VkPhysicalDeviceVulkan11Features vulkan11Features = {};
@@ -435,7 +435,6 @@ auto canta::Device::create(CreateInfo info) noexcept -> std::expected<std::uniqu
     device->_meshShadersEnabled = info.enableMeshShading;
     device->_taskShadersEnabled = info.enableMeshShading && info.enableTaskShading;
 
-
     VkDeviceCreateInfo deviceCreateInfo = {};
     deviceCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
 
@@ -467,10 +466,8 @@ auto canta::Device::create(CreateInfo info) noexcept -> std::expected<std::uniqu
         device->_graphicsQueue->_queue = graphicsQueue;
         device->_graphicsQueue->_familyIndex = graphicsFamilyIndex;
         device->_graphicsQueue->_queueIndex = graphicsQueueIndex;
-        device->_graphicsQueue->_timeline = maybe(device->createSemaphore({
-            .initialValue = 0,
-            .name = "graphics_timeline"
-        }));
+        device->_graphicsQueue->_timeline = maybe(device->createSemaphore({.initialValue = 0,
+                                                                           .name = "graphics_timeline"}));
     }
     if (info.enableAsyncComputeQueue) {
         VkQueue computeQueue;
@@ -480,10 +477,8 @@ auto canta::Device::create(CreateInfo info) noexcept -> std::expected<std::uniqu
         device->_computeQueue->_queue = computeQueue;
         device->_computeQueue->_familyIndex = computeFamilyIndex;
         device->_computeQueue->_queueIndex = computeQueueIndex;
-        device->_computeQueue->_timeline = maybe(device->createSemaphore({
-            .initialValue = 0,
-            .name = "compute_timeline"
-        }));
+        device->_computeQueue->_timeline = maybe(device->createSemaphore({.initialValue = 0,
+                                                                          .name = "compute_timeline"}));
     } else {
         device->_computeQueue = device->_graphicsQueue;
     }
@@ -495,14 +490,11 @@ auto canta::Device::create(CreateInfo info) noexcept -> std::expected<std::uniqu
         device->_transferQueue->_queue = transferQueue;
         device->_transferQueue->_familyIndex = transferFamilyIndex;
         device->_transferQueue->_queueIndex = transferQueueIndex;
-        device->_transferQueue->_timeline = maybe(device->createSemaphore({
-            .initialValue = 0,
-            .name = "transfer_timeline"
-        }));
+        device->_transferQueue->_timeline = maybe(device->createSemaphore({.initialValue = 0,
+                                                                           .name = "transfer_timeline"}));
     } else {
         device->_transferQueue = device->_graphicsQueue;
     }
-
 
     device->_memoryProperties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_PROPERTIES_2;
     vkGetPhysicalDeviceMemoryProperties2(device->_physicalDevice, &device->_memoryProperties);
@@ -515,32 +507,32 @@ auto canta::Device::create(CreateInfo info) noexcept -> std::expected<std::uniqu
     allocatorCreateInfo.instance = device->_instance;
 
     VmaVulkanFunctions vulkanFunctions{};
-    vulkanFunctions.vkGetInstanceProcAddr               = vkGetInstanceProcAddr;
-    vulkanFunctions.vkGetDeviceProcAddr                 = vkGetDeviceProcAddr;
-    vulkanFunctions.vkAllocateMemory                    = vkAllocateMemory;
-    vulkanFunctions.vkBindBufferMemory                  = vkBindBufferMemory;
-    vulkanFunctions.vkBindBufferMemory2KHR              = vkBindBufferMemory2;
-    vulkanFunctions.vkBindImageMemory                   = vkBindImageMemory;
-    vulkanFunctions.vkBindImageMemory2KHR               = vkBindImageMemory2;
-    vulkanFunctions.vkCreateBuffer                      = vkCreateBuffer;
-    vulkanFunctions.vkCreateImage                       = vkCreateImage;
-    vulkanFunctions.vkDestroyBuffer                     = vkDestroyBuffer;
-    vulkanFunctions.vkDestroyImage                      = vkDestroyImage;
-    vulkanFunctions.vkFlushMappedMemoryRanges           = vkFlushMappedMemoryRanges;
-    vulkanFunctions.vkFreeMemory                        = vkFreeMemory;
-    vulkanFunctions.vkGetBufferMemoryRequirements       = vkGetBufferMemoryRequirements;
-    vulkanFunctions.vkGetBufferMemoryRequirements2KHR   = vkGetBufferMemoryRequirements2;
-    vulkanFunctions.vkGetImageMemoryRequirements        = vkGetImageMemoryRequirements;
-    vulkanFunctions.vkGetImageMemoryRequirements2KHR    = vkGetImageMemoryRequirements2;
+    vulkanFunctions.vkGetInstanceProcAddr = vkGetInstanceProcAddr;
+    vulkanFunctions.vkGetDeviceProcAddr = vkGetDeviceProcAddr;
+    vulkanFunctions.vkAllocateMemory = vkAllocateMemory;
+    vulkanFunctions.vkBindBufferMemory = vkBindBufferMemory;
+    vulkanFunctions.vkBindBufferMemory2KHR = vkBindBufferMemory2;
+    vulkanFunctions.vkBindImageMemory = vkBindImageMemory;
+    vulkanFunctions.vkBindImageMemory2KHR = vkBindImageMemory2;
+    vulkanFunctions.vkCreateBuffer = vkCreateBuffer;
+    vulkanFunctions.vkCreateImage = vkCreateImage;
+    vulkanFunctions.vkDestroyBuffer = vkDestroyBuffer;
+    vulkanFunctions.vkDestroyImage = vkDestroyImage;
+    vulkanFunctions.vkFlushMappedMemoryRanges = vkFlushMappedMemoryRanges;
+    vulkanFunctions.vkFreeMemory = vkFreeMemory;
+    vulkanFunctions.vkGetBufferMemoryRequirements = vkGetBufferMemoryRequirements;
+    vulkanFunctions.vkGetBufferMemoryRequirements2KHR = vkGetBufferMemoryRequirements2;
+    vulkanFunctions.vkGetImageMemoryRequirements = vkGetImageMemoryRequirements;
+    vulkanFunctions.vkGetImageMemoryRequirements2KHR = vkGetImageMemoryRequirements2;
     vulkanFunctions.vkGetPhysicalDeviceMemoryProperties = vkGetPhysicalDeviceMemoryProperties;
     vulkanFunctions.vkGetPhysicalDeviceMemoryProperties2KHR = vkGetPhysicalDeviceMemoryProperties2;
-    vulkanFunctions.vkGetPhysicalDeviceProperties       = vkGetPhysicalDeviceProperties;
-    vulkanFunctions.vkInvalidateMappedMemoryRanges      = vkInvalidateMappedMemoryRanges;
-    vulkanFunctions.vkMapMemory                         = vkMapMemory;
-    vulkanFunctions.vkUnmapMemory                       = vkUnmapMemory;
-    vulkanFunctions.vkCmdCopyBuffer                     = vkCmdCopyBuffer;
+    vulkanFunctions.vkGetPhysicalDeviceProperties = vkGetPhysicalDeviceProperties;
+    vulkanFunctions.vkInvalidateMappedMemoryRanges = vkInvalidateMappedMemoryRanges;
+    vulkanFunctions.vkMapMemory = vkMapMemory;
+    vulkanFunctions.vkUnmapMemory = vkUnmapMemory;
+    vulkanFunctions.vkCmdCopyBuffer = vkCmdCopyBuffer;
     vulkanFunctions.vkGetDeviceBufferMemoryRequirements = vkGetDeviceBufferMemoryRequirements;
-    vulkanFunctions.vkGetDeviceImageMemoryRequirements  = vkGetDeviceImageMemoryRequirements;
+    vulkanFunctions.vkGetDeviceImageMemoryRequirements = vkGetDeviceImageMemoryRequirements;
 
     allocatorCreateInfo.pVulkanFunctions = &vulkanFunctions;
     if (vulkan12Features.bufferDeviceAddress)
@@ -548,27 +540,20 @@ auto canta::Device::create(CreateInfo info) noexcept -> std::expected<std::uniqu
 
     VK_TRY(vmaCreateAllocator(&allocatorCreateInfo, &device->_allocator));
 
-
-    device->_frameTimeline = maybe(device->createSemaphore({
-        .initialValue = 0,
-        .name = "frameTimelineSemaphore"
-    }));
-    device->_immediateTimeline = maybe(device->createSemaphore({
-        .initialValue = 0,
-        .name = "immediateTimelineSemaphore"
-    }));
+    device->_frameTimeline = maybe(device->createSemaphore({.initialValue = 0,
+                                                            .name = "frameTimelineSemaphore"}));
+    device->_immediateTimeline = maybe(device->createSemaphore({.initialValue = 0,
+                                                                .name = "immediateTimelineSemaphore"}));
     if (!info.frameBasedResourceLifetime) {
-        device->_resourceTimeline = maybe(device->createSemaphore({
-            .initialValue = 0,
-            .name = "resourceTimelineSemaphore"
-        }));
+        device->_resourceTimeline = maybe(device->createSemaphore({.initialValue = 0,
+                                                                   .name = "resourceTimelineSemaphore"}));
     }
 
     VkDescriptorPoolSize poolSizes[] = {
-            { VK_DESCRIPTOR_TYPE_SAMPLER, device->limits().maxBindlessSamplers * FRAMES_IN_FLIGHT },
-            { VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, device->limits().maxBindlessSampledImages * FRAMES_IN_FLIGHT },
-            { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, device->limits().maxBindlessStorageImages * FRAMES_IN_FLIGHT },
-            { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, device->limits().maxBindlessStorageBuffers * FRAMES_IN_FLIGHT },
+        {VK_DESCRIPTOR_TYPE_SAMPLER, device->limits().maxBindlessSamplers * FRAMES_IN_FLIGHT},
+        {VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, device->limits().maxBindlessSampledImages * FRAMES_IN_FLIGHT},
+        {VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, device->limits().maxBindlessStorageImages * FRAMES_IN_FLIGHT},
+        {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, device->limits().maxBindlessStorageBuffers * FRAMES_IN_FLIGHT},
     };
 
     VkDescriptorPoolCreateInfo bindlessPoolCreateInfo = {};
@@ -613,10 +598,10 @@ auto canta::Device::create(CreateInfo info) noexcept -> std::expected<std::uniqu
     bindlessLayoutCreateInfo.flags = VK_DESCRIPTOR_SET_LAYOUT_CREATE_UPDATE_AFTER_BIND_POOL_BIT;
 
     VkDescriptorBindingFlags bindingFlags[4] = {
-            VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT | VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT,
-            VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT | VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT,
-            VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT | VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT,
-            VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT | VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT,
+        VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT | VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT,
+        VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT | VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT,
+        VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT | VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT,
+        VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT | VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT,
     };
 
     VkDescriptorSetLayoutBindingFlagsCreateInfo bindlessExtendedInfo = {};
@@ -628,7 +613,7 @@ auto canta::Device::create(CreateInfo info) noexcept -> std::expected<std::uniqu
     VK_TRY(vkCreateDescriptorSetLayout(device->logicalDevice(), &bindlessLayoutCreateInfo, nullptr, &device->_bindlessLayout));
 
     VkDescriptorSetLayout layouts[FRAMES_IN_FLIGHT] = {};
-    for (auto& layout : layouts)
+    for (auto &layout : layouts)
         layout = device->_bindlessLayout;
 
     VkDescriptorSetAllocateInfo bindlessAllocInfo = {};
@@ -638,33 +623,28 @@ auto canta::Device::create(CreateInfo info) noexcept -> std::expected<std::uniqu
     bindlessAllocInfo.pSetLayouts = layouts;
 
     VK_TRY(vkAllocateDescriptorSets(device->logicalDevice(), &bindlessAllocInfo, device->_bindlessSets.data()));
-    for (auto& set : device->_bindlessSets)
+    for (auto &set : device->_bindlessSets)
         device->setDebugName(VK_OBJECT_TYPE_DESCRIPTOR_SET, (u64)set, "bindless_set");
 
 #ifndef NDEBUG
     if (device->isExtensionEnabled(VK_AMD_BUFFER_MARKER_EXTENSION_NAME)) {
-        for (u32 i = 0; auto& buffer : device->_markerBuffers) {
-            buffer = device->createBuffer({
-                .size = sizeof(u32) * 1000,
-                .usage = BufferUsage::TRANSFER_DST,
-                .type = MemoryType::READBACK,
-                .requiredFlags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT,
-                .persistentlyMapped = true,
-                .name = std::format("marker_buffer_{}", i++)
-            });
+        for (u32 i = 0; auto &buffer : device->_markerBuffers) {
+            buffer = device->createBuffer({.size = sizeof(u32) * 1000,
+                                           .usage = BufferUsage::TRANSFER_DST,
+                                           .type = MemoryType::READBACK,
+                                           .requiredFlags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT,
+                                           .persistentlyMapped = true,
+                                           .name = std::format("marker_buffer_{}", i++)});
         }
     }
 #endif
 
-    device->_immediatePool = maybe(device->createCommandPool({
-        .queueType = QueueType::GRAPHICS
-    }));
-
+    device->_immediatePool = maybe(device->createCommandPool({.queueType = QueueType::GRAPHICS}));
 
     const auto rawDevicePtr = device.get();
     const auto frameBasedResourceLifetimes = info.frameBasedResourceLifetime;
 
-    const auto getResourceTimelineValue = [rawDevicePtr, frameBasedResourceLifetimes] () -> u64 {
+    const auto getResourceTimelineValue = [rawDevicePtr, frameBasedResourceLifetimes]() -> u64 {
         SemaphoreHandle timeline = {};
         if (frameBasedResourceLifetimes)
             timeline = rawDevicePtr->frameSemaphore();
@@ -704,7 +684,7 @@ canta::Device::~Device() {
     _graphicsQueue->_timeline = {};
     _computeQueue->_timeline = {};
     _transferQueue->_timeline = {};
-    _semaphoreList.clearAll([this](auto& resource) {
+    _semaphoreList.clearAll([this](auto &resource) {
         if (resource.isTimeline() && resource.value() != std::numeric_limits<u64>::max()) {
             auto result = resource.signal(std::numeric_limits<u64>::max());
             if (!result) {
@@ -715,7 +695,7 @@ canta::Device::~Device() {
     });
     vkDeviceWaitIdle(_logicalDevice);
 
-    for (auto& buffer : _markerBuffers)
+    for (auto &buffer : _markerBuffers)
         buffer = {};
 
     _descriptorUpdates.clear();
@@ -733,10 +713,10 @@ canta::Device::~Device() {
 
     _immediatePool = {};
 
-    for (const auto& queryPool : _pipelineStatisticsPools)
+    for (const auto &queryPool : _pipelineStatisticsPools)
         vkDestroyQueryPool(_logicalDevice, queryPool, nullptr);
 
-    for (const auto& queryPool : _timestampPools)
+    for (const auto &queryPool : _timestampPools)
         vkDestroyQueryPool(_logicalDevice, queryPool, nullptr);
 
     vmaDestroyAllocator(_allocator);
@@ -781,18 +761,18 @@ auto canta::Device::operator=(canta::Device &&rhs) noexcept -> Device & {
 void canta::Device::gc() {
     if (!_deferredCommands.empty()) {
         _immediatePool.reset();
-        immediate([this] (auto& cmd) {
-            for (auto& deferredCommand : _deferredCommands)
+        immediate([this](auto &cmd) {
+            for (auto &deferredCommand : _deferredCommands)
                 deferredCommand(cmd);
         });
     }
     _pipelineList.clearQueue();
     _imageViewList.clearQueue();
-    _imageList.clearQueue([this](auto& resource) {
+    _imageList.clearQueue([this](auto &resource) {
         _memoryUsage -= (resource.width() * resource.height() * resource.depth() * formatSize(resource.format()));
         resource = {};
     });
-    _bufferList.clearQueue([this](auto& resource) {
+    _bufferList.clearQueue([this](auto &resource) {
         _memoryUsage -= resource.size();
         resource = {};
     });
@@ -820,7 +800,7 @@ auto canta::Device::endFrame() -> f64 {
 }
 
 auto canta::Device::isExtensionEnabled(std::string_view extensionName) -> bool {
-    for (auto& extension : _enabledExtensions) {
+    for (auto &extension : _enabledExtensions) {
         if (strcmp(extension.c_str(), extensionName.data()) == 0)
             return true;
     }
@@ -829,19 +809,20 @@ auto canta::Device::isExtensionEnabled(std::string_view extensionName) -> bool {
 
 auto canta::Device::queue(const QueueType type) -> std::shared_ptr<Queue> {
     switch (type) {
-        case QueueType::GRAPHICS:
-            return _graphicsQueue;
-        case QueueType::COMPUTE:
-            return _computeQueue;
-        case QueueType::TRANSFER:
-            return _transferQueue;
-        default:;
+    case QueueType::GRAPHICS:
+        return _graphicsQueue;
+    case QueueType::COMPUTE:
+        return _computeQueue;
+    case QueueType::TRANSFER:
+        return _transferQueue;
+    default:;
     }
     return _graphicsQueue;
 }
 
 auto canta::Device::queueEnabled(const QueueType type) -> bool {
-    if (type == QueueType::GRAPHICS) return true;
+    if (type == QueueType::GRAPHICS)
+        return true;
     const auto q = queue(type);
     return q->familyIndex() != _graphicsQueue->familyIndex() || q->queueIndex() != _graphicsQueue->queueIndex();
 }
@@ -860,7 +841,7 @@ auto canta::Device::createSwapchain(Swapchain::CreateInfo info) -> std::expected
         return std::unexpected(VulkanError::INVALID_PLATFORM);
 
     auto platformExtent = info.window->extent();
-    swapchain._extent = { platformExtent.x(), platformExtent.y() };
+    swapchain._extent = {platformExtent.x(), platformExtent.y()};
     swapchain._surface = info.window->surface(*this);
     swapchain._selector = info.selector;
 
@@ -910,7 +891,7 @@ auto canta::Device::createCommandPool(CommandPool::CreateInfo info) -> std::expe
     pool._device = this;
     pool._commandBuffers.setLogger(_logger);
 
-    const auto getResourceTimelineValue = [this] () -> u64 {
+    const auto getResourceTimelineValue = [this]() -> u64 {
         SemaphoreHandle timeline = resourceTimeline();
         if (!timeline)
             timeline = frameSemaphore();
@@ -924,15 +905,15 @@ auto canta::Device::createCommandPool(CommandPool::CreateInfo info) -> std::expe
     VkCommandPoolCreateInfo createInfo = {};
     createInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
     switch (info.queueType) {
-        case QueueType::GRAPHICS:
-            createInfo.queueFamilyIndex = _graphicsQueue->familyIndex();
-            break;
-        case QueueType::COMPUTE:
-            createInfo.queueFamilyIndex = _computeQueue->familyIndex();
-            break;
-        case QueueType::TRANSFER:
-            createInfo.queueFamilyIndex = _transferQueue->familyIndex();
-            break;
+    case QueueType::GRAPHICS:
+        createInfo.queueFamilyIndex = _graphicsQueue->familyIndex();
+        break;
+    case QueueType::COMPUTE:
+        createInfo.queueFamilyIndex = _computeQueue->familyIndex();
+        break;
+    case QueueType::TRANSFER:
+        createInfo.queueFamilyIndex = _transferQueue->familyIndex();
+        break;
     }
     auto result = vkCreateCommandPool(logicalDevice(), &createInfo, nullptr, &pool._pool);
     if (result != VK_SUCCESS)
@@ -948,7 +929,7 @@ auto canta::Device::createCommandPool(CommandPool::CreateInfo info) -> std::expe
     return pool;
 }
 
-auto canta::Device::createPipeline(Pipeline::CreateInfo info, const PipelineHandle& oldHandle) -> PipelineHandle {
+auto canta::Device::createPipeline(Pipeline::CreateInfo info, const PipelineHandle &oldHandle) -> PipelineHandle {
     ShaderInterface interface = {};
     std::vector<VkPipelineShaderStageCreateInfo> shaderStages = {};
     std::vector<u8> specializationConstantsData = {};
@@ -974,23 +955,23 @@ auto canta::Device::createPipeline(Pipeline::CreateInfo info, const PipelineHand
         });
     }
 
-    for (auto& spec : info.specializationConstants) {
+    for (auto &spec : info.specializationConstants) {
         if (!spec.name.empty()) {
             if (auto constant = interface.getSpecConstant(spec.name))
                 spec.id = constant->id;
         }
     }
 
-    const auto isGroupSizeSpec = [] (const SpecializationConstant& constant) {
+    const auto isGroupSizeSpec = [](const SpecializationConstant &constant) {
         return constant.name == "x_size" || constant.name == "y_size" || constant.name == "z_size";
     };
 
     // clear duplicate ids from spec constants.
     // final defined is the one that counts
     for (i32 i = 0; i < info.specializationConstants.size(); ++i) {
-        auto& specA = info.specializationConstants[i];
+        auto &specA = info.specializationConstants[i];
         for (u32 j = i + 1; j < info.specializationConstants.size(); ++j) {
-            if (auto& specB = info.specializationConstants[j]; specA.id == specB.id) {
+            if (auto &specB = info.specializationConstants[j]; specA.id == specB.id) {
                 if (isGroupSizeSpec(specA) && !isGroupSizeSpec(specB)) {
                     specB.id += 3;
                 } else if (!isGroupSizeSpec(specA) && isGroupSizeSpec(specB)) {
@@ -1005,34 +986,36 @@ auto canta::Device::createPipeline(Pipeline::CreateInfo info, const PipelineHand
     }
 
     std::optional<ende::math::uint3> localSize;
-    std::ranges::sort(info.specializationConstants, [](const auto& lhs, const auto& rhs) {
+    std::ranges::sort(info.specializationConstants, [](const auto &lhs, const auto &rhs) {
         return lhs.id < rhs.id;
     });
 
-    for (auto& specConstant : info.specializationConstants) {
+    for (auto &specConstant : info.specializationConstants) {
         u32 id = specConstant.id;
 
         if (specConstant.name == "x_size") {
             u32 x = specConstant.value.uintValue;
-            if (!localSize) localSize = {1, 1, 1};
+            if (!localSize)
+                localSize = {1, 1, 1};
             (*localSize)[0] = x;
         } else if (specConstant.name == "y_size") {
             u32 y = specConstant.value.uintValue;
-            if (!localSize) localSize = {1, 1, 1};
+            if (!localSize)
+                localSize = {1, 1, 1};
             (*localSize)[1] = y;
         } else if (specConstant.name == "z_size") {
             u32 z = specConstant.value.uintValue;
-            if (!localSize) localSize = {1, 1, 1};
+            if (!localSize)
+                localSize = {1, 1, 1};
             (*localSize)[2] = z;
         }
 
         specializationMapEntries.push_back(VkSpecializationMapEntry{
             .constantID = id,
             .offset = static_cast<u32>(specializationConstantsData.size()),
-            .size = sizeof(specConstant.value)
-        });
+            .size = sizeof(specConstant.value)});
 
-        auto data = reinterpret_cast<u8*>(&specConstant.value);
+        auto data = reinterpret_cast<u8 *>(&specConstant.value);
         for (u32 i = 0; i < sizeof(specConstant.value); i++) {
             specializationConstantsData.push_back(data[i]);
         }
@@ -1044,13 +1027,13 @@ auto canta::Device::createPipeline(Pipeline::CreateInfo info, const PipelineHand
     specInfo.mapEntryCount = specializationMapEntries.size();
     specInfo.pMapEntries = specializationMapEntries.data();
 
-    const auto attachShader = [&](const ShaderInfo& shaderInfo, const ShaderStage stage) {
+    const auto attachShader = [&](const ShaderInfo &shaderInfo, const ShaderStage stage) {
         auto interfaceInfos = std::to_array({ShaderInterface::CreateInfo{
             .spirv = shaderInfo.spirv,
             .stage = stage,
             .entry = shaderInfo.entry,
         }});
-        auto array = std::to_array({ interface, ShaderInterface::create(interfaceInfos) });
+        auto array = std::to_array({interface, ShaderInterface::create(interfaceInfos)});
         interface = ShaderInterface::merge(array);
 
         for (u32 i = 0; i < info.specializationConstants.size(); i++) {
@@ -1069,7 +1052,7 @@ auto canta::Device::createPipeline(Pipeline::CreateInfo info, const PipelineHand
         const auto result = vkCreateShaderModule(logicalDevice(), &createInfo, nullptr, &module);
         // result != VK_SUCCESS)
         // if (const auto result = vkCreateShaderModule(logicalDevice(), &createInfo, nullptr, &module); result != VK_SUCCESS)
-            // return {};
+        // return {};
 
         if (!info.name.empty())
             setDebugName(VK_OBJECT_TYPE_SHADER_MODULE, reinterpret_cast<u64>(module), std::format("{}::{}", info.name, shaderInfo.entry));
@@ -1127,34 +1110,34 @@ auto canta::Device::createPipeline(Pipeline::CreateInfo info, const PipelineHand
     for (u32 i = 1; i < interface.setCount(); i++) {
         std::vector<VkDescriptorSetLayoutBinding> layoutBindings = {};
         u32 layoutBindingCount = 0;
-        auto& set = interface.getSet(i);
+        auto &set = interface.getSet(i);
         layoutBindings.resize(set.bindingCount);
 
         for (u32 j = 0; j < set.bindingCount; j++) {
-            auto& binding = set.bindings[j];
+            auto &binding = set.bindings[j];
 
-//            if (binding.type == ShaderInterface::BindingType::NONE)
-//                break;
+            //            if (binding.type == ShaderInterface::BindingType::NONE)
+            //                break;
 
             VkDescriptorSetLayoutBinding layoutBinding = {};
 
             layoutBindings[layoutBindingCount].binding = j;
             VkDescriptorType type;
             switch (binding.type) {
-                case ShaderInterface::BindingType::UNIFORM_BUFFER:
-                    type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-                    break;
-                case ShaderInterface::BindingType::SAMPLED_IMAGE:
-                    type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-                    break;
-                case ShaderInterface::BindingType::STORAGE_IMAGE:
-                    type = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-                    break;
-                case ShaderInterface::BindingType::STORAGE_BUFFER:
-                    type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-                    break;
-                default:
-                    type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+            case ShaderInterface::BindingType::UNIFORM_BUFFER:
+                type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+                break;
+            case ShaderInterface::BindingType::SAMPLED_IMAGE:
+                type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+                break;
+            case ShaderInterface::BindingType::STORAGE_IMAGE:
+                type = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+                break;
+            case ShaderInterface::BindingType::STORAGE_BUFFER:
+                type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+                break;
+            default:
+                type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
             }
             layoutBinding.descriptorType = type;
             layoutBinding.descriptorCount = 1;
@@ -1190,9 +1173,8 @@ auto canta::Device::createPipeline(Pipeline::CreateInfo info, const PipelineHand
     pipelineLayoutInfo.pushConstantRangeCount = pushConstantRanges.size();
     pipelineLayoutInfo.pPushConstantRanges = pushConstantRanges.data();
 
-    VkPipelineLayout  pipelineLayout;
+    VkPipelineLayout pipelineLayout;
     VK_TRY(vkCreatePipelineLayout(logicalDevice(), &pipelineLayoutInfo, nullptr, &pipelineLayout));
-
 
     VkPipeline pipeline;
     if (mode == PipelineMode::GRAPHICS) {
@@ -1203,22 +1185,17 @@ auto canta::Device::createPipeline(Pipeline::CreateInfo info, const PipelineHand
         createInfo.pStages = shaderStages.data();
 
         std::vector<VkVertexInputBindingDescription> inputBindings = {};
-        for (auto& binding : info.inputBindings) {
-            inputBindings.push_back({
-                .binding = binding.binding,
-                .stride = binding.stride,
-                .inputRate = static_cast<VkVertexInputRate>(binding.inputRate)
-            });
-
+        for (auto &binding : info.inputBindings) {
+            inputBindings.push_back({.binding = binding.binding,
+                                     .stride = binding.stride,
+                                     .inputRate = static_cast<VkVertexInputRate>(binding.inputRate)});
         }
         std::vector<VkVertexInputAttributeDescription> inputAttributes = {};
-        for (auto& attribute : info.inputAttributes) {
-            inputAttributes.push_back({
-                .location = attribute.location,
-                .binding = attribute.binding,
-                .format = static_cast<VkFormat>(attribute.format),
-                .offset = attribute.offset
-            });
+        for (auto &attribute : info.inputAttributes) {
+            inputAttributes.push_back({.location = attribute.location,
+                                       .binding = attribute.binding,
+                                       .format = static_cast<VkFormat>(attribute.format),
+                                       .offset = attribute.offset});
         }
         VkPipelineVertexInputStateCreateInfo vertexInputState = {};
         vertexInputState.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
@@ -1237,7 +1214,7 @@ auto canta::Device::createPipeline(Pipeline::CreateInfo info, const PipelineHand
 
         renderingCreateInfo.colorAttachmentCount = info.colourFormats.size();
         static_assert(sizeof(VkFormat) == sizeof(Format));
-        renderingCreateInfo.pColorAttachmentFormats = reinterpret_cast<const VkFormat*>(info.colourFormats.data());
+        renderingCreateInfo.pColorAttachmentFormats = reinterpret_cast<const VkFormat *>(info.colourFormats.data());
         if (info.depthFormat != Format::UNDEFINED)
             renderingCreateInfo.depthAttachmentFormat = static_cast<VkFormat>(info.depthFormat);
 
@@ -1306,8 +1283,8 @@ auto canta::Device::createPipeline(Pipeline::CreateInfo info, const PipelineHand
         colourBlendState.blendConstants[3] = 0.f;
 
         VkDynamicState dynamicStates[2] = {
-                VK_DYNAMIC_STATE_VIEWPORT,
-                VK_DYNAMIC_STATE_SCISSOR,
+            VK_DYNAMIC_STATE_VIEWPORT,
+            VK_DYNAMIC_STATE_SCISSOR,
         };
         VkPipelineDynamicStateCreateInfo dynamicStateCreateInfo = {};
         dynamicStateCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
@@ -1332,7 +1309,7 @@ auto canta::Device::createPipeline(Pipeline::CreateInfo info, const PipelineHand
 
         auto result = vkCreateGraphicsPipelines(logicalDevice(), VK_NULL_HANDLE, 1, &createInfo, nullptr, &pipeline);
         if (result != VK_SUCCESS) {
-            for (auto& module : shaderStages)
+            for (auto &module : shaderStages)
                 vkDestroyShaderModule(_logicalDevice, module.module, nullptr);
             return {};
         }
@@ -1348,12 +1325,12 @@ auto canta::Device::createPipeline(Pipeline::CreateInfo info, const PipelineHand
 
         auto result = vkCreateComputePipelines(logicalDevice(), VK_NULL_HANDLE, 1, &createInfo, nullptr, &pipeline);
         if (result != VK_SUCCESS) {
-            for (auto& module : shaderStages)
+            for (auto &module : shaderStages)
                 vkDestroyShaderModule(_logicalDevice, module.module, nullptr);
             return {};
         }
     }
-    for (auto& module : shaderStages)
+    for (auto &module : shaderStages)
         vkDestroyShaderModule(_logicalDevice, module.module, nullptr);
     if (!info.name.empty())
         setDebugName(VK_OBJECT_TYPE_PIPELINE, (u64)pipeline, info.name);
@@ -1450,9 +1427,7 @@ auto canta::Device::createImage(Image::CreateInfo info, ImageHandle oldHandle) -
     handle->_usage = info.usage;
     handle->_layout = ImageLayout::UNDEFINED;
     handle->_name = info.name;
-    handle->_views.push_back(createImageView({
-        .image = &*handle
-    }));
+    handle->_views.push_back(createImageView({.image = &*handle}));
 
     bool isSampled = (info.usage & ImageUsage::SAMPLED) == ImageUsage::SAMPLED;
     bool isStorage = (info.usage & ImageUsage::STORAGE) == ImageUsage::STORAGE;
@@ -1460,11 +1435,9 @@ auto canta::Device::createImage(Image::CreateInfo info, ImageHandle oldHandle) -
     updateBindlessImage(handle->defaultView().index(), handle->defaultView(), isSampled, isStorage);
     if (info.allocateMipViews) {
         for (u32 mip = 1; mip < info.mipLevels; mip++) {
-            handle->_views.push_back(createImageView({
-                .image = &*handle,
-                .mipLevel = mip,
-                .levelCount = 1
-            }));
+            handle->_views.push_back(createImageView({.image = &*handle,
+                                                      .mipLevel = mip,
+                                                      .levelCount = 1}));
             updateBindlessImage(handle->_views.back().index(), handle->_views.back(), isSampled, isStorage);
         }
     }
@@ -1508,9 +1481,7 @@ auto canta::Device::registerImage(Image::CreateInfo info, VkImage image, VkImage
     handle->_usage = info.usage;
     handle->_layout = ImageLayout::UNDEFINED;
     handle->_name = info.name;
-    handle->_views.push_back(createImageView({
-        .image = &*handle
-    }));
+    handle->_views.push_back(createImageView({.image = &*handle}));
 
     bool isSampled = (info.usage & ImageUsage::SAMPLED) == ImageUsage::SAMPLED;
     bool isStorage = (info.usage & ImageUsage::STORAGE) == ImageUsage::STORAGE;
@@ -1529,28 +1500,28 @@ auto canta::Device::createImageView(ImageView::CreateInfo info, canta::ImageView
     auto type = info.type;
     if (type == ImageViewType::AUTO) {
         switch (info.image->_type) {
-            case ImageType::IMAGE1D:
-                if (info.image->layers() > 1)
-                    type = ImageViewType::VIEW1D_ARRAY;
-                else
-                    type = ImageViewType::VIEW1D;
-                break;
-            case ImageType::IMAGE2D:
-                if (info.image->layers() == 6)
-                    type = ImageViewType::VIEW_CUBE;
-                else if (info.image->layers() > 1)
-                    type = ImageViewType::VIEW2D_ARRAY;
-                else
-                    type = ImageViewType::VIEW2D;
-                break;
-            case ImageType::IMAGE3D:
-                if (info.image->layers() > 1)
-                    type = ImageViewType::VIEW3D_ARRAY;
-                else
-                    type = ImageViewType::VIEW3D;
-                break;
-            case ImageType::AUTO:
-                break;
+        case ImageType::IMAGE1D:
+            if (info.image->layers() > 1)
+                type = ImageViewType::VIEW1D_ARRAY;
+            else
+                type = ImageViewType::VIEW1D;
+            break;
+        case ImageType::IMAGE2D:
+            if (info.image->layers() == 6)
+                type = ImageViewType::VIEW_CUBE;
+            else if (info.image->layers() > 1)
+                type = ImageViewType::VIEW2D_ARRAY;
+            else
+                type = ImageViewType::VIEW2D;
+            break;
+        case ImageType::IMAGE3D:
+            if (info.image->layers() > 1)
+                type = ImageViewType::VIEW3D_ARRAY;
+            else
+                type = ImageViewType::VIEW3D;
+            break;
+        case ImageType::AUTO:
+            break;
         }
     }
 
@@ -1612,15 +1583,15 @@ auto canta::Device::createBuffer(Buffer::CreateInfo info, BufferHandle oldHandle
     allocInfo.preferredFlags = info.preferredFlags;
 
     switch (info.type) {
-        case MemoryType::DEVICE:
-            info.persistentlyMapped = false;
-            break;
-        case MemoryType::STAGING:
-            allocInfo.flags |= VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
-            break;
-        case MemoryType::READBACK:
-            allocInfo.flags |= VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT;
-            break;
+    case MemoryType::DEVICE:
+        info.persistentlyMapped = false;
+        break;
+    case MemoryType::STAGING:
+        allocInfo.flags |= VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
+        break;
+    case MemoryType::READBACK:
+        allocInfo.flags |= VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT;
+        break;
     }
 
     VK_TRY(vmaCreateBuffer(_allocator, &createInfo, &allocInfo, &buffer, &allocation, nullptr));
@@ -1702,15 +1673,14 @@ auto canta::Device::createSampler(Sampler::CreateInfo info, SamplerHandle oldHan
 }
 
 auto canta::Device::resizeBuffer(canta::BufferHandle handle, u32 newSize) -> BufferHandle {
-    return createBuffer({
-        .size = newSize,
-        .usage = handle->usage(),
-        .type = handle->type(),
-        .requiredFlags = handle->_requiredFlags,
-        .preferredFlags = handle->_preferredFlags,
-        .persistentlyMapped = handle->persistentlyMapped(),
-        .name = handle->name()
-    }, handle);
+    return createBuffer({.size = newSize,
+                         .usage = handle->usage(),
+                         .type = handle->type(),
+                         .requiredFlags = handle->_requiredFlags,
+                         .preferredFlags = handle->_preferredFlags,
+                         .persistentlyMapped = handle->persistentlyMapped(),
+                         .name = handle->name()},
+                        handle);
 }
 
 auto canta::Device::swapImageBindings(canta::ImageHandle oldHandle, canta::ImageHandle newHandle) -> ImageHandle {
@@ -1774,7 +1744,7 @@ void canta::Device::updateBindlessDescriptors() {
     auto frameVal = frameValue();
 
     for (auto it = _descriptorUpdates.begin(); it != _descriptorUpdates.end(); ++it) {
-        auto& update = *it;
+        auto &update = *it;
         if (update.imageView) {
             VkWriteDescriptorSet descriptorWrite[2] = {};
             i32 writeNum = 0;
@@ -1846,7 +1816,6 @@ void canta::Device::updateBindlessDescriptors() {
 
             vkUpdateDescriptorSets(logicalDevice(), 1, &descriptorWrite, 0, nullptr);
 
-
             logger().info("FrameIndex({}): Sampler bound to index {}", flyingIndex(), update.index);
         }
         // update.frames--;
@@ -1891,17 +1860,14 @@ auto canta::Device::createTimer() -> Timer {
     timer._index = queryIndex;
     timer._value = 0;
 
-
     logger().info("Timer created in pool {}, index {}", poolIndex, queryIndex);
 
     return timer;
 }
 
 void canta::Device::destroyTimer(u32 poolIndex, u32 queryIndex) {
-    _freeTimers.push_back({
-        .poolIndex = poolIndex,
-        .queryIndex = queryIndex
-    });
+    _freeTimers.push_back({.poolIndex = poolIndex,
+                           .queryIndex = queryIndex});
     logger().info("Timer in pool {}, index {} destroyed", poolIndex, queryIndex);
 }
 
@@ -1925,17 +1891,17 @@ auto canta::Device::createPipelineStatistics() -> PipelineStatistics {
         createInfo.queryType = VK_QUERY_TYPE_PIPELINE_STATISTICS;
         createInfo.queryCount = poolQueryCount * 11;
         createInfo.pipelineStatistics =
-                VK_QUERY_PIPELINE_STATISTIC_INPUT_ASSEMBLY_VERTICES_BIT |
-                VK_QUERY_PIPELINE_STATISTIC_INPUT_ASSEMBLY_PRIMITIVES_BIT |
-                VK_QUERY_PIPELINE_STATISTIC_VERTEX_SHADER_INVOCATIONS_BIT |
-                VK_QUERY_PIPELINE_STATISTIC_GEOMETRY_SHADER_INVOCATIONS_BIT |
-                VK_QUERY_PIPELINE_STATISTIC_GEOMETRY_SHADER_PRIMITIVES_BIT |
-                VK_QUERY_PIPELINE_STATISTIC_CLIPPING_INVOCATIONS_BIT |
-                VK_QUERY_PIPELINE_STATISTIC_CLIPPING_PRIMITIVES_BIT |
-                VK_QUERY_PIPELINE_STATISTIC_FRAGMENT_SHADER_INVOCATIONS_BIT |
-                VK_QUERY_PIPELINE_STATISTIC_TESSELLATION_CONTROL_SHADER_PATCHES_BIT |
-                VK_QUERY_PIPELINE_STATISTIC_TESSELLATION_EVALUATION_SHADER_INVOCATIONS_BIT |
-                VK_QUERY_PIPELINE_STATISTIC_COMPUTE_SHADER_INVOCATIONS_BIT;
+            VK_QUERY_PIPELINE_STATISTIC_INPUT_ASSEMBLY_VERTICES_BIT |
+            VK_QUERY_PIPELINE_STATISTIC_INPUT_ASSEMBLY_PRIMITIVES_BIT |
+            VK_QUERY_PIPELINE_STATISTIC_VERTEX_SHADER_INVOCATIONS_BIT |
+            VK_QUERY_PIPELINE_STATISTIC_GEOMETRY_SHADER_INVOCATIONS_BIT |
+            VK_QUERY_PIPELINE_STATISTIC_GEOMETRY_SHADER_PRIMITIVES_BIT |
+            VK_QUERY_PIPELINE_STATISTIC_CLIPPING_INVOCATIONS_BIT |
+            VK_QUERY_PIPELINE_STATISTIC_CLIPPING_PRIMITIVES_BIT |
+            VK_QUERY_PIPELINE_STATISTIC_FRAGMENT_SHADER_INVOCATIONS_BIT |
+            VK_QUERY_PIPELINE_STATISTIC_TESSELLATION_CONTROL_SHADER_PATCHES_BIT |
+            VK_QUERY_PIPELINE_STATISTIC_TESSELLATION_EVALUATION_SHADER_INVOCATIONS_BIT |
+            VK_QUERY_PIPELINE_STATISTIC_COMPUTE_SHADER_INVOCATIONS_BIT;
         VkQueryPool pool;
         VK_TRY(vkCreateQueryPool(logicalDevice(), &createInfo, nullptr, &pool));
         vkResetQueryPool(logicalDevice(), pool, 0, createInfo.queryCount);
@@ -1957,10 +1923,8 @@ auto canta::Device::createPipelineStatistics() -> PipelineStatistics {
 }
 
 void canta::Device::destroyPipelineStatistics(u32 poolIndex, u32 queryIndex) {
-    _freePipelineStats.push_back({
-        .poolIndex = poolIndex,
-        .queryIndex = queryIndex
-    });
+    _freePipelineStats.push_back({.poolIndex = poolIndex,
+                                  .queryIndex = queryIndex});
     logger().info("Pipeline statistics destroyed");
 }
 
@@ -1975,8 +1939,7 @@ auto canta::Device::resourceStats() const -> ResourceStats {
         .samplerCount = _samplerList.used(),
         .samplerAllocated = _samplerList.allocated(),
         .timestampQueryPools = static_cast<u32>(_timestampPools.size()),
-        .pipelineStatsPools = static_cast<u32>(_pipelineStatisticsPools.size())
-    };
+        .pipelineStatsPools = static_cast<u32>(_pipelineStatisticsPools.size())};
 }
 
 auto canta::Device::memoryUsage() const -> MemoryUsage {
@@ -1984,7 +1947,7 @@ auto canta::Device::memoryUsage() const -> MemoryUsage {
     VmaBudget budgets[_memoryProperties.memoryProperties.memoryHeapCount];
     vmaGetHeapBudgets(_allocator, budgets);
 
-    for (u32 i = 0; auto& budget : budgets) {
+    for (u32 i = 0; auto &budget : budgets) {
         if (_memoryProperties.memoryProperties.memoryHeaps[i++].flags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) {
             usage.budget += budget.budget;
             usage.usage += budget.usage;
@@ -1997,27 +1960,26 @@ auto canta::Device::memoryUsage() const -> MemoryUsage {
 auto canta::Device::softMemoryUsage() const -> MemoryUsage {
     return {
         .budget = _memoryLimit,
-        .usage = _memoryUsage
-    };
+        .usage = _memoryUsage};
 }
 
 void canta::Device::startFrameCapture() const {
 #ifdef CANTA_RENDERDOC
     if (_renderDocAPI)
-        static_cast<RENDERDOC_API_1_6_0*>(_renderDocAPI)->StartFrameCapture(nullptr, nullptr);
+        static_cast<RENDERDOC_API_1_6_0 *>(_renderDocAPI)->StartFrameCapture(nullptr, nullptr);
 #endif
 }
 
 void canta::Device::endFrameCapture() const {
 #ifdef CANTA_RENDERDOC
     if (_renderDocAPI)
-        static_cast<RENDERDOC_API_1_6_0*>(_renderDocAPI)->EndFrameCapture(nullptr, nullptr);
+        static_cast<RENDERDOC_API_1_6_0 *>(_renderDocAPI)->EndFrameCapture(nullptr, nullptr);
 #endif
 }
 
 void canta::Device::triggerCapture() const {
 #ifdef CANTA_RENDERDOC
     if (_renderDocAPI)
-        static_cast<RENDERDOC_API_1_6_0*>(_renderDocAPI)->TriggerCapture();
+        static_cast<RENDERDOC_API_1_6_0 *>(_renderDocAPI)->TriggerCapture();
 #endif
 }

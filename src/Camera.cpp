@@ -78,30 +78,27 @@ auto canta::Camera::gpuCamera() const -> GPUCamera {
         .position = _position,
         .near = _near,
         .far = _far,
-        .frustum = frustum
-    };
+        .frustum = frustum};
 }
 
 auto canta::Camera::frustumCorners() const -> std::array<ende::math::float4, 8> {
     const auto inverseViewProjection = (ende::math::perspective(_fov, _width / _height, _near, _far) * view()).inverse();
     std::array<ende::math::float4, 8> corners = {};
     std::array offsets = {
-            ende::math::float2(-1,  1), ende::math::float2(-1, -1), ende::math::float2(1, -1), ende::math::float2(1,  1),
-            ende::math::float2(1,  1), ende::math::float2(-1,  1), ende::math::float2(-1, -1), ende::math::float2(1, -1)
-    };
+        ende::math::float2(-1, 1), ende::math::float2(-1, -1), ende::math::float2(1, -1), ende::math::float2(1, 1),
+        ende::math::float2(1, 1), ende::math::float2(-1, 1), ende::math::float2(-1, -1), ende::math::float2(1, -1)};
     for (u32 i = 0; i < 8; i++) {
         const auto pt = inverseViewProjection * (ende::math::float4{
-            offsets[i].x(),
-            offsets[i].y(),
-            i > 4 ? 0.f : 1.f,
-            1
-        });
+                                                    offsets[i].x(),
+                                                    offsets[i].y(),
+                                                    i > 4 ? 0.f : 1.f,
+                                                    1});
         corners[i] = pt / pt.w();
     }
     return corners;
 }
 
-void canta::Camera::lookAt(const ende::math::float3& dst) {
+void canta::Camera::lookAt(const ende::math::float3 &dst) {
     const auto up = ende::math::float3({0, 1, 0});
 
     const auto forwards = (dst - _position).unit();

@@ -3,24 +3,21 @@
 
 namespace canta {
 
-    class Device;
-    class CommandQueueDebugger {
-    public:
-
-        struct CreateInfo {
-            Device* device;
-        };
-
-        static auto create(const CreateInfo& info) -> CommandQueueDebugger;
-
-        void render();
-
-    private:
-
-        Device* _device;
-
+class Device;
+class CommandQueueDebugger {
+  public:
+    struct CreateInfo {
+        Device *device;
     };
 
-}
+    static auto create(const CreateInfo &info) -> CommandQueueDebugger;
 
-#endif //CANTA_COMMANDQUEUEDEBUGGER_H
+    void render();
+
+  private:
+    Device *_device;
+};
+
+} // namespace canta
+
+#endif // CANTA_COMMANDQUEUEDEBUGGER_H

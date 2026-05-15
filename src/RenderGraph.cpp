@@ -1,68 +1,68 @@
 #include <Canta/Enums.h>
-#include <Canta/RenderGraph.h>
 #include <Canta/ImGuiContext.h>
+#include <Canta/RenderGraph.h>
 #include <expected>
 
 constexpr auto defaultPassStage(const canta::RenderPass::Type type) -> canta::PipelineStage {
     switch (type) {
-        case canta::RenderPass::Type::GRAPHICS:
-            return canta::PipelineStage::ALL_GRAPHICS;
-        case canta::RenderPass::Type::COMPUTE:
-            return canta::PipelineStage::COMPUTE_SHADER;
-        case canta::RenderPass::Type::TRANSFER:
-            return canta::PipelineStage::TRANSFER;
-        case canta::RenderPass::Type::HOST:
-            return canta::PipelineStage::HOST;
-        default: ;
+    case canta::RenderPass::Type::GRAPHICS:
+        return canta::PipelineStage::ALL_GRAPHICS;
+    case canta::RenderPass::Type::COMPUTE:
+        return canta::PipelineStage::COMPUTE_SHADER;
+    case canta::RenderPass::Type::TRANSFER:
+        return canta::PipelineStage::TRANSFER;
+    case canta::RenderPass::Type::HOST:
+        return canta::PipelineStage::HOST;
+    default:;
     }
     return canta::PipelineStage::ALL_COMMANDS;
 }
 
 constexpr auto checkPassStageMatch(const canta::RenderPass::Type type, const canta::PipelineStage stage) -> bool {
     switch (type) {
-        case canta::RenderPass::Type::GRAPHICS:
-            switch (stage) {
-                case canta::PipelineStage::TOP:
-                    return true;
-                default: ;
-            }
-            break;
-        case canta::RenderPass::Type::COMPUTE:
-            switch (stage) {
-                case canta::PipelineStage::COMPUTE_SHADER:
-                    return true;
-                default: ;
-            }
-            break;
-        case canta::RenderPass::Type::TRANSFER:
-            switch (stage) {
-                case canta::PipelineStage::COMPUTE_SHADER:
-                    return true;
-                default: ;
-            }
-            break;
-        case canta::RenderPass::Type::HOST:
-            if (stage != canta::PipelineStage::HOST) return false;
-            break;
-        default: ;
+    case canta::RenderPass::Type::GRAPHICS:
+        switch (stage) {
+        case canta::PipelineStage::TOP:
+            return true;
+        default:;
+        }
+        break;
+    case canta::RenderPass::Type::COMPUTE:
+        switch (stage) {
+        case canta::PipelineStage::COMPUTE_SHADER:
+            return true;
+        default:;
+        }
+        break;
+    case canta::RenderPass::Type::TRANSFER:
+        switch (stage) {
+        case canta::PipelineStage::COMPUTE_SHADER:
+            return true;
+        default:;
+        }
+        break;
+    case canta::RenderPass::Type::HOST:
+        if (stage != canta::PipelineStage::HOST)
+            return false;
+        break;
+    default:;
     }
     return false;
 }
 
 auto canta::mapGraphErrorToRenderGraphError(const ende::graph::Error error) -> RenderGraphError {
     switch (error) {
-        case ende::graph::Error::IS_CYCLICAL:
-            return RenderGraphError::IS_CYCLICAL;
-        case ende::graph::Error::INVALID_VERTEX:
-            return RenderGraphError::INVALID_PASS;
-        case ende::graph::Error::EDGE_TYPE_DOESNT_MATCH:
-        case ende::graph::Error::INVALID_EDGE:
-            return RenderGraphError::INVALID_RESOURCE;
-        default:
-            return RenderGraphError::IS_CYCLICAL;
+    case ende::graph::Error::IS_CYCLICAL:
+        return RenderGraphError::IS_CYCLICAL;
+    case ende::graph::Error::INVALID_VERTEX:
+        return RenderGraphError::INVALID_PASS;
+    case ende::graph::Error::EDGE_TYPE_DOESNT_MATCH:
+    case ende::graph::Error::INVALID_EDGE:
+        return RenderGraphError::INVALID_RESOURCE;
+    default:
+        return RenderGraphError::IS_CYCLICAL;
     }
 }
-
 
 auto canta::RenderPass::clone() -> RenderPass {
     return *this;
@@ -72,8 +72,7 @@ void canta::RenderPass::unpack(PushData &dst, i32 &i, const BufferIndex &index) 
     _deferredPushConstants.push_back(DeferredPushConstant{
         .type = 0,
         .value = index,
-        .offset = i
-    });
+        .offset = i});
     i += sizeof(u64);
     dst.size += sizeof(u64);
     assert(i <= 128);
@@ -102,7 +101,7 @@ void canta::RenderPass::unpack(PushData &dst, i32 &i, const ImageHandle &handle)
 
 void unpack(canta::RenderPass::PushData &dst, i32 &i, const canta::BufferHandle &handle) {
     const auto addr = handle->address();
-    auto* data = reinterpret_cast<const u8*>(&addr);
+    auto *data = reinterpret_cast<const u8 *>(&addr);
     for (auto j = 0; j < sizeof(addr); j++) {
         dst.data[i + j] = data[j];
     }
@@ -112,7 +111,7 @@ void unpack(canta::RenderPass::PushData &dst, i32 &i, const canta::BufferHandle 
 
 void unpack(canta::RenderPass::PushData &dst, i32 &i, const canta::ImageHandle &handle) {
     const auto id = handle->defaultView().index();
-    auto* data = reinterpret_cast<const u8*>(&id);
+    auto *data = reinterpret_cast<const u8 *>(&id);
     for (auto j = 0; j < sizeof(id); j++) {
         dst.data[i + j] = data[j];
     }
@@ -133,7 +132,7 @@ auto canta::RenderPass::setPipeline(const PipelineHandle &pipeline) -> RenderPas
 //     return *this;
 // }
 
-auto canta::RenderPass::setCallback(const std::function<std::expected<bool, RenderGraphError>(CommandHandle, RenderGraph&, const PushData&)> &callback) -> RenderPass & {
+auto canta::RenderPass::setCallback(const std::function<std::expected<bool, RenderGraphError>(CommandHandle, RenderGraph &, const PushData &)> &callback) -> RenderPass & {
     _callback = callback;
     return *this;
 }
@@ -148,11 +147,11 @@ auto canta::RenderPass::run(RenderGraph &graph, CommandHandle commands) const ->
         auto depthAttachment = _renderingDepthAttachment;
 
         for (u32 attachmentIndex = 0; attachmentIndex < colourAttachments.size(); attachmentIndex++) {
-            auto& attachment = _colourAttachments[attachmentIndex];
-            auto& renderingAttachment = colourAttachments[attachmentIndex];
+            auto &attachment = _colourAttachments[attachmentIndex];
+            auto &renderingAttachment = colourAttachments[attachmentIndex];
 
             if (!renderingAttachment.image) {
-                const auto image = maybe(graph.getImage({ .index = attachment.index }));
+                const auto image = maybe(graph.getImage({.index = attachment.index}));
 
                 renderingAttachment.image = image;
             }
@@ -166,13 +165,12 @@ auto canta::RenderPass::run(RenderGraph &graph, CommandHandle commands) const ->
         commands->beginRendering(beginInfo);
     }
 
-
     const auto pushData = maybe(resolvePushConstants(graph, _pushData, _deferredPushConstants));
     if (_pipeline)
         commands->bindPipeline(_pipeline);
     try {
         maybe(_callback(commands, graph, pushData));
-    } catch (std::exception& e) {
+    } catch (std::exception &e) {
         return std::unexpected(RenderGraphError::PASS_RUN);
     }
     if (_type == Type::GRAPHICS && (_pipeline || _manualPipeline))
@@ -197,8 +195,8 @@ auto canta::RenderPass::outputResourceIndex(u32 i) const -> u32 {
     }
 }
 
-auto canta::RenderPass::resolvePushConstants(const RenderGraph& graph, PushData data, const std::span<const DeferredPushConstant> deferredConstants) -> std::expected<PushData, RenderGraphError> {
-    for (const auto& deferredConstant : deferredConstants) {
+auto canta::RenderPass::resolvePushConstants(const RenderGraph &graph, PushData data, const std::span<const DeferredPushConstant> deferredConstants) -> std::expected<PushData, RenderGraphError> {
+    for (const auto &deferredConstant : deferredConstants) {
         auto offset = deferredConstant.offset;
         if (deferredConstant.type == 0)
             ::unpack(data, offset, maybe(graph.getBuffer(std::get<BufferIndex>(deferredConstant.value))));
@@ -209,46 +207,45 @@ auto canta::RenderPass::resolvePushConstants(const RenderGraph& graph, PushData 
 }
 
 void canta::RenderPass::mergeAccesses() {
-    const auto hasRead = [] (const ResourceAccess &access) -> bool {
+    const auto hasRead = [](const ResourceAccess &access) -> bool {
         return (access.access & Access::INDIRECT) == Access::INDIRECT ||
-            (access.access & Access::INDEX_READ) == Access::INDEX_READ ||
-            (access.access & Access::VERTEX_ATTRIBUTE_READ) == Access::VERTEX_ATTRIBUTE_READ ||
-            (access.access & Access::UNIFORM) == Access::UNIFORM ||
-            (access.access & Access::INPUT_ATTACHMENT) == Access::INPUT_ATTACHMENT ||
-            (access.access & Access::SHADER_READ) == Access::SHADER_READ ||
-            (access.access & Access::COLOUR_READ) == Access::COLOUR_READ ||
-            (access.access & Access::DEPTH_STENCIL_READ) == Access::DEPTH_STENCIL_READ ||
-            (access.access & Access::TRANSFER_READ) == Access::TRANSFER_READ ||
-            (access.access & Access::HOST_READ) == Access::HOST_READ ||
-            (access.access & Access::MEMORY_READ) == Access::MEMORY_READ ||
-            (access.access & Access::TRANSFORM_FEEDBACK_COUNTER_READ) == Access::TRANSFORM_FEEDBACK_COUNTER_READ ||
-            (access.access & Access::CONDITIONAL_RENDERING_READ) == Access::CONDITIONAL_RENDERING_READ ||
-            (access.access & Access::COLOUR_READ_NONCOHERENT) == Access::COLOUR_READ_NONCOHERENT ||
-            (access.access & Access::ACCELERATION_STRUCTURE_READ) == Access::ACCELERATION_STRUCTURE_READ ||
-            (access.access & Access::FRAGMENT_DENSITY_MAP_READ) == Access::FRAGMENT_DENSITY_MAP_READ ||
-            (access.access & Access::FRAGMENT_SHADING_RATE_READ) == Access::FRAGMENT_SHADING_RATE_READ;
+               (access.access & Access::INDEX_READ) == Access::INDEX_READ ||
+               (access.access & Access::VERTEX_ATTRIBUTE_READ) == Access::VERTEX_ATTRIBUTE_READ ||
+               (access.access & Access::UNIFORM) == Access::UNIFORM ||
+               (access.access & Access::INPUT_ATTACHMENT) == Access::INPUT_ATTACHMENT ||
+               (access.access & Access::SHADER_READ) == Access::SHADER_READ ||
+               (access.access & Access::COLOUR_READ) == Access::COLOUR_READ ||
+               (access.access & Access::DEPTH_STENCIL_READ) == Access::DEPTH_STENCIL_READ ||
+               (access.access & Access::TRANSFER_READ) == Access::TRANSFER_READ ||
+               (access.access & Access::HOST_READ) == Access::HOST_READ ||
+               (access.access & Access::MEMORY_READ) == Access::MEMORY_READ ||
+               (access.access & Access::TRANSFORM_FEEDBACK_COUNTER_READ) == Access::TRANSFORM_FEEDBACK_COUNTER_READ ||
+               (access.access & Access::CONDITIONAL_RENDERING_READ) == Access::CONDITIONAL_RENDERING_READ ||
+               (access.access & Access::COLOUR_READ_NONCOHERENT) == Access::COLOUR_READ_NONCOHERENT ||
+               (access.access & Access::ACCELERATION_STRUCTURE_READ) == Access::ACCELERATION_STRUCTURE_READ ||
+               (access.access & Access::FRAGMENT_DENSITY_MAP_READ) == Access::FRAGMENT_DENSITY_MAP_READ ||
+               (access.access & Access::FRAGMENT_SHADING_RATE_READ) == Access::FRAGMENT_SHADING_RATE_READ;
     };
 
-    const auto hasWrite = [] (const ResourceAccess &access) -> bool {
+    const auto hasWrite = [](const ResourceAccess &access) -> bool {
         return (access.access & Access::SHADER_WRITE) == Access::SHADER_WRITE ||
-            (access.access & Access::COLOUR_WRITE) == Access::COLOUR_WRITE ||
-            (access.access & Access::DEPTH_STENCIL_WRITE) == Access::DEPTH_STENCIL_WRITE ||
-            (access.access & Access::TRANSFER_WRITE) == Access::TRANSFER_WRITE ||
-            (access.access & Access::HOST_WRITE) == Access::HOST_WRITE ||
-            (access.access & Access::MEMORY_WRITE) == Access::MEMORY_WRITE ||
-            (access.access & Access::TRANSFORM_FEEDBACK_WRITE) == Access::TRANSFORM_FEEDBACK_WRITE ||
-            (access.access & Access::TRANSFORM_FEEDBACK_COUNTER_WRITE) == Access::TRANSFORM_FEEDBACK_COUNTER_WRITE ||
-            (access.access & Access::ACCELERATION_STRUCTURE_WRITE) == Access::ACCELERATION_STRUCTURE_WRITE;
+               (access.access & Access::COLOUR_WRITE) == Access::COLOUR_WRITE ||
+               (access.access & Access::DEPTH_STENCIL_WRITE) == Access::DEPTH_STENCIL_WRITE ||
+               (access.access & Access::TRANSFER_WRITE) == Access::TRANSFER_WRITE ||
+               (access.access & Access::HOST_WRITE) == Access::HOST_WRITE ||
+               (access.access & Access::MEMORY_WRITE) == Access::MEMORY_WRITE ||
+               (access.access & Access::TRANSFORM_FEEDBACK_WRITE) == Access::TRANSFORM_FEEDBACK_WRITE ||
+               (access.access & Access::TRANSFORM_FEEDBACK_COUNTER_WRITE) == Access::TRANSFORM_FEEDBACK_COUNTER_WRITE ||
+               (access.access & Access::ACCELERATION_STRUCTURE_WRITE) == Access::ACCELERATION_STRUCTURE_WRITE;
     };
-
 
     for (i32 accessIndex = 0; accessIndex < _accesses.size(); accessIndex++) {
-        auto& access = _accesses[accessIndex];
+        auto &access = _accesses[accessIndex];
 
         const auto writer = hasWrite(access);
 
         for (i32 nextIndex = accessIndex + 1; nextIndex < _accesses.size(); nextIndex++) {
-            auto& nextAccess = _accesses[nextIndex];
+            auto &nextAccess = _accesses[nextIndex];
 
             if (access.index == nextAccess.index) {
 
@@ -261,13 +258,12 @@ void canta::RenderPass::mergeAccesses() {
                 _accesses.erase(_accesses.begin() + nextIndex--);
             }
         }
-
     }
 }
 
 canta::PassBuilder::PassBuilder(RenderGraph *graph, const u32 index) : _graph(graph), _vertexIndex(index) {}
 
-auto canta::PassBuilder::pass() const -> RenderPass& {
+auto canta::PassBuilder::pass() const -> RenderPass & {
     return _graph->getVertices()[_vertexIndex];
 }
 
@@ -288,8 +284,7 @@ auto canta::PassBuilder::read(const BufferIndex index, const Access access, cons
         .id = index.id,
         .index = index.index,
         .access = access,
-        .stage = stage
-    });
+        .stage = stage});
     return _graph->getBufferInfo(index);
 }
 
@@ -314,8 +309,7 @@ auto canta::PassBuilder::write(const BufferIndex index, const Access access, con
         .id = alias.id,
         .index = alias.index,
         .access = access,
-        .stage = stage
-    });
+        .stage = stage});
     return _graph->getBufferInfo(index);
 }
 
@@ -337,8 +331,7 @@ void canta::PassBuilder::unpack(RenderPass::PushData &dst, i32 &i, const BufferI
     pass()._deferredPushConstants.push_back(RenderPass::DeferredPushConstant{
         .type = 0,
         .value = index,
-        .offset = i
-    });
+        .offset = i});
     i += sizeof(u64);
     dst.size += sizeof(u64);
     assert(i <= 128);
@@ -365,54 +358,55 @@ void canta::PassBuilder::unpack(RenderPass::PushData &dst, i32 &i, const ImageHa
     unpack(dst, i, id);
 }
 
-void canta::PassBuilder::unpack(RenderPass::PushData& dst, i32& i, const Read<ImageIndex>& image) {
+void canta::PassBuilder::unpack(RenderPass::PushData &dst, i32 &i, const Read<ImageIndex> &image) {
     addStorageImageRead(image.resource);
     unpack(dst, i, image.resource);
 }
 
-void canta::PassBuilder::unpack(RenderPass::PushData& dst, i32& i, const Read<BufferIndex>& buffer) {
+void canta::PassBuilder::unpack(RenderPass::PushData &dst, i32 &i, const Read<BufferIndex> &buffer) {
     addStorageBufferRead(buffer.resource);
     unpack(dst, i, buffer.resource);
 }
 
-void canta::PassBuilder::unpack(RenderPass::PushData& dst, i32& i, const Write<ImageIndex>& image) {
+void canta::PassBuilder::unpack(RenderPass::PushData &dst, i32 &i, const Write<ImageIndex> &image) {
     addStorageImageWrite(image.resource);
     unpack(dst, i, image.resource);
 }
 
-void canta::PassBuilder::unpack(RenderPass::PushData& dst, i32& i, const Write<BufferIndex>& buffer) {
+void canta::PassBuilder::unpack(RenderPass::PushData &dst, i32 &i, const Write<BufferIndex> &buffer) {
     addStorageBufferWrite(buffer.resource);
     unpack(dst, i, buffer.resource);
 }
 
-void canta::PassBuilder::unpack(RenderPass::PushData& dst, i32& i, const ReadWrite<ImageIndex>& image) {
+void canta::PassBuilder::unpack(RenderPass::PushData &dst, i32 &i, const ReadWrite<ImageIndex> &image) {
     addStorageImageRead(image.resource);
     addStorageImageWrite(image.resource);
     unpack(dst, i, image.resource);
 }
 
-void canta::PassBuilder::unpack(RenderPass::PushData& dst, i32& i, const ReadWrite<BufferIndex>& buffer) {
+void canta::PassBuilder::unpack(RenderPass::PushData &dst, i32 &i, const ReadWrite<BufferIndex> &buffer) {
     addStorageBufferRead(buffer.resource);
     addStorageBufferWrite(buffer.resource);
     unpack(dst, i, buffer.resource);
 }
 
-auto canta::PassBuilder::setCallback(const std::function<std::expected<bool, RenderGraphError>(CommandHandle, RenderGraph &, const RenderPass::PushData &)> &callback) -> PassBuilder& {
+auto canta::PassBuilder::setCallback(const std::function<std::expected<bool, RenderGraphError>(CommandHandle, RenderGraph &, const RenderPass::PushData &)> &callback) -> PassBuilder & {
     pass().setCallback(callback);
     return *this;
 }
 
 // use in builder to store error to be returned at end of chain.
-#define STORE_ERROR(opt, expr)\
-    ({\
-    auto&& tmp = (expr);\
-    if (!tmp.has_value())\
-    (opt) = tmp.error();\
-    std::move(tmp.value());\
+#define STORE_ERROR(opt, expr)   \
+    ({                           \
+        auto &&tmp = (expr);     \
+        if (!tmp.has_value())    \
+            (opt) = tmp.error(); \
+        std::move(tmp.value());  \
     })
 
-auto canta::PassBuilder::addColourRead(const ImageIndex index) -> PassBuilder& {
-    if (_error.has_value()) return *this;
+auto canta::PassBuilder::addColourRead(const ImageIndex index) -> PassBuilder & {
+    if (_error.has_value())
+        return *this;
 
     auto info = *read(index, Access::COLOUR_READ, PipelineStage::COLOUR_OUTPUT, ImageLayout::COLOUR_ATTACHMENT);
 
@@ -427,8 +421,9 @@ auto canta::PassBuilder::addColourRead(const ImageIndex index) -> PassBuilder& {
     return *this;
 }
 
-auto canta::PassBuilder::addColourWrite(const ImageIndex index, const ClearValue& clearColour) -> PassBuilder& {
-    if (_error.has_value()) return *this;
+auto canta::PassBuilder::addColourWrite(const ImageIndex index, const ClearValue &clearColour) -> PassBuilder & {
+    if (_error.has_value())
+        return *this;
 
     auto info = *write(index, Access::COLOUR_READ | Access::COLOUR_WRITE, PipelineStage::COLOUR_OUTPUT, ImageLayout::COLOUR_ATTACHMENT);
     pass()._colourAttachments.push_back({
@@ -447,8 +442,9 @@ auto canta::PassBuilder::addColourWrite(const ImageIndex index, const ClearValue
     return *this;
 }
 
-auto canta::PassBuilder::addDepthRead(const ImageIndex index) -> PassBuilder& {
-    if (_error.has_value()) return *this;
+auto canta::PassBuilder::addDepthRead(const ImageIndex index) -> PassBuilder & {
+    if (_error.has_value())
+        return *this;
 
     auto info = *read(index, Access::DEPTH_STENCIL_READ, PipelineStage::EARLY_FRAGMENT_TEST | PipelineStage::LATE_FRAGMENT_TEST | PipelineStage::FRAGMENT_SHADER, ImageLayout::DEPTH_STENCIL_ATTACHMENT);
     pass()._depthAttachment = {
@@ -466,8 +462,9 @@ auto canta::PassBuilder::addDepthRead(const ImageIndex index) -> PassBuilder& {
     return *this;
 }
 
-auto canta::PassBuilder::addDepthWrite(const ImageIndex index, const ClearValue& clearColour) -> PassBuilder& {
-    if (_error.has_value()) return *this;
+auto canta::PassBuilder::addDepthWrite(const ImageIndex index, const ClearValue &clearColour) -> PassBuilder & {
+    if (_error.has_value())
+        return *this;
 
     auto info = *write(index, Access::DEPTH_STENCIL_READ | Access::DEPTH_STENCIL_WRITE, PipelineStage::EARLY_FRAGMENT_TEST | PipelineStage::LATE_FRAGMENT_TEST | PipelineStage::FRAGMENT_SHADER, ImageLayout::DEPTH_STENCIL_ATTACHMENT);
     pass()._depthAttachment = {
@@ -482,7 +479,8 @@ auto canta::PassBuilder::addDepthWrite(const ImageIndex index, const ClearValue&
 }
 
 auto canta::PassBuilder::addStorageImageRead(const ImageIndex index, PipelineStage stage) -> PassBuilder & {
-    if (_error.has_value()) return *this;
+    if (_error.has_value())
+        return *this;
 
     if (stage == PipelineStage::NONE)
         stage = defaultPassStage(pass()._type);
@@ -499,7 +497,8 @@ auto canta::PassBuilder::addStorageImageRead(const ImageIndex index, PipelineSta
 }
 
 auto canta::PassBuilder::addStorageImageWrite(const ImageIndex index, PipelineStage stage) -> PassBuilder & {
-    if (_error.has_value()) return *this;
+    if (_error.has_value())
+        return *this;
 
     if (stage == PipelineStage::NONE)
         stage = defaultPassStage(pass()._type);
@@ -516,7 +515,8 @@ auto canta::PassBuilder::addStorageImageWrite(const ImageIndex index, PipelineSt
 }
 
 auto canta::PassBuilder::addStorageBufferRead(const BufferIndex index, PipelineStage stage) -> PassBuilder & {
-    if (_error.has_value()) return *this;
+    if (_error.has_value())
+        return *this;
 
     if (stage == PipelineStage::NONE)
         stage = defaultPassStage(pass()._type);
@@ -528,7 +528,8 @@ auto canta::PassBuilder::addStorageBufferRead(const BufferIndex index, PipelineS
 }
 
 auto canta::PassBuilder::addStorageBufferWrite(const BufferIndex index, PipelineStage stage) -> PassBuilder & {
-    if (_error.has_value()) return *this;
+    if (_error.has_value())
+        return *this;
 
     if (stage == PipelineStage::NONE)
         stage = defaultPassStage(pass()._type);
@@ -539,8 +540,9 @@ auto canta::PassBuilder::addStorageBufferWrite(const BufferIndex index, Pipeline
     return *this;
 }
 
-auto canta::PassBuilder::addSampledRead(const ImageIndex index, PipelineStage stage) -> PassBuilder& {
-    if (_error.has_value()) return *this;
+auto canta::PassBuilder::addSampledRead(const ImageIndex index, PipelineStage stage) -> PassBuilder & {
+    if (_error.has_value())
+        return *this;
 
     if (stage == PipelineStage::NONE)
         stage = defaultPassStage(pass()._type);
@@ -556,8 +558,9 @@ auto canta::PassBuilder::addSampledRead(const ImageIndex index, PipelineStage st
     return *this;
 }
 
-auto canta::PassBuilder::addBlitRead(const ImageIndex index) -> PassBuilder& {
-    if (_error.has_value()) return *this;
+auto canta::PassBuilder::addBlitRead(const ImageIndex index) -> PassBuilder & {
+    if (_error.has_value())
+        return *this;
 
     auto info = *read(index, Access::TRANSFER_READ, PipelineStage::TRANSFER, ImageLayout::TRANSFER_SRC);
 
@@ -566,8 +569,9 @@ auto canta::PassBuilder::addBlitRead(const ImageIndex index) -> PassBuilder& {
     return *this;
 }
 
-auto canta::PassBuilder::addBlitWrite(const ImageIndex index) -> PassBuilder& {
-    if (_error.has_value()) return *this;
+auto canta::PassBuilder::addBlitWrite(const ImageIndex index) -> PassBuilder & {
+    if (_error.has_value())
+        return *this;
 
     auto info = *write(index, Access::TRANSFER_WRITE, PipelineStage::TRANSFER, ImageLayout::TRANSFER_DST);
 
@@ -576,8 +580,9 @@ auto canta::PassBuilder::addBlitWrite(const ImageIndex index) -> PassBuilder& {
     return *this;
 }
 
-auto canta::PassBuilder::addTransferRead(const ImageIndex index) -> PassBuilder& {
-    if (_error.has_value()) return *this;
+auto canta::PassBuilder::addTransferRead(const ImageIndex index) -> PassBuilder & {
+    if (_error.has_value())
+        return *this;
 
     auto info = *read(index, Access::TRANSFER_READ, PipelineStage::TRANSFER, ImageLayout::TRANSFER_SRC);
 
@@ -586,8 +591,9 @@ auto canta::PassBuilder::addTransferRead(const ImageIndex index) -> PassBuilder&
     return *this;
 }
 
-auto canta::PassBuilder::addTransferWrite(const ImageIndex index) -> PassBuilder& {
-    if (_error.has_value()) return *this;
+auto canta::PassBuilder::addTransferWrite(const ImageIndex index) -> PassBuilder & {
+    if (_error.has_value())
+        return *this;
 
     auto info = *write(index, Access::TRANSFER_WRITE, PipelineStage::TRANSFER, ImageLayout::TRANSFER_DST);
 
@@ -596,8 +602,9 @@ auto canta::PassBuilder::addTransferWrite(const ImageIndex index) -> PassBuilder
     return *this;
 }
 
-auto canta::PassBuilder::addTransferRead(const BufferIndex index) -> PassBuilder& {
-    if (_error.has_value()) return *this;
+auto canta::PassBuilder::addTransferRead(const BufferIndex index) -> PassBuilder & {
+    if (_error.has_value())
+        return *this;
 
     auto info = *read(index, Access::TRANSFER_READ, PipelineStage::TRANSFER);
 
@@ -606,8 +613,9 @@ auto canta::PassBuilder::addTransferRead(const BufferIndex index) -> PassBuilder
     return *this;
 }
 
-auto canta::PassBuilder::addTransferWrite(const BufferIndex index) -> PassBuilder& {
-    if (_error.has_value()) return *this;
+auto canta::PassBuilder::addTransferWrite(const BufferIndex index) -> PassBuilder & {
+    if (_error.has_value())
+        return *this;
 
     auto info = *write(index, Access::TRANSFER_WRITE, PipelineStage::TRANSFER);
 
@@ -616,8 +624,9 @@ auto canta::PassBuilder::addTransferWrite(const BufferIndex index) -> PassBuilde
     return *this;
 }
 
-auto canta::PassBuilder::addIndirectRead(const BufferIndex index) -> PassBuilder& {
-    if (_error.has_value()) return *this;
+auto canta::PassBuilder::addIndirectRead(const BufferIndex index) -> PassBuilder & {
+    if (_error.has_value())
+        return *this;
 
     auto info = *read(index, Access::INDIRECT, PipelineStage::DRAW_INDIRECT);
 
@@ -626,29 +635,33 @@ auto canta::PassBuilder::addIndirectRead(const BufferIndex index) -> PassBuilder
     return *this;
 }
 
-auto canta::PassBuilder::addDummyRead(const ImageIndex index) -> PassBuilder& {
-    if (_error.has_value()) return *this;
+auto canta::PassBuilder::addDummyRead(const ImageIndex index) -> PassBuilder & {
+    if (_error.has_value())
+        return *this;
 
     STORE_ERROR(_error, read(index, Access::NONE, PipelineStage::NONE, ImageLayout::GENERAL));
     return *this;
 }
 
-auto canta::PassBuilder::addDummyWrite(const ImageIndex index) -> PassBuilder& {
-    if (_error.has_value()) return *this;
+auto canta::PassBuilder::addDummyWrite(const ImageIndex index) -> PassBuilder & {
+    if (_error.has_value())
+        return *this;
 
     STORE_ERROR(_error, write(index, Access::NONE, PipelineStage::NONE, ImageLayout::GENERAL));
     return *this;
 }
 
-auto canta::PassBuilder::addDummyRead(const BufferIndex index) -> PassBuilder& {
-    if (_error.has_value()) return *this;
+auto canta::PassBuilder::addDummyRead(const BufferIndex index) -> PassBuilder & {
+    if (_error.has_value())
+        return *this;
 
     STORE_ERROR(_error, read(index, Access::NONE, PipelineStage::NONE));
     return *this;
 }
 
-auto canta::PassBuilder::addDummyWrite(const BufferIndex index) -> PassBuilder& {
-    if (_error.has_value()) return *this;
+auto canta::PassBuilder::addDummyWrite(const BufferIndex index) -> PassBuilder & {
+    if (_error.has_value())
+        return *this;
 
     STORE_ERROR(_error, write(index, Access::NONE, PipelineStage::NONE));
     return *this;
@@ -676,14 +689,14 @@ auto canta::ComputePass::addStorageBufferWrite(const BufferIndex index) -> Compu
     return *this;
 }
 
-auto canta::ComputePass::addSampledRead(const ImageIndex index) -> ComputePass& {
+auto canta::ComputePass::addSampledRead(const ImageIndex index) -> ComputePass & {
     PassBuilder::addSampledRead(index, PipelineStage::COMPUTE_SHADER);
     return *this;
 }
 
 auto canta::ComputePass::dispatchThreads(u32 x, u32 y, u32 z) -> ComputePass & {
-    pass().setCallback([x, y, z] (auto cmd, auto& graph, const RenderPass::PushData& push) {
-        cmd->pushConstants(ShaderStage::COMPUTE, { push.data.data(), push.size }, 0);
+    pass().setCallback([x, y, z](auto cmd, auto &graph, const RenderPass::PushData &push) {
+        cmd->pushConstants(ShaderStage::COMPUTE, {push.data.data(), push.size}, 0);
         cmd->dispatchThreads(x, y, z);
         return true;
     });
@@ -691,8 +704,8 @@ auto canta::ComputePass::dispatchThreads(u32 x, u32 y, u32 z) -> ComputePass & {
 }
 
 auto canta::ComputePass::dispatchWorkgroups(u32 x, u32 y, u32 z) -> ComputePass & {
-    pass().setCallback([x, y, z] (auto cmd, auto& graph, const RenderPass::PushData& push) {
-        cmd->pushConstants(ShaderStage::COMPUTE, { push.data.data(), push.size }, 0);
+    pass().setCallback([x, y, z](auto cmd, auto &graph, const RenderPass::PushData &push) {
+        cmd->pushConstants(ShaderStage::COMPUTE, {push.data.data(), push.size}, 0);
         cmd->dispatchWorkgroups(x, y, z);
         return true;
     });
@@ -701,33 +714,32 @@ auto canta::ComputePass::dispatchWorkgroups(u32 x, u32 y, u32 z) -> ComputePass 
 
 auto canta::ComputePass::dispatchIndirect(const BufferIndex commands, u32 offset) -> ComputePass & {
     addIndirectRead(commands);
-    pass().setCallback([commands, offset] (auto cmd, auto& graph, const RenderPass::PushData& push) -> std::expected<bool, RenderGraphError> {
-        cmd->pushConstants(ShaderStage::COMPUTE, { push.data.data(), push.size }, 0);
+    pass().setCallback([commands, offset](auto cmd, auto &graph, const RenderPass::PushData &push) -> std::expected<bool, RenderGraphError> {
+        cmd->pushConstants(ShaderStage::COMPUTE, {push.data.data(), push.size}, 0);
         cmd->dispatchIndirect(maybe(graph.getBuffer(commands)), offset);
         return true;
     });
     return *this;
 }
 
-
 canta::GraphicsPass::GraphicsPass(RenderGraph *graph, const u32 index) : PassBuilder(graph, index) {}
 
-auto canta::GraphicsPass::addColourRead(const ImageIndex index) -> GraphicsPass& {
+auto canta::GraphicsPass::addColourRead(const ImageIndex index) -> GraphicsPass & {
     PassBuilder::addColourRead(index);
     return *this;
 }
 
-auto canta::GraphicsPass::addColourWrite(const ImageIndex index, const ClearValue& clearColour) -> GraphicsPass& {
+auto canta::GraphicsPass::addColourWrite(const ImageIndex index, const ClearValue &clearColour) -> GraphicsPass & {
     PassBuilder::addColourWrite(index, clearColour);
     return *this;
 }
 
-auto canta::GraphicsPass::addDepthRead(const ImageIndex index) -> GraphicsPass& {
+auto canta::GraphicsPass::addDepthRead(const ImageIndex index) -> GraphicsPass & {
     PassBuilder::addDepthRead(index);
     return *this;
 }
 
-auto canta::GraphicsPass::addDepthWrite(const ImageIndex index, const ClearValue& clearColour) -> GraphicsPass& {
+auto canta::GraphicsPass::addDepthWrite(const ImageIndex index, const ClearValue &clearColour) -> GraphicsPass & {
     PassBuilder::addDepthWrite(index, clearColour);
     return *this;
 }
@@ -752,16 +764,16 @@ auto canta::GraphicsPass::addStorageBufferWrite(const BufferIndex index, const P
     return *this;
 }
 
-auto canta::GraphicsPass::addSampledRead(const ImageIndex index, const PipelineStage stage) -> GraphicsPass& {
+auto canta::GraphicsPass::addSampledRead(const ImageIndex index, const PipelineStage stage) -> GraphicsPass & {
     PassBuilder::addSampledRead(index, stage);
     return *this;
 }
 
 auto canta::GraphicsPass::draw(u32 count, u32 instanceCount, u32 firstVertex, u32 firstIndex, u32 firstInstance, bool indexed) -> GraphicsPass & {
     auto dimensions = pass().dimensions();
-    pass().setCallback([dimensions, count, instanceCount, firstVertex, firstIndex, firstInstance, indexed] (auto cmd, auto& graph, const RenderPass::PushData& push) {
-        cmd->setViewport({ static_cast<f32>(dimensions.x()), static_cast<f32>(dimensions.y()) });
-        cmd->pushConstants(ShaderStage::VERTEX | ShaderStage::FRAGMENT, { push.data.data(), push.size }, 0);
+    pass().setCallback([dimensions, count, instanceCount, firstVertex, firstIndex, firstInstance, indexed](auto cmd, auto &graph, const RenderPass::PushData &push) {
+        cmd->setViewport({static_cast<f32>(dimensions.x()), static_cast<f32>(dimensions.y())});
+        cmd->pushConstants(ShaderStage::VERTEX | ShaderStage::FRAGMENT, {push.data.data(), push.size}, 0);
         cmd->draw(count, instanceCount, firstVertex, firstIndex, firstInstance, indexed);
         return true;
     });
@@ -771,9 +783,9 @@ auto canta::GraphicsPass::draw(u32 count, u32 instanceCount, u32 firstVertex, u3
 auto canta::GraphicsPass::drawIndirect(const BufferIndex commands, u32 offset, u32 drawCount, bool indexed, u32 stride) -> GraphicsPass & {
     addIndirectRead(commands);
     auto dimensions = pass().dimensions();
-    pass().setCallback([dimensions, commands, offset, drawCount, indexed, stride] (auto cmd, auto& graph, const RenderPass::PushData& push) -> std::expected<bool, RenderGraphError> {
-        cmd->setViewport({ static_cast<f32>(dimensions.x()), static_cast<f32>(dimensions.y()) });
-        cmd->pushConstants(ShaderStage::VERTEX | ShaderStage::FRAGMENT, { push.data.data(), push.size }, 0);
+    pass().setCallback([dimensions, commands, offset, drawCount, indexed, stride](auto cmd, auto &graph, const RenderPass::PushData &push) -> std::expected<bool, RenderGraphError> {
+        cmd->setViewport({static_cast<f32>(dimensions.x()), static_cast<f32>(dimensions.y())});
+        cmd->pushConstants(ShaderStage::VERTEX | ShaderStage::FRAGMENT, {push.data.data(), push.size}, 0);
         cmd->drawIndirect(maybe(graph.getBuffer(commands)), offset, drawCount, indexed, stride);
         return true;
     });
@@ -784,9 +796,9 @@ auto canta::GraphicsPass::drawIndirectCount(const BufferIndex commands, u32 offs
     addIndirectRead(commands);
     addIndirectRead(countBuffer);
     auto dimensions = pass().dimensions();
-    pass().setCallback([dimensions, commands, offset, countBuffer, countOffset, indexed, stride] (auto cmd, auto& graph, const RenderPass::PushData& push) -> std::expected<bool, RenderGraphError> {
-        cmd->setViewport({ static_cast<f32>(dimensions.x()), static_cast<f32>(dimensions.y()) });
-        cmd->pushConstants(ShaderStage::VERTEX | ShaderStage::FRAGMENT, { push.data.data(), push.size }, 0);
+    pass().setCallback([dimensions, commands, offset, countBuffer, countOffset, indexed, stride](auto cmd, auto &graph, const RenderPass::PushData &push) -> std::expected<bool, RenderGraphError> {
+        cmd->setViewport({static_cast<f32>(dimensions.x()), static_cast<f32>(dimensions.y())});
+        cmd->pushConstants(ShaderStage::VERTEX | ShaderStage::FRAGMENT, {push.data.data(), push.size}, 0);
         cmd->drawIndirectCount(maybe(graph.getBuffer(commands)), offset, maybe(graph.getBuffer(countBuffer)), countOffset, indexed, stride);
         return true;
     });
@@ -795,9 +807,9 @@ auto canta::GraphicsPass::drawIndirectCount(const BufferIndex commands, u32 offs
 
 auto canta::GraphicsPass::drawMeshTasksThreads(u32 x, u32 y, u32 z) -> GraphicsPass & {
     auto dimensions = pass().dimensions();
-    pass().setCallback([dimensions, x, y, z] (auto cmd, auto& graph, const RenderPass::PushData& push) {
-        cmd->setViewport({ static_cast<f32>(dimensions.x()), static_cast<f32>(dimensions.y()) });
-        cmd->pushConstants(ShaderStage::MESH | ShaderStage::FRAGMENT, { push.data.data(), push.size }, 0);
+    pass().setCallback([dimensions, x, y, z](auto cmd, auto &graph, const RenderPass::PushData &push) {
+        cmd->setViewport({static_cast<f32>(dimensions.x()), static_cast<f32>(dimensions.y())});
+        cmd->pushConstants(ShaderStage::MESH | ShaderStage::FRAGMENT, {push.data.data(), push.size}, 0);
         cmd->drawMeshTasksThreads(x, y, z);
         return true;
     });
@@ -806,9 +818,9 @@ auto canta::GraphicsPass::drawMeshTasksThreads(u32 x, u32 y, u32 z) -> GraphicsP
 
 auto canta::GraphicsPass::drawMeshTasksWorkgroups(u32 x, u32 y, u32 z) -> GraphicsPass & {
     auto dimensions = pass().dimensions();
-    pass().setCallback([dimensions, x, y, z] (auto cmd, auto& graph, const RenderPass::PushData& push) {
-        cmd->setViewport({ static_cast<f32>(dimensions.x()), static_cast<f32>(dimensions.y()) });
-        cmd->pushConstants(ShaderStage::MESH | ShaderStage::FRAGMENT, { push.data.data(), push.size }, 0);
+    pass().setCallback([dimensions, x, y, z](auto cmd, auto &graph, const RenderPass::PushData &push) {
+        cmd->setViewport({static_cast<f32>(dimensions.x()), static_cast<f32>(dimensions.y())});
+        cmd->pushConstants(ShaderStage::MESH | ShaderStage::FRAGMENT, {push.data.data(), push.size}, 0);
         cmd->drawMeshTasksWorkgroups(x, y, z);
         return true;
     });
@@ -818,9 +830,9 @@ auto canta::GraphicsPass::drawMeshTasksWorkgroups(u32 x, u32 y, u32 z) -> Graphi
 auto canta::GraphicsPass::drawMeshTasksIndirect(const BufferIndex commands, u32 offset, u32 drawCount, u32 stride) -> GraphicsPass & {
     addIndirectRead(commands);
     auto dimensions = pass().dimensions();
-    pass().setCallback([dimensions, commands, offset, drawCount, stride] (auto cmd, auto& graph, const RenderPass::PushData& push) -> std::expected<bool, RenderGraphError> {
-        cmd->setViewport({ static_cast<f32>(dimensions.x()), static_cast<f32>(dimensions.y()) });
-        cmd->pushConstants(ShaderStage::MESH | ShaderStage::FRAGMENT, { push.data.data(), push.size }, 0);
+    pass().setCallback([dimensions, commands, offset, drawCount, stride](auto cmd, auto &graph, const RenderPass::PushData &push) -> std::expected<bool, RenderGraphError> {
+        cmd->setViewport({static_cast<f32>(dimensions.x()), static_cast<f32>(dimensions.y())});
+        cmd->pushConstants(ShaderStage::MESH | ShaderStage::FRAGMENT, {push.data.data(), push.size}, 0);
         cmd->drawMeshTasksIndirect(maybe(graph.getBuffer(commands)), offset, drawCount, stride);
         return true;
     });
@@ -831,9 +843,9 @@ auto canta::GraphicsPass::drawMeshTasksIndirectCount(const BufferIndex commands,
     addIndirectRead(commands);
     addIndirectRead(countBuffer);
     auto dimensions = pass().dimensions();
-    pass().setCallback([dimensions, commands, offset, countBuffer, countOffset, stride] (auto cmd, auto& graph, const RenderPass::PushData& push) -> std::expected<bool, RenderGraphError> {
-        cmd->setViewport({ static_cast<f32>(dimensions.x()), static_cast<f32>(dimensions.y()) });
-        cmd->pushConstants(ShaderStage::MESH | ShaderStage::FRAGMENT, { push.data.data(), push.size }, 0);
+    pass().setCallback([dimensions, commands, offset, countBuffer, countOffset, stride](auto cmd, auto &graph, const RenderPass::PushData &push) -> std::expected<bool, RenderGraphError> {
+        cmd->setViewport({static_cast<f32>(dimensions.x()), static_cast<f32>(dimensions.y())});
+        cmd->pushConstants(ShaderStage::MESH | ShaderStage::FRAGMENT, {push.data.data(), push.size}, 0);
         cmd->drawMeshTasksIndirectCount(maybe(graph.getBuffer(commands)), offset, maybe(graph.getBuffer(countBuffer)), countOffset, stride);
         return true;
     });
@@ -844,7 +856,7 @@ auto canta::GraphicsPass::blit(const ImageIndex src, const ImageIndex dst, const
     addTransferRead(src);
     addTransferRead(dst);
     addTransferWrite(dst);
-    pass().setCallback([src, dst, filter] (auto cmd, auto& graph, const auto& push) -> std::expected<bool, RenderGraphError> {
+    pass().setCallback([src, dst, filter](auto cmd, auto &graph, const auto &push) -> std::expected<bool, RenderGraphError> {
         cmd->blit({
             .src = maybe(graph.getImage(src)),
             .dst = maybe(graph.getImage(dst)),
@@ -861,7 +873,7 @@ auto canta::GraphicsPass::imgui(ImGuiContext &context, ImageIndex image) -> std:
     addColourRead(image);
     addColourWrite(image);
     setManualPipeline(true);
-    pass().setCallback([&context, image] (auto cmd, auto& graph, const auto& push) {
+    pass().setCallback([&context, image](auto cmd, auto &graph, const auto &push) {
         auto imageInfo = graph.getImageInfo(image);
         context.render(ImGui::GetDrawData(), std::move(cmd), imageInfo->format);
         return true;
@@ -871,22 +883,22 @@ auto canta::GraphicsPass::imgui(ImGuiContext &context, ImageIndex image) -> std:
 
 canta::TransferPass::TransferPass(RenderGraph *graph, const u32 index) : PassBuilder(graph, index) {}
 
-auto canta::TransferPass::addTransferRead(const BufferIndex index) -> TransferPass& {
+auto canta::TransferPass::addTransferRead(const BufferIndex index) -> TransferPass & {
     PassBuilder::addTransferRead(index);
     return *this;
 }
 
-auto canta::TransferPass::addTransferWrite(const BufferIndex index) -> TransferPass& {
+auto canta::TransferPass::addTransferWrite(const BufferIndex index) -> TransferPass & {
     PassBuilder::addTransferWrite(index);
     return *this;
 }
 
-auto canta::TransferPass::addTransferRead(const ImageIndex index) -> TransferPass& {
+auto canta::TransferPass::addTransferRead(const ImageIndex index) -> TransferPass & {
     PassBuilder::addTransferRead(index);
     return *this;
 }
 
-auto canta::TransferPass::addTransferWrite(const ImageIndex index) -> TransferPass& {
+auto canta::TransferPass::addTransferWrite(const ImageIndex index) -> TransferPass & {
     PassBuilder::addTransferWrite(index);
     return *this;
 }
@@ -894,7 +906,7 @@ auto canta::TransferPass::addTransferWrite(const ImageIndex index) -> TransferPa
 auto canta::TransferPass::copy(BufferIndex src, BufferIndex dst, u32 srcOffset, u32 dstOffset, u32 size) -> std::expected<BufferIndex, RenderGraphError> {
     addTransferRead(src);
     addTransferWrite(dst);
-    pass().setCallback([src, dst, srcOffset, dstOffset, size] (auto cmd, auto& graph, const auto& push) -> std::expected<bool, RenderGraphError> {
+    pass().setCallback([src, dst, srcOffset, dstOffset, size](auto cmd, auto &graph, const auto &push) -> std::expected<bool, RenderGraphError> {
         cmd->copyBuffer({
             .src = maybe(graph.getBuffer(src)),
             .dst = maybe(graph.getBuffer(dst)),
@@ -907,10 +919,10 @@ auto canta::TransferPass::copy(BufferIndex src, BufferIndex dst, u32 srcOffset, 
     return output<BufferIndex>();
 }
 
-auto canta::TransferPass::copy(BufferIndex src, ImageIndex dst, const ImageCopy& info) -> std::expected<ImageIndex, RenderGraphError> {
+auto canta::TransferPass::copy(BufferIndex src, ImageIndex dst, const ImageCopy &info) -> std::expected<ImageIndex, RenderGraphError> {
     addTransferRead(src);
     addTransferWrite(dst);
-    pass().setCallback([src, dst, info] (auto cmd, auto& graph, const auto& push) -> std::expected<bool, RenderGraphError> {
+    pass().setCallback([src, dst, info](auto cmd, auto &graph, const auto &push) -> std::expected<bool, RenderGraphError> {
         auto copyInfo = info;
         if (copyInfo.layout == ImageLayout::TRANSFER_SRC)
             copyInfo.layout = ImageLayout::TRANSFER_DST;
@@ -943,10 +955,10 @@ auto canta::TransferPass::copy(BufferIndex src, ImageIndex dst, const ImageCopy&
     return output<ImageIndex>();
 }
 
-auto canta::TransferPass::copy(ImageIndex src, BufferIndex dst, const ImageCopy& info) -> std::expected<BufferIndex, RenderGraphError> {
+auto canta::TransferPass::copy(ImageIndex src, BufferIndex dst, const ImageCopy &info) -> std::expected<BufferIndex, RenderGraphError> {
     addTransferRead(src);
     addTransferWrite(dst);
-    pass().setCallback([src, dst, info] (auto cmd, auto& graph, const auto& push) -> std::expected<bool, RenderGraphError> {
+    pass().setCallback([src, dst, info](auto cmd, auto &graph, const auto &push) -> std::expected<bool, RenderGraphError> {
         auto copyInfo = info;
         if (copyInfo.layout == ImageLayout::TRANSFER_DST)
             copyInfo.layout = ImageLayout::TRANSFER_SRC;
@@ -981,7 +993,7 @@ auto canta::TransferPass::copy(ImageIndex src, BufferIndex dst, const ImageCopy&
 
 auto canta::TransferPass::clear(const ImageIndex index, const ClearValue &value) -> std::expected<ImageIndex, RenderGraphError> {
     addTransferWrite(index);
-    pass().setCallback([value, index] (auto cmd, auto& graph, const auto& push) -> std::expected<bool, RenderGraphError> {
+    pass().setCallback([value, index](auto cmd, auto &graph, const auto &push) -> std::expected<bool, RenderGraphError> {
         cmd->clearImage(maybe(graph.getImage(index)), ImageLayout::TRANSFER_DST, value);
         return true;
     });
@@ -990,7 +1002,7 @@ auto canta::TransferPass::clear(const ImageIndex index, const ClearValue &value)
 
 auto canta::TransferPass::clear(BufferIndex index, u32 value, u32 offset, u32 size) -> std::expected<BufferIndex, RenderGraphError> {
     addTransferWrite(index);
-    pass().setCallback([index, value, offset, size] (auto cmd, auto& graph, const auto& push) -> std::expected<bool, RenderGraphError> {
+    pass().setCallback([index, value, offset, size](auto cmd, auto &graph, const auto &push) -> std::expected<bool, RenderGraphError> {
         cmd->clearBuffer(maybe(graph.getBuffer(index)), value, offset, size);
         return true;
     });
@@ -999,7 +1011,7 @@ auto canta::TransferPass::clear(BufferIndex index, u32 value, u32 offset, u32 si
 
 auto canta::TransferPass::update(BufferIndex index, std::span<const u8> data, u32 offset) -> std::expected<BufferIndex, RenderGraphError> {
     addTransferWrite(index);
-    pass().setCallback([index, data, offset] (auto cmd, auto& graph, const auto& push) -> std::expected<bool, RenderGraphError> {
+    pass().setCallback([index, data, offset](auto cmd, auto &graph, const auto &push) -> std::expected<bool, RenderGraphError> {
         cmd->updateBuffer(maybe(graph.getBuffer(index)), data, offset);
         return true;
     });
@@ -1029,7 +1041,7 @@ auto canta::HostPass::write(const ImageIndex index) -> HostPass & {
 }
 
 auto canta::HostPass::setCallback(const std::function<void(RenderGraph &)> &callback) -> HostPass & {
-    pass().setCallback([callback] (auto cmd, auto& graph, const RenderPass::PushData& push) -> std::expected<bool, RenderGraphError> {
+    pass().setCallback([callback](auto cmd, auto &graph, const RenderPass::PushData &push) -> std::expected<bool, RenderGraphError> {
         callback(graph);
         return true;
     });
@@ -1041,7 +1053,7 @@ auto canta::HostPass::upload(BufferIndex dst, std::span<const u8> data) -> std::
     auto dstInfo = maybe(_graph->getBufferInfo(dst));
     dstInfo.type = MemoryType::STAGING;
     maybe(_graph->updateBufferInfo(dst, dstInfo));
-    setCallback([dst, data] (auto& graph) {
+    setCallback([dst, data](auto &graph) {
         auto buffer = *graph.getBuffer(dst);
         buffer->data(data);
     });
@@ -1054,7 +1066,7 @@ auto canta::HostPass::readback(const BufferIndex src, std::span<u8> data) -> std
     auto srcInfo = maybe(_graph->getBufferInfo(src));
     srcInfo.type = MemoryType::READBACK;
     maybe(_graph->updateBufferInfo(src, srcInfo));
-    setCallback([src, data] (auto& graph) {
+    setCallback([src, data](auto &graph) {
         auto buffer = *graph.getBuffer(src);
         auto mapped = buffer->map();
         std::memcpy(data.data(), mapped.address(), data.size());
@@ -1064,7 +1076,7 @@ auto canta::HostPass::readback(const BufferIndex src, std::span<u8> data) -> std
 
 canta::PresentPass::PresentPass(RenderGraph *graph, const u32 index) : PassBuilder(graph, index) {}
 
-auto canta::PresentPass::acquire(Swapchain* swapchain) -> std::expected<ImageIndex, RenderGraphError> {
+auto canta::PresentPass::acquire(Swapchain *swapchain) -> std::expected<ImageIndex, RenderGraphError> {
     auto swapIndex = _graph->addImage({
         .width = swapchain->width(),
         .height = swapchain->height(),
@@ -1073,8 +1085,8 @@ auto canta::PresentPass::acquire(Swapchain* swapchain) -> std::expected<ImageInd
         .name = "swapchain_index",
     });
     maybe(write(swapIndex, Access::NONE, PipelineStage::BOTTOM, ImageLayout::UNDEFINED));
-    pass().setCallback([swapIndex, swapchain] (auto cmd, auto& graph, const auto& push) -> std::expected<bool, RenderGraphError> {
-        auto image = maybe(swapchain->acquire(graph.timeline()).transform_error([] (VulkanError error) {
+    pass().setCallback([swapIndex, swapchain](auto cmd, auto &graph, const auto &push) -> std::expected<bool, RenderGraphError> {
+        auto image = maybe(swapchain->acquire(graph.timeline()).transform_error([](VulkanError error) {
             return RenderGraphError::DEVICE_ERROR;
         }));
         auto info = maybe(graph.getImageInfo(swapIndex));
@@ -1086,16 +1098,16 @@ auto canta::PresentPass::acquire(Swapchain* swapchain) -> std::expected<ImageInd
     return output<ImageIndex>();
 }
 
-//TODO: will need to handle special. chain timeline semaphore with acquire/present semaphores
-auto canta::PresentPass::present(Swapchain* swapchain, const ImageIndex index) -> std::expected<ImageIndex, RenderGraphError> {
+// TODO: will need to handle special. chain timeline semaphore with acquire/present semaphores
+auto canta::PresentPass::present(Swapchain *swapchain, const ImageIndex index) -> std::expected<ImageIndex, RenderGraphError> {
     if (auto info = maybe(_graph->getImageInfo(index)); !info.swapchainImage)
         return std::unexpected(RenderGraphError::INVALID_RESOURCE);
 
     maybe(read(index, Access::NONE, PipelineStage::BOTTOM, ImageLayout::PRESENT));
     maybe(write(index, Access::NONE, PipelineStage::BOTTOM, ImageLayout::PRESENT));
     auto timeline = _graph->timeline();
-    pass().setCallback([timeline, swapchain] (auto cmd, auto& graph, const auto& push) -> std::expected<bool, RenderGraphError> {
-        const auto waits = reinterpret_cast<const uint*>(push.data.data());
+    pass().setCallback([timeline, swapchain](auto cmd, auto &graph, const auto &push) -> std::expected<bool, RenderGraphError> {
+        const auto waits = reinterpret_cast<const uint *>(push.data.data());
         const u32 count = waits[0];
 
         std::vector<SemaphoreHandle> semaphores = {};
@@ -1106,7 +1118,7 @@ auto canta::PresentPass::present(Swapchain* swapchain, const ImageIndex index) -
                 semaphores.emplace_back(graph.device()->queue(queueType)->timeline());
         }
 
-        maybe(swapchain->present(semaphores).transform_error([] (VulkanError error) {
+        maybe(swapchain->present(semaphores).transform_error([](VulkanError error) {
             // _graph->device->logger().error("Present error: {}", static_cast<u32>(error));
             return RenderGraphError::DEVICE_ERROR;
         }));
@@ -1114,7 +1126,6 @@ auto canta::PresentPass::present(Swapchain* swapchain, const ImageIndex index) -
     });
     return output<ImageIndex>();
 }
-
 
 u32 canta::RenderGraph::s_graphIndex = 0;
 
@@ -1128,7 +1139,7 @@ auto canta::RenderGraph::create(const CreateInfo &info) -> std::expected<RenderG
     if (!graph._threadPool)
         graph._threadPool = std::make_shared<ende::thread::ThreadPool>();
 
-    for (auto& poolGroup : graph._commandPools) {
+    for (auto &poolGroup : graph._commandPools) {
         poolGroup[0] = *info.device->createCommandPool({
             .queueType = QueueType::GRAPHICS,
         });
@@ -1140,10 +1151,9 @@ auto canta::RenderGraph::create(const CreateInfo &info) -> std::expected<RenderG
         });
     }
 
-    graph._cpuTimeline = maybe(info.device->createSemaphore({
-        .initialValue = 0,
-        .name = "cpu_timeline"
-    }).transform_error([] (VulkanError e) { return RenderGraphError::DEVICE_ERROR; }));
+    graph._cpuTimeline = maybe(info.device->createSemaphore({.initialValue = 0,
+                                                             .name = "cpu_timeline"})
+                                   .transform_error([](VulkanError e) { return RenderGraphError::DEVICE_ERROR; }));
 
     return graph;
 }
@@ -1170,8 +1180,8 @@ auto canta::RenderGraph::addBuffer(BufferCreateInfo info) -> BufferIndex {
         .name = info.name,
     };
 
-    _resources.emplace_back(Resource{ .info = bufferInfo, .initialAccess = initialAccess, .name = info.name});
-    auto& edge = addEdge<BufferIndex>();
+    _resources.emplace_back(Resource{.info = bufferInfo, .initialAccess = initialAccess, .name = info.name});
+    auto &edge = addEdge<BufferIndex>();
     std::get<BufferIndex>(edge).index = _resources.size() - 1;
     std::get<BufferIndex>(edge).graphIndex = _graphIndex;
     return std::get<BufferIndex>(edge);
@@ -1194,8 +1204,8 @@ auto canta::RenderGraph::addImage(ImageCreateInfo info) -> ImageIndex {
         .name = info.name,
     };
 
-    _resources.emplace_back(Resource{ .info = imageInfo, .initialAccess = initialAccess, .name = info.name});
-    auto& edge = addEdge<ImageIndex>();
+    _resources.emplace_back(Resource{.info = imageInfo, .initialAccess = initialAccess, .name = info.name});
+    auto &edge = addEdge<ImageIndex>();
     std::get<ImageIndex>(edge).index = _resources.size() - 1;
     std::get<ImageIndex>(edge).graphIndex = _graphIndex;
     return std::get<ImageIndex>(edge);
@@ -1218,8 +1228,8 @@ auto canta::RenderGraph::addExternalBuffer(BufferHandle buffer, ResourceAccess a
         .name = buffer->name().data(),
     };
 
-    _resources.emplace_back(Resource{ .info = bufferInfo, .initialAccess = initialAccess, .name = bufferInfo.name});
-    auto& edge = addEdge<BufferIndex>();
+    _resources.emplace_back(Resource{.info = bufferInfo, .initialAccess = initialAccess, .name = bufferInfo.name});
+    auto &edge = addEdge<BufferIndex>();
     std::get<BufferIndex>(edge).index = _resources.size() - 1;
     std::get<BufferIndex>(edge).graphIndex = _graphIndex;
     return std::get<BufferIndex>(edge);
@@ -1245,21 +1255,22 @@ auto canta::RenderGraph::addExternalImage(ImageHandle image, ResourceAccess acce
         .name = image->name().data(),
     };
 
-    _resources.emplace_back(Resource{ .info = imageInfo, .initialAccess = initialAccess, .name = imageInfo.name});
-    auto& edge = addEdge<ImageIndex>();
+    _resources.emplace_back(Resource{.info = imageInfo, .initialAccess = initialAccess, .name = imageInfo.name});
+    auto &edge = addEdge<ImageIndex>();
     std::get<ImageIndex>(edge).index = _resources.size() - 1;
     std::get<ImageIndex>(edge).graphIndex = _graphIndex;
     return std::get<ImageIndex>(edge);
 }
 
-auto canta::RenderGraph::importFromGraph(RenderGraph& graph, BufferIndex index) -> std::expected<BufferIndex, RenderGraphError> {
-    if (this == &graph) return std::unexpected(RenderGraphError::INVALID_RESOURCE);
+auto canta::RenderGraph::importFromGraph(RenderGraph &graph, BufferIndex index) -> std::expected<BufferIndex, RenderGraphError> {
+    if (this == &graph)
+        return std::unexpected(RenderGraphError::INVALID_RESOURCE);
     maybe(graph.validateGraphResource(index));
 
     auto lastAccess = graph.getPrevAccess(graph.passes().size(), index.index);
     auto buffer = maybe(graph.getBuffer(index));
     if (lastAccess.passIndex > -1) {
-        auto& pass = graph.passes()[lastAccess.passIndex];
+        auto &pass = graph.passes()[lastAccess.passIndex];
         auto queueType = pass.queue();
         if (queueType == QueueType::NONE) {
             auto waitTimeline = graph._cpuTimeline;
@@ -1272,8 +1283,9 @@ auto canta::RenderGraph::importFromGraph(RenderGraph& graph, BufferIndex index) 
     return addExternalBuffer(buffer, lastAccess.access);
 }
 
-auto canta::RenderGraph::importFromGraph(RenderGraph& graph, ImageIndex index) -> std::expected<ImageIndex, RenderGraphError> {
-    if (this == &graph) return std::unexpected(RenderGraphError::INVALID_RESOURCE);
+auto canta::RenderGraph::importFromGraph(RenderGraph &graph, ImageIndex index) -> std::expected<ImageIndex, RenderGraphError> {
+    if (this == &graph)
+        return std::unexpected(RenderGraphError::INVALID_RESOURCE);
     maybe(graph.validateGraphResource(index));
 
     auto lastAccess = graph.getPrevAccess(graph.passes().size(), index.index);
@@ -1281,23 +1293,27 @@ auto canta::RenderGraph::importFromGraph(RenderGraph& graph, ImageIndex index) -
     return addExternalImage(image, lastAccess.access);
 }
 
-template<class... Ts> struct overload : Ts... { using Ts::operator()...; };
+template <class... Ts>
+struct overload : Ts... {
+    using Ts::operator()...;
+};
 
 auto canta::RenderGraph::alias(BufferIndex index) -> BufferIndex {
-    auto& edge = addEdge<BufferIndex>();
+    auto &edge = addEdge<BufferIndex>();
     std::visit(overload{
-        [index, this] (BufferIndex& buffer){ buffer.index = index.index; buffer.graphIndex = _graphIndex; },
-            [index] (ImageIndex& image) { static_assert("unreachable"); }
-    }, edge);
+                   [index, this](BufferIndex &buffer) { buffer.index = index.index; buffer.graphIndex = _graphIndex; },
+                   [index](ImageIndex &image) { static_assert("unreachable"); }},
+               edge);
     return std::get<BufferIndex>(edge);
 }
 
 auto canta::RenderGraph::alias(ImageIndex index) -> ImageIndex {
-    auto& edge = addEdge<ImageIndex>();
+    auto &edge = addEdge<ImageIndex>();
     std::visit(overload{
-        [index] (BufferIndex& buffer){ static_assert("unreachable"); },
-            [index, this] (ImageIndex& image) { image.index = index.index; image.graphIndex = _graphIndex; },
-    }, edge);
+                   [index](BufferIndex &buffer) { static_assert("unreachable"); },
+                   [index, this](ImageIndex &image) { image.index = index.index; image.graphIndex = _graphIndex; },
+               },
+               edge);
     return std::get<ImageIndex>(edge);
 }
 
@@ -1306,7 +1322,7 @@ auto canta::RenderGraph::duplicate(const BufferIndex index) -> std::expected<Buf
     info.buffer = {};
     info.usage = BufferUsage::STORAGE;
     info.type = MemoryType::DEVICE;
-    return addBuffer({ .size = info.size, .name = info.name });
+    return addBuffer({.size = info.size, .name = info.name});
 }
 
 auto canta::RenderGraph::duplicate(const ImageIndex index) -> std::expected<ImageIndex, RenderGraphError> {
@@ -1314,7 +1330,7 @@ auto canta::RenderGraph::duplicate(const ImageIndex index) -> std::expected<Imag
     info.image = {};
     info.usage = ImageUsage::STORAGE;
     info.swapchainImage = false;
-    return addImage({ .width = info.width, .height = info.height, .depth = info.depth, .format = info.format, .name = info.name });
+    return addImage({.width = info.width, .height = info.height, .depth = info.depth, .format = info.format, .name = info.name});
 }
 
 auto canta::RenderGraph::getBuffer(const BufferIndex index) const -> std::expected<BufferHandle, RenderGraphError> {
@@ -1384,8 +1400,8 @@ auto canta::RenderGraph::updateImageInfo(const ImageIndex index, const ImageInfo
     return std::get<ImageInfo>(_resources[index.index].info);
 }
 
-auto canta::RenderGraph::pass(const std::string_view name, const RenderPass::Type type, const PipelineHandle &pipeline, const RenderGroup& group) -> PassBuilder {
-    auto& pass = addVertex();
+auto canta::RenderGraph::pass(const std::string_view name, const RenderPass::Type type, const PipelineHandle &pipeline, const RenderGroup &group) -> PassBuilder {
+    auto &pass = addVertex();
     pass._type = type;
     pass._name = name;
     pass.setGroup(group);
@@ -1394,8 +1410,8 @@ auto canta::RenderGraph::pass(const std::string_view name, const RenderPass::Typ
     return builder;
 }
 
-auto canta::RenderGraph::compute(const std::string_view name, const PipelineHandle &pipeline, const RenderGroup& group) -> ComputePass {
-    auto& pass = addVertex();
+auto canta::RenderGraph::compute(const std::string_view name, const PipelineHandle &pipeline, const RenderGroup &group) -> ComputePass {
+    auto &pass = addVertex();
     pass._type = RenderPass::Type::COMPUTE;
     pass._name = name;
     pass.setGroup(group);
@@ -1404,8 +1420,8 @@ auto canta::RenderGraph::compute(const std::string_view name, const PipelineHand
     return builder;
 }
 
-auto canta::RenderGraph::graphics(const std::string_view name, const PipelineHandle &pipeline, const RenderGroup& group) -> GraphicsPass {
-    auto& pass = addVertex();
+auto canta::RenderGraph::graphics(const std::string_view name, const PipelineHandle &pipeline, const RenderGroup &group) -> GraphicsPass {
+    auto &pass = addVertex();
     pass._type = RenderPass::Type::GRAPHICS;
     pass._name = name;
     pass.setGroup(group);
@@ -1414,8 +1430,8 @@ auto canta::RenderGraph::graphics(const std::string_view name, const PipelineHan
     return builder;
 }
 
-auto canta::RenderGraph::transfer(const std::string_view name, const PipelineHandle &pipeline, const RenderGroup& group) -> TransferPass {
-    auto& pass = addVertex();
+auto canta::RenderGraph::transfer(const std::string_view name, const PipelineHandle &pipeline, const RenderGroup &group) -> TransferPass {
+    auto &pass = addVertex();
     pass._type = RenderPass::Type::TRANSFER;
     pass._name = name;
     pass.setGroup(group);
@@ -1425,7 +1441,7 @@ auto canta::RenderGraph::transfer(const std::string_view name, const PipelineHan
 }
 
 auto canta::RenderGraph::host(const std::string_view name) -> HostPass {
-    auto& pass = addVertex();
+    auto &pass = addVertex();
     pass._type = RenderPass::Type::HOST;
     pass._queueType = QueueType::NONE;
     pass._name = name;
@@ -1434,7 +1450,7 @@ auto canta::RenderGraph::host(const std::string_view name) -> HostPass {
 }
 
 auto canta::RenderGraph::acquire(Swapchain *swapchain) -> std::expected<ImageIndex, RenderGraphError> {
-    auto& pass = addVertex();
+    auto &pass = addVertex();
     pass._type = RenderPass::Type::PRESENT;
     pass._name = "acquire_pass";
     auto builder = PresentPass(this, vertexCount() - 1);
@@ -1442,7 +1458,7 @@ auto canta::RenderGraph::acquire(Swapchain *swapchain) -> std::expected<ImageInd
 }
 
 auto canta::RenderGraph::present(Swapchain *swapchain, const ImageIndex index) -> std::expected<ImageIndex, RenderGraphError> {
-    auto& pass = addVertex();
+    auto &pass = addVertex();
     pass._type = RenderPass::Type::PRESENT;
     pass._name = "present_pass";
     auto builder = PresentPass(this, vertexCount() - 1);
@@ -1458,7 +1474,8 @@ void canta::RenderGraph::setRoot(const ImageIndex index) {
 }
 
 auto canta::RenderGraph::compile() -> std::expected<bool, RenderGraphError> {
-    if (_rootEdge < 0) return std::unexpected(RenderGraphError::NO_ROOT);
+    if (_rootEdge < 0)
+        return std::unexpected(RenderGraphError::NO_ROOT);
 
     auto sorted = maybe(sort(getEdges()[_rootEdge]).transform_error(mapGraphErrorToRenderGraphError));
 
@@ -1468,28 +1485,28 @@ auto canta::RenderGraph::compile() -> std::expected<bool, RenderGraphError> {
         const auto sortedSpan = std::span(sorted.data(), sorted.size());
         const auto dependencyLevels = maybe(buildDependencyLevels(sortedSpan));
 
-        for (auto& level : dependencyLevels) {
-            for (auto& passIndex : level) {
-                auto& pass = sorted[passIndex];
+        for (auto &level : dependencyLevels) {
+            for (auto &passIndex : level) {
+                auto &pass = sorted[passIndex];
 
                 switch (pass._type) {
-                    case RenderPass::Type::COMPUTE:
-                        pass._queueType = level.size() > 1 && passIndex == level.back() ? QueueType::COMPUTE : QueueType::GRAPHICS;
-                        break;
-                    case RenderPass::Type::GRAPHICS:
-                        pass._queueType = QueueType::GRAPHICS;
-                        break;
-                    case RenderPass::Type::TRANSFER:
-                        pass._queueType = QueueType::TRANSFER;
-                        break;
-                    case RenderPass::Type::HOST:
-                        pass._queueType = QueueType::NONE;
-                        break;
-                    case RenderPass::Type::NONE:
-                        return std::unexpected(RenderGraphError::INVALID_PASS);
-                    case RenderPass::Type::PRESENT:
-                        pass._queueType = QueueType::GRAPHICS;
-                        break;
+                case RenderPass::Type::COMPUTE:
+                    pass._queueType = level.size() > 1 && passIndex == level.back() ? QueueType::COMPUTE : QueueType::GRAPHICS;
+                    break;
+                case RenderPass::Type::GRAPHICS:
+                    pass._queueType = QueueType::GRAPHICS;
+                    break;
+                case RenderPass::Type::TRANSFER:
+                    pass._queueType = QueueType::TRANSFER;
+                    break;
+                case RenderPass::Type::HOST:
+                    pass._queueType = QueueType::NONE;
+                    break;
+                case RenderPass::Type::NONE:
+                    return std::unexpected(RenderGraphError::INVALID_PASS);
+                case RenderPass::Type::PRESENT:
+                    pass._queueType = QueueType::GRAPHICS;
+                    break;
                 }
 
                 // if queue disabled reset to graphics
@@ -1498,7 +1515,6 @@ auto canta::RenderGraph::compile() -> std::expected<bool, RenderGraphError> {
             }
         }
     }
-
 
     _orderedPasses = sorted;
 
@@ -1511,18 +1527,18 @@ auto canta::RenderGraph::compile() -> std::expected<bool, RenderGraphError> {
 
 inline auto getQueueIndex(const canta::QueueType queue) -> u32 {
     switch (queue) {
-        case canta::QueueType::NONE:
-            return 3;
-        case canta::QueueType::GRAPHICS:
-            return 0;
-        case canta::QueueType::COMPUTE:
-            return 1;
-        case canta::QueueType::TRANSFER:
-            return 2;
-        case canta::QueueType::SPARSE_BINDING:
-            break;
-        case canta::QueueType::PRESENT:
-            break;
+    case canta::QueueType::NONE:
+        return 3;
+    case canta::QueueType::GRAPHICS:
+        return 0;
+    case canta::QueueType::COMPUTE:
+        return 1;
+    case canta::QueueType::TRANSFER:
+        return 2;
+    case canta::QueueType::SPARSE_BINDING:
+        break;
+    case canta::QueueType::PRESENT:
+        break;
     }
     return 0;
 }
@@ -1534,7 +1550,7 @@ auto canta::RenderGraph::run(std::span<SemaphorePair> waits, std::span<Semaphore
     // new command list waits on timeline from previous queue.
     // host passes get added to the threadpool.
 
-    for (auto& pool : _commandPools[_device->flyingIndex()])
+    for (auto &pool : _commandPools[_device->flyingIndex()])
         pool.reset();
 
     CommandHandle currentCommandBuffer = {};
@@ -1546,7 +1562,7 @@ auto canta::RenderGraph::run(std::span<SemaphorePair> waits, std::span<Semaphore
     std::vector<SemaphorePair> waitHandles = {};
     std::vector<SemaphorePair> signalHandles = {};
 
-    const auto submitCommands = [this, async] (CommandHandle commands, const QueueType queueType, std::span<SemaphorePair> waits, std::span<SemaphorePair> signals, const bool final) -> std::expected<bool, RenderGraphError> {
+    const auto submitCommands = [this, async](CommandHandle commands, const QueueType queueType, std::span<SemaphorePair> waits, std::span<SemaphorePair> signals, const bool final) -> std::expected<bool, RenderGraphError> {
         const auto queue = _device->queue(queueType);
 
         std::vector<SemaphorePair> passWaits = {};
@@ -1558,7 +1574,7 @@ auto canta::RenderGraph::run(std::span<SemaphorePair> waits, std::span<Semaphore
         if (async && final)
             passSignals.emplace_back(_cpuTimeline, _cpuTimeline->increment());
 
-        maybe(queue->submit({ &commands, 1 }, passWaits, passSignals).transform_error([this] (VulkanError error) {
+        maybe(queue->submit({&commands, 1}, passWaits, passSignals).transform_error([this](VulkanError error) {
             _device->logger().error("Invalid queue submit: {}", static_cast<u32>(error));
             return RenderGraphError::DEVICE_ERROR;
         }));
@@ -1573,8 +1589,7 @@ auto canta::RenderGraph::run(std::span<SemaphorePair> waits, std::span<Semaphore
         if (passIndex == _orderedPasses.size() - 1)
             signalHandles.insert(signalHandles.end(), signals.begin(), signals.end());
 
-
-        auto& pass = _orderedPasses[passIndex];
+        auto &pass = _orderedPasses[passIndex];
 
         if (pass._type == RenderPass::Type::PRESENT) {
             if (currentCommandBuffer) {
@@ -1596,7 +1611,7 @@ auto canta::RenderGraph::run(std::span<SemaphorePair> waits, std::span<Semaphore
 
             u32 count = pass._queueWaits.size();
             std::vector<u32> queueIndices = {};
-            for (auto& wait : pass._queueWaits)
+            for (auto &wait : pass._queueWaits)
                 queueIndices.emplace_back(static_cast<u32>(wait.second));
 
             pass.pushConstants(count, queueIndices);
@@ -1624,7 +1639,7 @@ auto canta::RenderGraph::run(std::span<SemaphorePair> waits, std::span<Semaphore
 
             if (passIndex != 0)
                 waitHandles.clear();
-            for (auto& wait : pass._queueWaits) {
+            for (auto &wait : pass._queueWaits) {
                 if (wait.second == QueueType::NONE) {
                     waitHandles.emplace_back(_cpuTimeline);
                     continue;
@@ -1635,20 +1650,20 @@ auto canta::RenderGraph::run(std::span<SemaphorePair> waits, std::span<Semaphore
             auto semaphores = waitHandles;
 
             auto cpuValue = _cpuTimeline->increment();
-            _threadPool->addJob([this, semaphores, cpuValue, pass] () -> std::expected<bool, RenderGraphError> {
-                maybe(_cpuTimeline->wait(cpuValue - 1).transform_error([this] (VulkanError error) -> RenderGraphError {
-                        _device->logger().error("Wait on invalid timeline: {}", static_cast<u32>(error));
-                        return RenderGraphError::DEVICE_ERROR;
-                    }));
-                for (auto& wait : semaphores) {
-                    maybe(wait.semaphore->wait(wait.value).transform_error([this] (VulkanError error) -> RenderGraphError {
+            _threadPool->addJob([this, semaphores, cpuValue, pass]() -> std::expected<bool, RenderGraphError> {
+                maybe(_cpuTimeline->wait(cpuValue - 1).transform_error([this](VulkanError error) -> RenderGraphError {
+                    _device->logger().error("Wait on invalid timeline: {}", static_cast<u32>(error));
+                    return RenderGraphError::DEVICE_ERROR;
+                }));
+                for (auto &wait : semaphores) {
+                    maybe(wait.semaphore->wait(wait.value).transform_error([this](VulkanError error) -> RenderGraphError {
                         _device->logger().error("Wait on invalid timeline: {}", static_cast<u32>(error));
                         return RenderGraphError::DEVICE_ERROR;
                     }));
                 }
                 maybe(pass.run(*this, CommandHandle()));
 
-                maybe(_cpuTimeline->signal(cpuValue).transform_error([this] (VulkanError error) -> RenderGraphError {
+                maybe(_cpuTimeline->signal(cpuValue).transform_error([this](VulkanError error) -> RenderGraphError {
                     _device->logger().error("Signal on invalid timeline: {}", static_cast<u32>(error));
                     return RenderGraphError::DEVICE_ERROR;
                 }));
@@ -1709,8 +1724,7 @@ auto canta::RenderGraph::run(std::span<SemaphorePair> waits, std::span<Semaphore
             if (_statsMode == QueryMode::PER_GROUP)
                 startStats(currentCommandBuffer, _statsCount, currentGroup.name.empty() ? pass.name() : currentGroup.name, currentQueue);
         }
-        currentCommandBuffer->pushDebugLabel(pass._name, { 1, 1, 1, 1 });
-
+        currentCommandBuffer->pushDebugLabel(pass._name, {1, 1, 1, 1});
 
         if (_timingMode == QueryMode::PER_PASS)
             startTimer(currentCommandBuffer, _timerCount, pass.name(), currentQueue);
@@ -1719,7 +1733,7 @@ auto canta::RenderGraph::run(std::span<SemaphorePair> waits, std::span<Semaphore
 
         submitBarriers(currentCommandBuffer, pass._barriers);
 
-        for (auto& wait : pass._queueWaits) {
+        for (auto &wait : pass._queueWaits) {
             if (wait.second == QueueType::NONE) {
                 waitHandles.emplace_back(_cpuTimeline);
                 continue;
@@ -1750,7 +1764,7 @@ auto canta::RenderGraph::run(std::span<SemaphorePair> waits, std::span<Semaphore
     if (!async) {
         bool success = false;
         do {
-            success = maybe(_cpuTimeline->wait(_cpuTimeline->value(), std::numeric_limits<u64>::max()).transform_error([] (VulkanError error) { return RenderGraphError::DEVICE_ERROR; }));
+            success = maybe(_cpuTimeline->wait(_cpuTimeline->value(), std::numeric_limits<u64>::max()).transform_error([](VulkanError error) { return RenderGraphError::DEVICE_ERROR; }));
         } while (!success);
     }
 
@@ -1763,13 +1777,13 @@ void canta::RenderGraph::reset(const bool keepResources) {
     Graph::reset();
 }
 
-auto canta::RenderGraph::getResourceIndices(const std::span<const RenderPass> passes) const -> std::vector<std::pair<u32, u32> > {
+auto canta::RenderGraph::getResourceIndices(const std::span<const RenderPass> passes) const -> std::vector<std::pair<u32, u32>> {
     std::vector<std::pair<u32, u32>> indices = {};
     for (u32 i = 0; i < _resources.size(); i++) {
         indices.emplace_back(passes.size(), 0);
     }
     for (u32 passIndex = 0; passIndex < passes.size(); ++passIndex) {
-        auto& pass = passes[passIndex];
+        auto &pass = passes[passIndex];
         for (u32 i = 0; i < pass.inputs.size(); i++) {
             const auto index = pass.inputResourceIndex(i);
             indices[index].first = std::min(passIndex, indices[index].first);
@@ -1787,68 +1801,68 @@ auto canta::RenderGraph::getResourceIndices(const std::span<const RenderPass> pa
 
 auto canta::RenderGraph::buildDependencyLevels(std::span<const RenderPass> passes) const -> std::expected<std::vector<std::vector<u32>>, RenderGraphError> {
     const auto distances = maybe(ende::graph::longestPath(passes, edgeCount()).transform_error(mapGraphErrorToRenderGraphError));
-    if (distances.empty()) return std::unexpected(RenderGraphError::INVALID_PASS_COUNT);
+    if (distances.empty())
+        return std::unexpected(RenderGraphError::INVALID_PASS_COUNT);
 
     const auto maxDistance = std::max_element(distances.begin(), distances.end());
 
     std::vector<std::vector<u32>> levels = {};
     levels.resize(*maxDistance + 1);
     for (u32 passIndex = 0; passIndex < passes.size(); passIndex++) {
-        auto& distance = distances[passIndex];
+        auto &distance = distances[passIndex];
         levels[distance].emplace_back(passIndex);
     }
 
     return levels;
 }
 
-auto compareBuffer(const canta::BufferInfo& info, canta::BufferHandle handle) -> bool {
+auto compareBuffer(const canta::BufferInfo &info, canta::BufferHandle handle) -> bool {
     return info.size == handle->size() &&
-        info.type == handle->type() &&
-        (info.usage & handle->usage()) == handle->usage();
+           info.type == handle->type() &&
+           (info.usage & handle->usage()) == handle->usage();
 }
 
-auto compareImage(const canta::ImageInfo& info, canta::ImageHandle handle) -> bool {
+auto compareImage(const canta::ImageInfo &info, canta::ImageHandle handle) -> bool {
     return info.width == handle->width() &&
-        info.height == handle->height() &&
-        info.depth == handle->depth() &&
-        info.mips == handle->mips() &&
-        info.format == handle->format() &&
-        (info.usage & handle->usage()) == handle->usage();
-
+           info.height == handle->height() &&
+           info.depth == handle->depth() &&
+           info.mips == handle->mips() &&
+           info.format == handle->format() &&
+           (info.usage & handle->usage()) == handle->usage();
 }
 
 auto canta::RenderGraph::getNextAccess(const i32 startIndex, const i32 resource) -> Access {
     for (i32 passIndex = startIndex + 1; passIndex < _orderedPasses.size(); passIndex++) {
-        const auto& pass = _orderedPasses[passIndex];
+        const auto &pass = _orderedPasses[passIndex];
 
-        for (auto& access : pass._accesses) {
+        for (auto &access : pass._accesses) {
             if (access.index == resource)
-                return { passIndex, access };
+                return {passIndex, access};
         }
     }
-    return { -1, {} };
+    return {-1, {}};
 }
 
 auto canta::RenderGraph::getCurrAccess(const i32 startIndex, const i32 resource) -> Access {
-    const auto& pass = _orderedPasses[startIndex];
+    const auto &pass = _orderedPasses[startIndex];
 
-    for (auto& access : pass._accesses) {
+    for (auto &access : pass._accesses) {
         if (access.index == resource)
-            return { startIndex, access };
+            return {startIndex, access};
     }
-    return { -1, {} };
+    return {-1, {}};
 }
 
 auto canta::RenderGraph::getPrevAccess(const i32 startIndex, const i32 resource) -> Access {
     for (i32 passIndex = startIndex - 1; passIndex >= 0; passIndex--) {
-        const auto& pass = _orderedPasses[passIndex];
+        const auto &pass = _orderedPasses[passIndex];
 
-        for (auto& access : pass._accesses) {
+        for (auto &access : pass._accesses) {
             if (access.index == resource)
-                return { passIndex, access };
+                return {passIndex, access};
         }
     }
-    return { -1, _resources[resource].initialAccess};
+    return {-1, _resources[resource].initialAccess};
 }
 
 void canta::RenderGraph::submitBarriers(CommandHandle commands, std::span<const RenderPass::Barrier> barriers) const {
@@ -1857,12 +1871,12 @@ void canta::RenderGraph::submitBarriers(CommandHandle commands, std::span<const 
     u32 bufferBarrierCount = 0;
     BufferBarrier bufferBarriers[barriers.size()];
 
-    for (const auto& barrier : barriers) {
+    for (const auto &barrier : barriers) {
         const auto resource = _resources[barrier.index];
         if (std::holds_alternative<BufferInfo>(resource.info)) {
             const auto buffer = std::get<BufferInfo>(resource.info).buffer;
 
-            bufferBarriers[bufferBarrierCount++] = BufferBarrier {
+            bufferBarriers[bufferBarrierCount++] = BufferBarrier{
                 .buffer = buffer,
                 .srcStage = barrier.srcStage,
                 .dstStage = barrier.dstStage,
@@ -1870,13 +1884,13 @@ void canta::RenderGraph::submitBarriers(CommandHandle commands, std::span<const 
                 .dstAccess = barrier.dstAccess,
             };
         } else {
-            const auto imageInfo= std::get<ImageInfo>(resource.info);
+            const auto imageInfo = std::get<ImageInfo>(resource.info);
             if (imageInfo.swapchainImage && !imageInfo.image)
                 continue;
 
             const auto image = imageInfo.image;
 
-            imageBarriers[imageBarrierCount++] = ImageBarrier {
+            imageBarriers[imageBarrierCount++] = ImageBarrier{
                 .image = image,
                 .srcStage = barrier.srcStage,
                 .dstStage = barrier.dstStage,
@@ -1895,11 +1909,11 @@ void canta::RenderGraph::submitBarriers(CommandHandle commands, std::span<const 
 }
 
 void canta::RenderGraph::startTimer(CommandHandle commands, const u32 index, const std::string_view name, const QueueType queue) {
-    auto& frameTimers = _timers[_device->flyingIndex()];
+    auto &frameTimers = _timers[_device->flyingIndex()];
     while (frameTimers.size() <= index)
         frameTimers.emplace_back(TimerInfo{{}, QueueType::NONE, _device->createTimer()});
 
-    auto& timer = frameTimers[index];
+    auto &timer = frameTimers[index];
     timer.name = name;
     timer.queue = queue;
     timer.timer.begin(*commands, PipelineStage::TOP);
@@ -1907,18 +1921,18 @@ void canta::RenderGraph::startTimer(CommandHandle commands, const u32 index, con
 }
 
 void canta::RenderGraph::endTimer(CommandHandle commands, const u32 index) {
-    auto& frameTimers = _timers[_device->flyingIndex()];
-    auto& timer = frameTimers[index];
+    auto &frameTimers = _timers[_device->flyingIndex()];
+    auto &timer = frameTimers[index];
     timer.timer.end(*commands, PipelineStage::BOTTOM);
     _timerRunning = false;
 }
 
 void canta::RenderGraph::startStats(CommandHandle commands, const u32 index, const std::string_view name, const QueueType queue) {
-    auto& frameStatistics = _statistics[_device->flyingIndex()];
+    auto &frameStatistics = _statistics[_device->flyingIndex()];
     while (frameStatistics.size() <= index)
         frameStatistics.emplace_back(StatisticInfo{{}, QueueType::NONE, _device->createPipelineStatistics()});
 
-    auto& statistics = frameStatistics[index];
+    auto &statistics = frameStatistics[index];
     statistics.name = name;
     statistics.queue = queue;
     statistics.statistics.begin(*commands);
@@ -1926,26 +1940,26 @@ void canta::RenderGraph::startStats(CommandHandle commands, const u32 index, con
 }
 
 void canta::RenderGraph::endStats(CommandHandle commands, const u32 index) {
-    auto& frameStatistics = _statistics[_device->flyingIndex()];
-    auto& statistics = frameStatistics[index];
+    auto &frameStatistics = _statistics[_device->flyingIndex()];
+    auto &statistics = frameStatistics[index];
     statistics.statistics.end(*commands);
     _statsRunning = false;
 }
 
 void canta::RenderGraph::buildBarriers() {
-    for (auto& pass : _orderedPasses)
+    for (auto &pass : _orderedPasses)
         pass.mergeAccesses();
 
     for (i32 passIndex = _orderedPasses.size() - 1; passIndex >= 0; passIndex--) {
-        auto& pass = _orderedPasses[passIndex];
+        auto &pass = _orderedPasses[passIndex];
 
-        for (auto& access : pass._accesses) {
+        for (auto &access : pass._accesses) {
             i32 resource = access.index;
 
             const auto currAccess = getCurrAccess(passIndex, resource);
             const auto prevAccess = getPrevAccess(passIndex, resource);
 
-            auto barrier = RenderPass::Barrier {
+            auto barrier = RenderPass::Barrier{
                 .index = resource,
                 .passIndex = passIndex,
                 .srcStage = prevAccess.access.stage,
@@ -1958,7 +1972,7 @@ void canta::RenderGraph::buildBarriers() {
             pass._barriers.emplace_back(barrier);
 
             if (prevAccess.passIndex > -1) {
-                auto& prevPass = _orderedPasses[prevAccess.passIndex];
+                auto &prevPass = _orderedPasses[prevAccess.passIndex];
                 if (prevPass._queueType != pass._queueType || pass._type == RenderPass::Type::PRESENT) {
                     pass._queueWaits.emplace_back(prevAccess.passIndex, prevPass._queueType);
                 }
@@ -1970,7 +1984,7 @@ void canta::RenderGraph::buildBarriers() {
 }
 
 void canta::RenderGraph::buildResources() {
-    //TODO: allocate and alias in memory pool
+    // TODO: allocate and alias in memory pool
 
     // const auto sizes = std::views::transform(_resources, [](auto& resource) {
     //     if (std::holds_alternative<BufferInfo>(resource)) {
@@ -1993,10 +2007,9 @@ void canta::RenderGraph::buildResources() {
     //     _poolSize = size;
     // }
 
-
-    for (auto& resource : _resources) {
+    for (auto &resource : _resources) {
         if (std::holds_alternative<BufferInfo>(resource.info)) {
-            auto& bufferInfo = std::get<BufferInfo>(resource.info);
+            auto &bufferInfo = std::get<BufferInfo>(resource.info);
             if (bufferInfo.buffer)
                 continue;
 
@@ -2010,7 +2023,7 @@ void canta::RenderGraph::buildResources() {
             bufferInfo.buffer = buffer;
 
         } else {
-            auto& imageInfo = std::get<ImageInfo>(resource.info);
+            auto &imageInfo = std::get<ImageInfo>(resource.info);
             if (imageInfo.swapchainImage || (imageInfo.image && compareImage(imageInfo, imageInfo.image)))
                 continue;
 
@@ -2031,11 +2044,11 @@ void canta::RenderGraph::buildResources() {
 
 auto canta::RenderGraph::buildRenderAttachments() -> std::expected<bool, RenderGraphError> {
     for (i32 i = 0; i < _orderedPasses.size(); i++) {
-        auto& pass = _orderedPasses[i];
+        auto &pass = _orderedPasses[i];
 
         pass._renderingColourAttachments.clear();
 
-        for (const auto& attachment : pass._colourAttachments) {
+        for (const auto &attachment : pass._colourAttachments) {
             const auto resource = _resources[attachment.index];
             if (!std::holds_alternative<ImageInfo>(resource.info))
                 return std::unexpected(RenderGraphError::INVALID_RESOURCE);
@@ -2072,24 +2085,25 @@ auto canta::RenderGraph::buildRenderAttachments() -> std::expected<bool, RenderG
 
             pass._renderingDepthAttachment = renderingAttachment;
         }
-
     }
 
     return true;
 }
 
 auto canta::RenderGraph::validateGraphResource(BufferIndex index) const -> std::expected<bool, RenderGraphError> {
-    if (index.graphIndex != _graphIndex || index.id < 0 || index.index < 0) return std::unexpected(RenderGraphError::INVALID_RESOURCE);
+    if (index.graphIndex != _graphIndex || index.id < 0 || index.index < 0)
+        return std::unexpected(RenderGraphError::INVALID_RESOURCE);
     return true;
 }
 
 auto canta::RenderGraph::validateGraphResource(ImageIndex index) const -> std::expected<bool, RenderGraphError> {
-    if (index.graphIndex != _graphIndex || index.id < 0 || index.index < 0) return std::unexpected(RenderGraphError::INVALID_RESOURCE);
+    if (index.graphIndex != _graphIndex || index.id < 0 || index.index < 0)
+        return std::unexpected(RenderGraphError::INVALID_RESOURCE);
     return true;
 }
 
 auto canta::RenderGraph::getPass(const std::string_view name) const -> std::expected<RenderPass, RenderGraphError> {
-    for (auto& pass : _orderedPasses) {
+    for (auto &pass : _orderedPasses) {
         if (pass.name() == name)
             return pass;
     }
@@ -2097,18 +2111,18 @@ auto canta::RenderGraph::getPass(const std::string_view name) const -> std::expe
 }
 
 auto canta::RenderGraph::stats() const -> Stats {
-    const auto& poolGroup = _commandPools[_device->flyingIndex()];
+    const auto &poolGroup = _commandPools[_device->flyingIndex()];
     const auto graphicsCommandsCount = poolGroup[0].bufferCount();
     const auto computeCommandsCount = poolGroup[1].bufferCount();
-    const auto transferCommandsCount=  poolGroup[2].bufferCount();
+    const auto transferCommandsCount = poolGroup[2].bufferCount();
 
-    const u32 bufferCount = std::accumulate(_resources.begin(), _resources.end(), 0, [] (const u32& lhs, const Resource& rhs) {
+    const u32 bufferCount = std::accumulate(_resources.begin(), _resources.end(), 0, [](const u32 &lhs, const Resource &rhs) {
         if (std::holds_alternative<BufferInfo>(rhs.info))
             return lhs + 1;
         return lhs + 0;
     });
 
-    const u32 imageCount = std::accumulate(_resources.begin(), _resources.end(), 0, [] (const u32& lhs, const Resource& rhs) {
+    const u32 imageCount = std::accumulate(_resources.begin(), _resources.end(), 0, [](const u32 &lhs, const Resource &rhs) {
         if (std::holds_alternative<ImageInfo>(rhs.info))
             return lhs + 1;
         return lhs + 0;

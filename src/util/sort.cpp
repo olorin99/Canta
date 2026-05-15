@@ -21,7 +21,7 @@ auto canta::singleSort(RenderGraph &renderGraph, const BufferIndex keys, const B
     };
 }
 
-auto canta::multiSort(RenderGraph& graph, const BufferIndex keys, const BufferIndex values, u32 count, u32 numBlocksPerWorkgroup, const u32 typeSize) -> std::expected<SortOutput, RenderGraphError> {
+auto canta::multiSort(RenderGraph &graph, const BufferIndex keys, const BufferIndex values, u32 count, u32 numBlocksPerWorkgroup, const u32 typeSize) -> std::expected<SortOutput, RenderGraphError> {
     assert(typeSize % sizeof(u32) == 0);
 
     if (count == 0) {
@@ -49,7 +49,7 @@ auto canta::multiSort(RenderGraph& graph, const BufferIndex keys, const BufferIn
         .name = "histogram",
     });
 
-    auto sortGroup = graph.addGroup("sort", { 0, 0, 1, 1 });
+    auto sortGroup = graph.addGroup("sort", {0, 0, 1, 1});
 
     auto index = keys;
     for (u32 iteration = 0; iteration < 4; iteration++) {
@@ -61,9 +61,9 @@ auto canta::multiSort(RenderGraph& graph, const BufferIndex keys, const BufferIn
         const auto iterationTmpValues = iteration % 2 == 0 ? tmpValues : values;
 
         auto histogramOutput = maybe(maybe(multi_sort_histograms(totalThreads)(graph, Read(iterationKeys), ReadWrite(histogram), count, shift, numWorkgroups, numBlocksPerWorkgroup))
-            .addStorageBufferRead(index)
-            .addStorageBufferRead(values)
-            .output<BufferIndex>());
+                                         .addStorageBufferRead(index)
+                                         .addStorageBufferRead(values)
+                                         .output<BufferIndex>());
 
         auto sortPass = maybe(multi_sort(totalThreads)(graph, ReadWrite(iterationKeys), ReadWrite(iterationTmpKeys), ReadWrite(iterationValues), ReadWrite(iterationTmpValues), Read(histogramOutput), count, shift, numWorkgroups, numBlocksPerWorkgroup, typeSize));
 
